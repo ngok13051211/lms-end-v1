@@ -1,0 +1,186 @@
+import { ReactNode, useState } from "react";
+import { useLocation, Link } from "wouter";
+import { useSelector } from "react-redux";
+import { RootState } from "@/store";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import {
+  Home,
+  User,
+  BookOpen,
+  MessageSquare,
+  PieChart,
+  LogOut,
+  Menu,
+  X,
+  ChevronRight,
+  Users,
+  Settings
+} from "lucide-react";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useDispatch } from "react-redux";
+import { logout } from "@/features/auth/authSlice";
+import { useMobile } from "@/hooks/use-mobile";
+
+interface DashboardLayoutProps {
+  children: ReactNode;
+}
+
+export default function DashboardLayout({ children }: DashboardLayoutProps) {
+  const { user } = useSelector((state: RootState) => state.auth);
+  const [, navigate] = useLocation();
+  const dispatch = useDispatch();
+  const isMobile = useMobile();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  if (!user) {
+    navigate("/login");
+    return null;
+  }
+
+  const handleLogout = () => {
+    dispatch(logout() as any);
+    navigate("/");
+  };
+
+  // Get sidebar items based on user role
+  const getSidebarItems = () => {
+    if (user.role === "tutor") {
+      return [
+        { label: "Dashboard", icon: <Home className="h-5 w-5" />, href: "/dashboard/tutor" },
+        { label: "Profile", icon: <User className="h-5 w-5" />, href: "/dashboard/tutor/profile" },
+        { label: "My Ads", icon: <BookOpen className="h-5 w-5" />, href: "/dashboard/tutor/ads" },
+        { label: "Messages", icon: <MessageSquare className="h-5 w-5" />, href: "/dashboard/tutor/messages" },
+        { label: "Statistics", icon: <PieChart className="h-5 w-5" />, href: "/dashboard/tutor/stats" }
+      ];
+    } else if (user.role === "student") {
+      return [
+        { label: "Dashboard", icon: <Home className="h-5 w-5" />, href: "/dashboard/student" },
+        { label: "Profile", icon: <User className="h-5 w-5" />, href: "/dashboard/student/profile" },
+        { label: "My Tutors", icon: <Users className="h-5 w-5" />, href: "/dashboard/student/tutors" },
+        { label: "Messages", icon: <MessageSquare className="h-5 w-5" />, href: "/dashboard/student/messages" }
+      ];
+    } else if (user.role === "admin") {
+      return [
+        { label: "Dashboard", icon: <Home className="h-5 w-5" />, href: "/dashboard/admin" },
+        { label: "Users", icon: <Users className="h-5 w-5" />, href: "/dashboard/admin/users" },
+        { label: "Tutors", icon: <User className="h-5 w-5" />, href: "/dashboard/admin/tutors" },
+        { label: "Settings", icon: <Settings className="h-5 w-5" />, href: "/dashboard/admin/settings" }
+      ];
+    }
+    return [];
+  };
+
+  const sidebarItems = getSidebarItems();
+  const [location] = useLocation();
+
+  const renderSidebarContent = () => (
+    <div className="flex flex-col h-full">
+      <div className="p-6 border-b">
+        <Link href="/">
+          <a className="flex items-center">
+            <span className="text-primary text-2xl font-medium">
+              Homi<span className="text-secondary">Tutor</span>
+            </span>
+          </a>
+        </Link>
+      </div>
+
+      <div className="flex items-center p-6 border-b">
+        <Avatar className="h-10 w-10">
+          <AvatarImage src={user.avatar} alt={user.firstName} />
+          <AvatarFallback>{user.firstName?.[0]}{user.lastName?.[0]}</AvatarFallback>
+        </Avatar>
+        <div className="ml-3">
+          <p className="font-medium">
+            {user.firstName} {user.lastName}
+          </p>
+          <p className="text-sm text-muted-foreground capitalize">
+            {user.role}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-auto py-4">
+        <nav className="space-y-1 px-2">
+          {sidebarItems.map((item) => {
+            const isActive = location === item.href;
+            return (
+              <Link key={item.href} href={item.href}>
+                <a
+                  className={`flex items-center px-4 py-3 text-sm rounded-md transition-colors ${
+                    isActive
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                  onClick={() => isMobile && setSidebarOpen(false)}
+                >
+                  {item.icon}
+                  <span className="ml-3">{item.label}</span>
+                  {isActive && <ChevronRight className="ml-auto h-4 w-4" />}
+                </a>
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
+
+      <div className="p-6 border-t">
+        <Button
+          variant="outline"
+          className="w-full flex items-center justify-center"
+          onClick={handleLogout}
+        >
+          <LogOut className="mr-2 h-4 w-4" />
+          <span>Log out</span>
+        </Button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="flex h-screen overflow-hidden bg-background">
+      {/* Sidebar for desktop */}
+      <aside className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 z-50 border-r">
+        {renderSidebarContent()}
+      </aside>
+
+      {/* Mobile navigation */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-background border-b p-4 flex items-center justify-between">
+        <Link href="/">
+          <a className="flex items-center">
+            <span className="text-primary text-xl font-medium">
+              Homi<span className="text-secondary">Tutor</span>
+            </span>
+          </a>
+        </Link>
+
+        <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+          <SheetTrigger asChild>
+            <Button
+              variant="ghost"
+              className="p-0 w-10 h-10 rounded-full"
+              onClick={() => setSidebarOpen(true)}
+            >
+              {sidebarOpen ? (
+                <X className="h-6 w-6" />
+              ) : (
+                <Menu className="h-6 w-6" />
+              )}
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="p-0">
+            {renderSidebarContent()}
+          </SheetContent>
+        </Sheet>
+      </div>
+
+      {/* Main content */}
+      <main className="flex-1 overflow-auto md:ml-64 pt-0 md:pt-0">
+        <div className="pt-16 md:pt-0">
+          {children}
+        </div>
+      </main>
+    </div>
+  );
+}

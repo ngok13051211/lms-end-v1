@@ -1,0 +1,112 @@
+import { Link } from "wouter";
+import { Card } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Star } from "lucide-react";
+import { TutorProfile } from "@shared/schema";
+
+interface TutorCardProps {
+  tutor: TutorProfile;
+  compact?: boolean;
+}
+
+export default function TutorCard({ tutor, compact = false }: TutorCardProps) {
+  const formatPrice = (price: number | string) => {
+    return new Intl.NumberFormat('vi-VN', { 
+      style: 'currency', 
+      currency: 'VND'
+    }).format(Number(price));
+  };
+
+  if (compact) {
+    return (
+      <Card className="hover-rise">
+        <div className="p-4 flex items-center gap-4">
+          <Avatar className="h-12 w-12">
+            <AvatarImage src={tutor.user?.avatar} alt={tutor.user?.firstName} />
+            <AvatarFallback>
+              {tutor.user?.firstName?.[0]}{tutor.user?.lastName?.[0]}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between">
+              <h3 className="font-medium truncate">
+                {tutor.user?.firstName} {tutor.user?.lastName}
+              </h3>
+              <div className="flex items-center ml-2 shrink-0">
+                <Star className="h-4 w-4 text-warning fill-warning" />
+                <span className="ml-1 text-sm">{tutor.rating}</span>
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground truncate">
+              {tutor.education}
+            </p>
+            <div className="flex items-center justify-between mt-1">
+              <p className="text-secondary font-medium text-sm">
+                {formatPrice(tutor.hourlyRate)}<span className="text-xs text-muted-foreground">/giờ</span>
+              </p>
+              <Link href={`/tutors/${tutor.id}`}>
+                <Button variant="default" size="sm" className="bg-primary text-white hover:bg-primary-dark h-7 px-2">
+                  Xem
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="hover-rise flex flex-col h-full">
+      <div className="relative h-48 rounded-t-lg overflow-hidden">
+        <img 
+          src={tutor.user?.avatar || `https://ui-avatars.com/api/?name=${tutor.user?.firstName}+${tutor.user?.lastName}&background=random`} 
+          alt={`${tutor.user?.firstName} ${tutor.user?.lastName}`} 
+          className="w-full h-full object-cover"
+        />
+        {tutor.isFeatured && (
+          <div className="absolute top-2 right-2 bg-secondary text-white text-xs px-2 py-1 rounded">
+            Gia sư hàng đầu
+          </div>
+        )}
+      </div>
+      <div className="p-4 flex-1 flex flex-col">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-medium text-lg">{tutor.user?.firstName} {tutor.user?.lastName}</h3>
+          <div className="flex items-center">
+            <Star className="h-4 w-4 text-warning fill-warning" />
+            <span className="text-sm ml-1">{tutor.rating}</span>
+          </div>
+        </div>
+        <p className="text-muted-foreground text-sm mb-3">{tutor.education}</p>
+        <div className="flex flex-wrap gap-2 mb-4">
+          {tutor.subjects?.slice(0, 3).map((subject) => (
+            <Badge key={subject.id} className="bg-primary-light/20 text-primary-dark hover:bg-primary-light/30">
+              {subject.name}
+            </Badge>
+          ))}
+          {tutor.teachingMode && (
+            <Badge className="bg-primary-light/20 text-primary-dark hover:bg-primary-light/30">
+              {tutor.teachingMode === "online" ? "Online" : 
+               tutor.teachingMode === "offline" ? "Tại nhà" : 
+               "Online/Offline"}
+            </Badge>
+          )}
+        </div>
+        <div className="mt-auto flex items-center justify-between">
+          <div>
+            <span className="text-secondary font-medium">{formatPrice(tutor.hourlyRate)}</span>
+            <span className="text-muted-foreground text-sm">/giờ</span>
+          </div>
+          <Link href={`/tutors/${tutor.id}`}>
+            <Button variant="default" className="bg-primary text-white hover:bg-primary-dark">
+              Xem chi tiết
+            </Button>
+          </Link>
+        </div>
+      </div>
+    </Card>
+  );
+}
