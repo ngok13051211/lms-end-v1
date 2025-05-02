@@ -207,6 +207,7 @@ export const getTutors = async (req: Request, res: Response) => {
 // Get featured tutors for homepage
 export const getFeaturedTutors = async (req: Request, res: Response) => {
   try {
+    // Fetch featured tutors with basic info
     const tutors = await db.query.tutorProfiles.findMany({
       where: and(
         eq(schema.tutorProfiles.isFeatured, true),
@@ -220,27 +221,36 @@ export const getFeaturedTutors = async (req: Request, res: Response) => {
             lastName: true,
             avatar: true
           }
-        },
-        subjects: {
-          with: {
-            subject: true
-          }
-        },
-        educationLevels: {
-          with: {
-            level: true
-          }
         }
       },
       limit: 3,
       orderBy: desc(schema.tutorProfiles.rating)
     });
-    
-    // Transform tutor data to include subject and level objects directly
-    const transformedTutors = tutors.map(tutor => ({
-      ...tutor,
-      subjects: tutor.subjects.map(ts => ts.subject),
-      educationLevels: tutor.educationLevels.map(tel => tel.level)
+
+    // Fetch tutor subjects separately to avoid relation inference issues
+    const transformedTutors = await Promise.all(tutors.map(async (tutor) => {
+      // Get subjects for this tutor
+      const tutorSubjectsData = await db.query.tutorSubjects.findMany({
+        where: eq(schema.tutorSubjects.tutorId, tutor.id),
+        with: {
+          subject: true
+        }
+      });
+      
+      // Get education levels for this tutor
+      const tutorLevelsData = await db.query.tutorEducationLevels.findMany({
+        where: eq(schema.tutorEducationLevels.tutorId, tutor.id),
+        with: {
+          level: true
+        }
+      });
+      
+      // Return tutor with related data
+      return {
+        ...tutor,
+        subjects: tutorSubjectsData.map(ts => ts.subject),
+        educationLevels: tutorLevelsData.map(tel => tel.level)
+      };
     }));
     
     return res.status(200).json(transformedTutors);
@@ -259,7 +269,7 @@ export const getTutorById = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Invalid tutor ID" });
     }
     
-    // Get tutor profile with related data
+    // Get basic tutor profile data
     const tutor = await db.query.tutorProfiles.findFirst({
       where: eq(schema.tutorProfiles.id, tutorId),
       with: {
@@ -270,16 +280,6 @@ export const getTutorById = async (req: Request, res: Response) => {
             lastName: true,
             avatar: true
           }
-        },
-        subjects: {
-          with: {
-            subject: true
-          }
-        },
-        educationLevels: {
-          with: {
-            level: true
-          }
         }
       }
     });
@@ -287,12 +287,28 @@ export const getTutorById = async (req: Request, res: Response) => {
     if (!tutor) {
       return res.status(404).json({ message: "Tutor not found" });
     }
+
+    // Get subjects for this tutor
+    const tutorSubjectsData = await db.query.tutorSubjects.findMany({
+      where: eq(schema.tutorSubjects.tutorId, tutor.id),
+      with: {
+        subject: true
+      }
+    });
     
-    // Transform tutor data to include subject and level objects directly
+    // Get education levels for this tutor
+    const tutorLevelsData = await db.query.tutorEducationLevels.findMany({
+      where: eq(schema.tutorEducationLevels.tutorId, tutor.id),
+      with: {
+        level: true
+      }
+    });
+    
+    // Combine data into a single response
     const transformedTutor = {
       ...tutor,
-      subjects: tutor.subjects.map(ts => ts.subject),
-      educationLevels: tutor.educationLevels.map(tel => tel.level)
+      subjects: tutorSubjectsData.map(ts => ts.subject),
+      educationLevels: tutorLevelsData.map(tel => tel.level)
     };
     
     // Track profile view (for analytics)
@@ -340,7 +356,7 @@ export const getSimilarTutors = async (req: Request, res: Response) => {
       return res.status(200).json([]);
     }
     
-    // Get tutor profiles for similar tutors
+    // Get basic tutor profiles for similar tutors
     const tutors = await db.query.tutorProfiles.findMany({
       where: and(
         inArray(schema.tutorProfiles.id, similarTutorIds.map(t => t.tutorId)),
@@ -354,16 +370,6 @@ export const getSimilarTutors = async (req: Request, res: Response) => {
             lastName: true,
             avatar: true
           }
-        },
-        subjects: {
-          with: {
-            subject: true
-          }
-        },
-        educationLevels: {
-          with: {
-            level: true
-          }
         }
       },
       limit: 3,
@@ -373,11 +379,30 @@ export const getSimilarTutors = async (req: Request, res: Response) => {
       ]
     });
     
-    // Transform tutor data to include subject and level objects directly
-    const transformedTutors = tutors.map(tutor => ({
-      ...tutor,
-      subjects: tutor.subjects.map(ts => ts.subject),
-      educationLevels: tutor.educationLevels.map(tel => tel.level)
+    // Get details for each tutor separately to avoid relation inference issues
+    const transformedTutors = await Promise.all(tutors.map(async (tutor) => {
+      // Get subjects for this tutor
+      const tutorSubjectsData = await db.query.tutorSubjects.findMany({
+        where: eq(schema.tutorSubjects.tutorId, tutor.id),
+        with: {
+          subject: true
+        }
+      });
+      
+      // Get education levels for this tutor
+      const tutorLevelsData = await db.query.tutorEducationLevels.findMany({
+        where: eq(schema.tutorEducationLevels.tutorId, tutor.id),
+        with: {
+          level: true
+        }
+      });
+      
+      // Return tutor with related data
+      return {
+        ...tutor,
+        subjects: tutorSubjectsData.map(ts => ts.subject),
+        educationLevels: tutorLevelsData.map(tel => tel.level)
+      };
     }));
     
     return res.status(200).json(transformedTutors);
@@ -651,32 +676,36 @@ export const getOwnTutorProfile = async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
     
-    // Get tutor profile
+    // Get basic tutor profile info
     const tutorProfile = await db.query.tutorProfiles.findFirst({
-      where: eq(schema.tutorProfiles.userId, userId),
-      with: {
-        subjects: {
-          with: {
-            subject: true
-          }
-        },
-        educationLevels: {
-          with: {
-            level: true
-          }
-        }
-      }
+      where: eq(schema.tutorProfiles.userId, userId)
     });
     
     if (!tutorProfile) {
       return res.status(404).json({ message: "Tutor profile not found" });
     }
     
-    // Transform to include subject and level objects directly
+    // Get subjects for this tutor
+    const tutorSubjectsData = await db.query.tutorSubjects.findMany({
+      where: eq(schema.tutorSubjects.tutorId, tutorProfile.id),
+      with: {
+        subject: true
+      }
+    });
+    
+    // Get education levels for this tutor
+    const tutorLevelsData = await db.query.tutorEducationLevels.findMany({
+      where: eq(schema.tutorEducationLevels.tutorId, tutorProfile.id),
+      with: {
+        level: true
+      }
+    });
+    
+    // Combine all data into a single response
     const transformedProfile = {
       ...tutorProfile,
-      subjects: tutorProfile.subjects.map(ts => ts.subject),
-      educationLevels: tutorProfile.educationLevels.map(tel => tel.level)
+      subjects: tutorSubjectsData.map(ts => ts.subject),
+      educationLevels: tutorLevelsData.map(tel => tel.level)
     };
     
     return res.status(200).json(transformedProfile);
@@ -891,7 +920,7 @@ export const getTutorVerifications = async (req: Request, res: Response) => {
       }
     }
     
-    // Get tutors with filters and pagination
+    // Get basic tutor profiles with filters and pagination
     const tutors = await db.query.tutorProfiles.findMany({
       where: conditions.length > 0 ? and(...conditions) : undefined,
       with: {
@@ -902,16 +931,6 @@ export const getTutorVerifications = async (req: Request, res: Response) => {
             lastName: true,
             avatar: true
           }
-        },
-        subjects: {
-          with: {
-            subject: true
-          }
-        },
-        educationLevels: {
-          with: {
-            level: true
-          }
         }
       },
       limit: pageSize,
@@ -919,13 +938,32 @@ export const getTutorVerifications = async (req: Request, res: Response) => {
       orderBy: desc(schema.tutorProfiles.createdAt)
     });
     
-    // Transform tutor data to include subject and level objects directly
-    const transformedTutors = tutors.map(tutor => ({
-      ...tutor,
-      subjects: tutor.subjects.map(ts => ts.subject),
-      educationLevels: tutor.educationLevels.map(tel => tel.level),
-      // Add a status field since we don't have one in the schema
-      status: tutor.isVerified ? "approved" : "pending"
+    // Get details for each tutor separately to avoid relation inference issues
+    const transformedTutors = await Promise.all(tutors.map(async (tutor) => {
+      // Get subjects for this tutor
+      const tutorSubjectsData = await db.query.tutorSubjects.findMany({
+        where: eq(schema.tutorSubjects.tutorId, tutor.id),
+        with: {
+          subject: true
+        }
+      });
+      
+      // Get education levels for this tutor
+      const tutorLevelsData = await db.query.tutorEducationLevels.findMany({
+        where: eq(schema.tutorEducationLevels.tutorId, tutor.id),
+        with: {
+          level: true
+        }
+      });
+      
+      // Return tutor with related data
+      return {
+        ...tutor,
+        subjects: tutorSubjectsData.map(ts => ts.subject),
+        educationLevels: tutorLevelsData.map(tel => tel.level),
+        // Add a status field since we don't have one in the schema
+        status: tutor.isVerified ? "approved" : "pending"
+      };
     }));
     
     // Get total count for pagination
