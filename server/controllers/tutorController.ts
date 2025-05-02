@@ -213,43 +213,53 @@ export const getFeaturedTutors = async (req: Request, res: Response) => {
         eq(schema.tutorProfiles.isFeatured, true),
         eq(schema.tutorProfiles.isVerified, true)
       ),
-      with: {
-        user: {
-          columns: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            avatar: true
-          }
-        }
-      },
       limit: 3,
       orderBy: desc(schema.tutorProfiles.rating)
     });
-
-    // Fetch tutor subjects separately to avoid relation inference issues
+    
+    // Fetch related data separately to avoid relation inference issues
     const transformedTutors = await Promise.all(tutors.map(async (tutor) => {
-      // Get subjects for this tutor
-      const tutorSubjectsData = await db.query.tutorSubjects.findMany({
-        where: eq(schema.tutorSubjects.tutorId, tutor.id),
-        with: {
-          subject: true
+      // Get user info
+      const userData = await db.query.users.findFirst({
+        where: eq(schema.users.id, tutor.userId),
+        columns: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          avatar: true
         }
       });
       
-      // Get education levels for this tutor
-      const tutorLevelsData = await db.query.tutorEducationLevels.findMany({
-        where: eq(schema.tutorEducationLevels.tutorId, tutor.id),
-        with: {
-          level: true
-        }
-      });
+      // Get subject IDs for this tutor
+      const tutorSubjectIds = await db.select({ subjectId: schema.tutorSubjects.subjectId })
+        .from(schema.tutorSubjects)
+        .where(eq(schema.tutorSubjects.tutorId, tutor.id));
+        
+      // Get subjects data
+      const subjectsData = tutorSubjectIds.length > 0 
+        ? await db.query.subjects.findMany({
+            where: inArray(schema.subjects.id, tutorSubjectIds.map(s => s.subjectId))
+          })
+        : [];
+        
+      // Get level IDs for this tutor  
+      const tutorLevelIds = await db.select({ levelId: schema.tutorEducationLevels.levelId })
+        .from(schema.tutorEducationLevels)
+        .where(eq(schema.tutorEducationLevels.tutorId, tutor.id));
+        
+      // Get education levels data  
+      const levelsData = tutorLevelIds.length > 0
+        ? await db.query.educationLevels.findMany({
+            where: inArray(schema.educationLevels.id, tutorLevelIds.map(l => l.levelId))
+          })
+        : [];
       
       // Return tutor with related data
       return {
         ...tutor,
-        subjects: tutorSubjectsData.map(ts => ts.subject),
-        educationLevels: tutorLevelsData.map(tel => tel.level)
+        user: userData,
+        subjects: subjectsData,
+        educationLevels: levelsData
       };
     }));
     
@@ -271,44 +281,54 @@ export const getTutorById = async (req: Request, res: Response) => {
     
     // Get basic tutor profile data
     const tutor = await db.query.tutorProfiles.findFirst({
-      where: eq(schema.tutorProfiles.id, tutorId),
-      with: {
-        user: {
-          columns: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            avatar: true
-          }
-        }
-      }
+      where: eq(schema.tutorProfiles.id, tutorId)
     });
     
     if (!tutor) {
       return res.status(404).json({ message: "Tutor not found" });
     }
-
-    // Get subjects for this tutor
-    const tutorSubjectsData = await db.query.tutorSubjects.findMany({
-      where: eq(schema.tutorSubjects.tutorId, tutor.id),
-      with: {
-        subject: true
+    
+    // Get user info
+    const userData = await db.query.users.findFirst({
+      where: eq(schema.users.id, tutor.userId),
+      columns: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        avatar: true
       }
     });
     
-    // Get education levels for this tutor
-    const tutorLevelsData = await db.query.tutorEducationLevels.findMany({
-      where: eq(schema.tutorEducationLevels.tutorId, tutor.id),
-      with: {
-        level: true
-      }
-    });
+    // Get subject IDs for this tutor
+    const tutorSubjectIds = await db.select({ subjectId: schema.tutorSubjects.subjectId })
+      .from(schema.tutorSubjects)
+      .where(eq(schema.tutorSubjects.tutorId, tutor.id));
+    
+    // Get subjects data
+    const subjectsData = tutorSubjectIds.length > 0 
+      ? await db.query.subjects.findMany({
+          where: inArray(schema.subjects.id, tutorSubjectIds.map(s => s.subjectId))
+        })
+      : [];
+    
+    // Get level IDs for this tutor  
+    const tutorLevelIds = await db.select({ levelId: schema.tutorEducationLevels.levelId })
+      .from(schema.tutorEducationLevels)
+      .where(eq(schema.tutorEducationLevels.tutorId, tutor.id));
+    
+    // Get education levels data  
+    const levelsData = tutorLevelIds.length > 0
+      ? await db.query.educationLevels.findMany({
+          where: inArray(schema.educationLevels.id, tutorLevelIds.map(l => l.levelId))
+        })
+      : [];
     
     // Combine data into a single response
     const transformedTutor = {
       ...tutor,
-      subjects: tutorSubjectsData.map(ts => ts.subject),
-      educationLevels: tutorLevelsData.map(tel => tel.level)
+      user: userData,
+      subjects: subjectsData,
+      educationLevels: levelsData
     };
     
     // Track profile view (for analytics)
@@ -362,16 +382,6 @@ export const getSimilarTutors = async (req: Request, res: Response) => {
         inArray(schema.tutorProfiles.id, similarTutorIds.map(t => t.tutorId)),
         eq(schema.tutorProfiles.isVerified, true)
       ),
-      with: {
-        user: {
-          columns: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            avatar: true
-          }
-        }
-      },
       limit: 3,
       orderBy: [
         desc(schema.tutorProfiles.rating),
@@ -381,27 +391,47 @@ export const getSimilarTutors = async (req: Request, res: Response) => {
     
     // Get details for each tutor separately to avoid relation inference issues
     const transformedTutors = await Promise.all(tutors.map(async (tutor) => {
-      // Get subjects for this tutor
-      const tutorSubjectsData = await db.query.tutorSubjects.findMany({
-        where: eq(schema.tutorSubjects.tutorId, tutor.id),
-        with: {
-          subject: true
+      // Get user info
+      const userData = await db.query.users.findFirst({
+        where: eq(schema.users.id, tutor.userId),
+        columns: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          avatar: true
         }
       });
       
-      // Get education levels for this tutor
-      const tutorLevelsData = await db.query.tutorEducationLevels.findMany({
-        where: eq(schema.tutorEducationLevels.tutorId, tutor.id),
-        with: {
-          level: true
-        }
-      });
+      // Get subject IDs for this tutor
+      const tutorSubjectIds = await db.select({ subjectId: schema.tutorSubjects.subjectId })
+        .from(schema.tutorSubjects)
+        .where(eq(schema.tutorSubjects.tutorId, tutor.id));
+        
+      // Get subjects data
+      const subjectsData = tutorSubjectIds.length > 0 
+        ? await db.query.subjects.findMany({
+            where: inArray(schema.subjects.id, tutorSubjectIds.map(s => s.subjectId))
+          })
+        : [];
+        
+      // Get level IDs for this tutor  
+      const tutorLevelIds = await db.select({ levelId: schema.tutorEducationLevels.levelId })
+        .from(schema.tutorEducationLevels)
+        .where(eq(schema.tutorEducationLevels.tutorId, tutor.id));
+        
+      // Get education levels data  
+      const levelsData = tutorLevelIds.length > 0
+        ? await db.query.educationLevels.findMany({
+            where: inArray(schema.educationLevels.id, tutorLevelIds.map(l => l.levelId))
+          })
+        : [];
       
       // Return tutor with related data
       return {
         ...tutor,
-        subjects: tutorSubjectsData.map(ts => ts.subject),
-        educationLevels: tutorLevelsData.map(tel => tel.level)
+        user: userData,
+        subjects: subjectsData,
+        educationLevels: levelsData
       };
     }));
     
