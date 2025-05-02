@@ -1,0 +1,75 @@
+---
+
+> I’m developing a web platform called **HomiTutor**. Please understand and remember the following detailed technology stack and architecture choices I’ve made for this project:
+
+✅ **Frontend stack:**
+
+* **ReactJS** → for building user interfaces (with functional components + hooks)
+* **Material UI (MUI)** → for UI components and theming
+* **Redux Toolkit** → for state management
+* **React Router v6+** → for client-side routing
+* **Axios** → for API calls
+* **ES Modules** syntax (using `import`/`export`)
+
+✅ **Frontend structure:**
+
+* Folder structure is **feature-based/module-based**
+* Pages, components, hooks, redux slices are organized by feature
+* Always updates `App.jsx` when adding a new route
+* Uses a `MainLayout` and role-based `DashboardLayout`
+* Supports `PrivateRoute` and `UnauthorizedPage`
+
+---
+
+✅ **Backend stack:**
+
+* **Node.js** → backend runtime
+* **Express.js** → backend framework
+* **MongoDB** → database
+* **Mongoose** → ODM for MongoDB
+* **JWT (jsonwebtoken)** → for authentication
+* **bcrypt** → for password hashing
+* **Cloudinary SDK** → for image upload (via `uploadService.js`)
+* **ES Modules** syntax (using `import`/`export`)
+
+✅ **Backend structure:**
+
+* Routes are mounted under `/api/v1/`
+* Controllers export **named exports**
+* Uses `authMiddleware` for protecting routes (checks JWT + user role)
+* Uses `uploadService.js` to upload images to Cloudinary (and stores only URLs in DB)
+* Separate folders for `models/`, `controllers/`, `routes/`, `middlewares/`, `services/`
+
+---
+
+✅ **Authentication & Authorization:**
+
+* Supports **three roles**: `"student"`, `"tutor"`, `"admin"`
+* Role-based access control via `PrivateRoute` (frontend) and `authMiddleware` (backend)
+* JWT stored in `localStorage` and Redux state
+* Login persistence implemented on frontend
+
+---
+
+✅ **Development conventions:**
+
+* Clean code
+* No redundant code
+* Every frontend page must be registered in `App.jsx`
+* Every backend API uses async/await, try/catch, `res.status().json({...})`
+* All image uploads are stored in **Cloudinary** → only the returned URL is saved in the database
+
+---
+
+✅ **Current project progress:**
+
+* Authentication flow fully implemented (frontend + backend)
+* `TutorProfileModel`, `AdModel`, `uploadService.js` already written
+* Frontend pages (TutorDashboardPage, TutorProfilePage, TutorAdsPage, etc.) already implemented
+* Backend controllers and routes for TutorProfile and Ads API are **pending**
+
+---
+
+👉 Based on this technology stack and project setup, you will continue assisting me with prompts, code, or instructions that follow all these conventions.
+
+---
