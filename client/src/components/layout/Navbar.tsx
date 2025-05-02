@@ -68,36 +68,26 @@ export default function Navbar() {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
         <div className="flex items-center">
-          <Link href="/">
-            <a className="flex items-center">
-              <span className="text-primary text-2xl font-medium">
-                Homi<span className="text-secondary">Tutor</span>
-              </span>
-            </a>
+          <Link href="/" className="flex items-center">
+            <span className="text-primary text-2xl font-medium">
+              Homi<span className="text-secondary">Tutor</span>
+            </span>
           </Link>
         </div>
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-8">
-          <Link href="/tutors">
-            <a className="text-foreground hover:text-primary text-sm font-medium">
-              Tìm gia sư
-            </a>
+          <Link href="/tutors" className="text-foreground hover:text-primary text-sm font-medium">
+            Tìm gia sư
           </Link>
-          <Link href="/courses">
-            <a className="text-foreground hover:text-primary text-sm font-medium">
-              Khóa học
-            </a>
+          <Link href="/courses" className="text-foreground hover:text-primary text-sm font-medium">
+            Khóa học
           </Link>
-          <Link href="/become-tutor">
-            <a className="text-foreground hover:text-primary text-sm font-medium">
-              Trở thành gia sư
-            </a>
+          <Link href="/become-tutor" className="text-foreground hover:text-primary text-sm font-medium">
+            Trở thành gia sư
           </Link>
-          <Link href="/blog">
-            <a className="text-foreground hover:text-primary text-sm font-medium">
-              Blog
-            </a>
+          <Link href="/blog" className="text-foreground hover:text-primary text-sm font-medium">
+            Blog
           </Link>
 
           {user ? (
@@ -134,45 +124,35 @@ export default function Navbar() {
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href={getDashboardLink()}>
-                    <a className="w-full flex items-center">
-                      <User className="mr-2 h-4 w-4" />
-                      <span>Dashboard</span>
-                    </a>
+                  <Link href={getDashboardLink()} className="w-full flex items-center">
+                    <User className="mr-2 h-4 w-4" />
+                    <span>Dashboard</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href={`${getDashboardLink()}/profile`}>
-                    <a className="w-full flex items-center">
-                      <User className="mr-2 h-4 w-4" />
-                      <span>Profile</span>
-                    </a>
+                  <Link href={`${getDashboardLink()}/profile`} className="w-full flex items-center">
+                    <User className="mr-2 h-4 w-4" />
+                    <span>Profile</span>
                   </Link>
                 </DropdownMenuItem>
                 {user.role === "tutor" && (
                   <>
                     <DropdownMenuItem asChild>
-                      <Link href="/dashboard/tutor/ads">
-                        <a className="w-full flex items-center">
-                          <BookOpen className="mr-2 h-4 w-4" />
-                          <span>My Ads</span>
-                        </a>
+                      <Link href="/dashboard/tutor/ads" className="w-full flex items-center">
+                        <BookOpen className="mr-2 h-4 w-4" />
+                        <span>My Ads</span>
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link href="/dashboard/tutor/messages">
-                        <a className="w-full flex items-center">
-                          <MessageSquare className="mr-2 h-4 w-4" />
-                          <span>Messages</span>
-                        </a>
+                      <Link href="/dashboard/tutor/messages" className="w-full flex items-center">
+                        <MessageSquare className="mr-2 h-4 w-4" />
+                        <span>Messages</span>
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link href="/dashboard/tutor/stats">
-                        <a className="w-full flex items-center">
-                          <PieChart className="mr-2 h-4 w-4" />
-                          <span>Statistics</span>
-                        </a>
+                      <Link href="/dashboard/tutor/stats" className="w-full flex items-center">
+                        <PieChart className="mr-2 h-4 w-4" />
+                        <span>Statistics</span>
                       </Link>
                     </DropdownMenuItem>
                   </>
@@ -216,37 +196,33 @@ export default function Navbar() {
             <SheetContent side="right" className="w-[280px] sm:w-[350px]">
               <div className="px-2 py-6 flex flex-col h-full">
                 <div className="mt-8 flex flex-col space-y-4">
-                  <Link href="/tutors">
-                    <a
-                      className="px-3 py-2 text-foreground hover:bg-muted rounded-md text-base font-medium"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      Tìm gia sư
-                    </a>
+                  <Link 
+                    href="/tutors"
+                    className="px-3 py-2 text-foreground hover:bg-muted rounded-md text-base font-medium"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Tìm gia sư
                   </Link>
-                  <Link href="/courses">
-                    <a
-                      className="px-3 py-2 text-foreground hover:bg-muted rounded-md text-base font-medium"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      Khóa học
-                    </a>
+                  <Link 
+                    href="/courses"
+                    className="px-3 py-2 text-foreground hover:bg-muted rounded-md text-base font-medium"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Khóa học
                   </Link>
-                  <Link href="/become-tutor">
-                    <a
-                      className="px-3 py-2 text-foreground hover:bg-muted rounded-md text-base font-medium"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      Trở thành gia sư
-                    </a>
+                  <Link 
+                    href="/become-tutor"
+                    className="px-3 py-2 text-foreground hover:bg-muted rounded-md text-base font-medium"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Trở thành gia sư
                   </Link>
-                  <Link href="/blog">
-                    <a
-                      className="px-3 py-2 text-foreground hover:bg-muted rounded-md text-base font-medium"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      Blog
-                    </a>
+                  <Link 
+                    href="/blog"
+                    className="px-3 py-2 text-foreground hover:bg-muted rounded-md text-base font-medium"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Blog
                   </Link>
                 </div>
 
@@ -270,14 +246,13 @@ export default function Navbar() {
                         </div>
                       </div>
                       <div className="mt-4 flex flex-col space-y-2">
-                        <Link href={getDashboardLink()}>
-                          <a
-                            className="px-3 py-2 text-foreground hover:bg-muted rounded-md text-base font-medium flex items-center"
-                            onClick={() => setMobileMenuOpen(false)}
-                          >
-                            <User className="mr-2 h-5 w-5" />
-                            Dashboard
-                          </a>
+                        <Link 
+                          href={getDashboardLink()} 
+                          className="px-3 py-2 text-foreground hover:bg-muted rounded-md text-base font-medium flex items-center"
+                          onClick={() => setMobileMenuOpen(false)}
+                        >
+                          <User className="mr-2 h-5 w-5" />
+                          Dashboard
                         </Link>
                         <button
                           className="px-3 py-2 text-foreground hover:bg-muted rounded-md text-base font-medium flex items-center text-left"

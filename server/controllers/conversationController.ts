@@ -32,8 +32,8 @@ export const startConversation = async (req: Request, res: Response) => {
     // Check if conversation already exists
     const existingConversation = await db.query.conversations.findFirst({
       where: and(
-        eq(schema.conversations.studentId, studentId),
-        eq(schema.conversations.tutorId, tutorProfile.user.id)
+        eq(schema.conversations.student_id, studentId),
+        eq(schema.conversations.tutor_id, tutorProfile.user.id)
       )
     });
     
@@ -47,8 +47,8 @@ export const startConversation = async (req: Request, res: Response) => {
     // Create new conversation
     const [conversation] = await db.insert(schema.conversations)
       .values({
-        studentId,
-        tutorId: tutorProfile.user.id,
+        student_id: studentId,
+        tutor_id: tutorProfile.user.id,
         createdAt: new Date(),
         lastMessageAt: new Date()
       })
@@ -58,8 +58,8 @@ export const startConversation = async (req: Request, res: Response) => {
     if (req.body.message) {
       await db.insert(schema.messages)
         .values({
-          conversationId: conversation.id,
-          senderId: studentId,
+          conversation_id: conversation.id,
+          sender_id: studentId,
           content: req.body.message,
           createdAt: new Date()
         });
