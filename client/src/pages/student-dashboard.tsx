@@ -22,10 +22,41 @@ import TutorCard from "@/components/ui/TutorCard";
 
 // Form schema for student profile
 const profileSchema = z.object({
-  firstName: z.string().min(2, "First name must be at least 2 characters"),
-  lastName: z.string().min(2, "Last name must be at least 2 characters"),
-  email: z.string().email("Please enter a valid email").optional(),
+  firstName: z.string().min(2, "Họ phải có ít nhất 2 ký tự"),
+  lastName: z.string().min(2, "Tên phải có ít nhất 2 ký tự"),
+  email: z.string().email("Vui lòng nhập đúng định dạng email").optional(),
 });
+
+// Định nghĩa kiểu dữ liệu cho favorites và conversations
+type FavoriteTutor = {
+  id: number;
+  user_id: number;
+  bio: string;
+  hourly_rate: string | number;
+  avatar?: string | null;
+  first_name: string;
+  last_name: string;
+  rating?: number;
+  [key: string]: any;
+};
+
+type Conversation = {
+  id: number;
+  student_id: number;
+  tutor_id: number;
+  tutor?: {
+    id: number;
+    avatar?: string | null;
+    first_name: string;
+    last_name: string;
+    [key: string]: any;
+  };
+  lastMessageAt: Date | string;
+  lastMessage?: {
+    content: string;
+  };
+  [key: string]: any;
+};
 
 export default function StudentDashboard() {
   const { user } = useSelector((state: RootState) => state.auth);
@@ -34,12 +65,12 @@ export default function StudentDashboard() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   
   // Get favorite tutors
-  const { data: favoriteTutors, isLoading: tutorsLoading } = useQuery({
+  const { data: favoriteTutors = [], isLoading: tutorsLoading } = useQuery<FavoriteTutor[]>({
     queryKey: ['/api/v1/students/favorite-tutors'],
   });
   
   // Get recent conversations
-  const { data: conversations, isLoading: conversationsLoading } = useQuery({
+  const { data: conversations = [], isLoading: conversationsLoading } = useQuery<Conversation[]>({
     queryKey: ['/api/v1/conversations'],
   });
   
@@ -322,7 +353,7 @@ export default function StudentDashboard() {
               <CardContent>
                 {favoriteTutors && favoriteTutors.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {favoriteTutors.map((tutor: any) => (
+                    {favoriteTutors.map((tutor: FavoriteTutor) => (
                       <TutorCard key={tutor.id} tutor={tutor} />
                     ))}
                   </div>
@@ -355,7 +386,7 @@ export default function StudentDashboard() {
               <CardContent>
                 {conversations && conversations.length > 0 ? (
                   <div className="space-y-2">
-                    {conversations.map((conversation: any) => (
+                    {conversations.map((conversation: Conversation) => (
                       <Link key={conversation.id} href={`/dashboard/student/messages/${conversation.id}`}>
                         <a className="flex items-center p-4 border rounded-lg hover:border-primary transition-colors">
                           <Avatar className="h-10 w-10">
