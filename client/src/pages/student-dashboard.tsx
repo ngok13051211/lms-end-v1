@@ -28,15 +28,26 @@ const profileSchema = z.object({
 });
 
 // Định nghĩa kiểu dữ liệu cho favorites và conversations
+// Định nghĩa kiểu dữ liệu cho favorites tutors
+type FavoriteTutorUser = {
+  id: number;
+  first_name: string;
+  last_name: string;
+  avatar: string | null;
+};
+
 type FavoriteTutor = {
   id: number;
   user_id: number;
   bio: string;
   hourly_rate: string | number;
-  avatar?: string | null;
-  first_name: string;
-  last_name: string;
-  rating?: number;
+  teaching_mode?: string;
+  rating?: number | string;
+  availability?: string;
+  education?: string;
+  user: FavoriteTutorUser;
+  subjects?: any[];
+  is_featured?: boolean;
   [key: string]: any;
 };
 
@@ -221,7 +232,7 @@ export default function StudentDashboard() {
                   <div>
                     <div className="flex flex-col items-center">
                       <Avatar className="h-32 w-32 mb-4">
-                        <AvatarImage src={user?.avatar} alt={user?.first_name} />
+                        <AvatarImage src={user?.avatar || undefined} alt={user?.first_name || ""} />
                         <AvatarFallback className="text-3xl">
                           {user?.first_name?.[0]}{user?.last_name?.[0]}
                         </AvatarFallback>
@@ -390,7 +401,7 @@ export default function StudentDashboard() {
                       <Link key={conversation.id} href={`/dashboard/student/messages/${conversation.id}`}>
                         <a className="flex items-center p-4 border rounded-lg hover:border-primary transition-colors">
                           <Avatar className="h-10 w-10">
-                            <AvatarImage src={conversation.tutor?.avatar} alt={conversation.tutor?.first_name} />
+                            <AvatarImage src={conversation.tutor?.avatar || undefined} alt={conversation.tutor?.first_name || ""} />
                             <AvatarFallback>
                               {conversation.tutor?.first_name?.[0]}{conversation.tutor?.last_name?.[0]}
                             </AvatarFallback>

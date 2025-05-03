@@ -44,8 +44,29 @@ interface ExtendedTutorProfile extends TutorProfile {
   user?: any;
 }
 
+// Interface for favorite tutors from student dashboard
+export interface FavoriteDashboardTutor {
+  id: number;
+  user_id: number;
+  bio: string;
+  hourly_rate: string | number;
+  teaching_mode?: string;
+  rating?: number | string;
+  availability?: string;
+  education?: string;
+  user: {
+    id: number;
+    first_name: string;
+    last_name: string;
+    avatar: string | null;
+  };
+  subjects?: any[];
+  is_featured?: boolean;
+  [key: string]: any;
+}
+
 interface TutorCardProps {
-  tutor: ExtendedTutorProfile | FeaturedTutor;
+  tutor: ExtendedTutorProfile | FeaturedTutor | FavoriteDashboardTutor;
   compact?: boolean;
 }
 
