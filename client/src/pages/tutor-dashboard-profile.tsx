@@ -719,8 +719,60 @@ export default function TutorDashboardProfile() {
                   {tutorProfile?.certifications ? (
                     <div className="mb-4">
                       <p>Chứng chỉ đã tải lên:</p>
-                      <div className="mt-2 p-3 border rounded-md bg-slate-50">
-                        {tutorProfile.certifications}
+                      <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                        {(() => {
+                          try {
+                            const certUrls = Array.isArray(tutorProfile.certifications) 
+                              ? tutorProfile.certifications 
+                              : JSON.parse(tutorProfile.certifications);
+                            
+                            return Array.isArray(certUrls) ? certUrls.map((url, index) => (
+                              <div key={index} className="relative group">
+                                <a 
+                                  href={url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="block border rounded-md overflow-hidden hover:shadow-md transition-shadow"
+                                >
+                                  {url.toLowerCase().endsWith('.pdf') ? (
+                                    <div className="flex items-center justify-center h-40 bg-slate-100 p-4">
+                                      <FileText className="h-12 w-12 text-slate-400" />
+                                      <span className="ml-2 text-sm text-slate-700">PDF Document</span>
+                                    </div>
+                                  ) : (
+                                    <img 
+                                      src={url} 
+                                      alt={`Certificate ${index + 1}`} 
+                                      className="w-full h-40 object-cover"
+                                      onError={(e) => {
+                                        // Fall back to generic doc icon if image fails to load
+                                        const target = e.target as HTMLImageElement;
+                                        target.onerror = null;
+                                        target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWZpbGUtdGV4dCI+PHBhdGggZD0iTTE0IDJINmE yIDIgMCAwIDAtMiAydjE2YTIgMiAwIDAgMCAyIDJoMTJhMiAyIDAgMCAwIDItMlY4eiIvPjxwYXRoIGQ9Ik0xNCAydjZoNiIvPjxwYXRoIGQ9Ik0xNiAxM0g4Ii8+PHBhdGggZD0iTTE2IDE3SDgiLz48cGF0aCBkPSJNMTAgOUg4Ii8+PC9zdmc+';
+                                      }}
+                                    />
+                                  )}
+                                </a>
+                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30 rounded-md">
+                                  <ExternalLink className="h-6 w-6 text-white" />
+                                </div>
+                              </div>
+                            )) : (
+                              <div className="col-span-full text-slate-500 italic">
+                                Định dạng chứng chỉ không hợp lệ. Vui lòng liên hệ quản trị viên.
+                              </div>
+                            );
+                          } catch (error) {
+                            console.error("Error parsing certifications:", error);
+                            return (
+                              <div className="col-span-full text-slate-500 italic">
+                                {typeof tutorProfile.certifications === 'string' 
+                                  ? tutorProfile.certifications 
+                                  : 'Không thể hiển thị chứng chỉ. Định dạng không hỗ trợ.'}
+                              </div>
+                            );
+                          }
+                        })()}
                       </div>
                     </div>
                   ) : (
