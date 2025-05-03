@@ -57,32 +57,32 @@ export const educationLevels = pgTable("education_levels", {
 // Tutor-Subject Many-to-Many Relationship
 export const tutorSubjects = pgTable("tutor_subjects", {
   id: serial("id").primaryKey(),
-  tutorId: integer("tutor_id").notNull().references(() => tutorProfiles.id),
-  subjectId: integer("subject_id").notNull().references(() => subjects.id),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  tutor_id: integer("tutor_id").notNull().references(() => tutorProfiles.id),
+  subject_id: integer("subject_id").notNull().references(() => subjects.id),
+  created_at: timestamp("created_at").defaultNow().notNull(),
 });
 
 // Tutor-Education Level Many-to-Many Relationship
 export const tutorEducationLevels = pgTable("tutor_education_levels", {
   id: serial("id").primaryKey(),
-  tutorId: integer("tutor_id").notNull().references(() => tutorProfiles.id),
-  levelId: integer("level_id").notNull().references(() => educationLevels.id),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  tutor_id: integer("tutor_id").notNull().references(() => tutorProfiles.id),
+  level_id: integer("level_id").notNull().references(() => educationLevels.id),
+  created_at: timestamp("created_at").defaultNow().notNull(),
 });
 
 // Tutor Ads Model
 export const ads = pgTable("ads", {
   id: serial("id").primaryKey(),
-  tutorId: integer("tutor_id").notNull().references(() => tutorProfiles.id),
+  tutor_id: integer("tutor_id").notNull().references(() => tutorProfiles.id),
   title: text("title").notNull(),
   description: text("description").notNull(),
-  subjectId: integer("subject_id").references(() => subjects.id),
-  levelId: integer("level_id").references(() => educationLevels.id),
-  hourlyRate: decimal("hourly_rate", { precision: 10, scale: 2 }).notNull(),
-  teachingMode: text("teaching_mode").notNull(), // "online", "offline", "both"
+  subject_id: integer("subject_id").references(() => subjects.id),
+  level_id: integer("level_id").references(() => educationLevels.id),
+  hourly_rate: decimal("hourly_rate", { precision: 10, scale: 2 }).notNull(),
+  teaching_mode: text("teaching_mode").notNull(), // "online", "offline", "both"
   status: text("status").notNull().default("active"), // "active", "inactive"
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
 // Conversations Model
@@ -158,15 +158,15 @@ export const tutorProfilesRelations = relations(tutorProfiles, ({ one, many }) =
   }),
   subjects: many(tutorSubjects, {
     fields: [tutorProfiles.id],
-    references: [tutorSubjects.tutorId],
+    references: [tutorSubjects.tutor_id],
   }),
   educationLevels: many(tutorEducationLevels, {
     fields: [tutorProfiles.id],
-    references: [tutorEducationLevels.tutorId],
+    references: [tutorEducationLevels.tutor_id],
   }),
   ads: many(ads, {
     fields: [tutorProfiles.id],
-    references: [ads.tutorId],
+    references: [ads.tutor_id],
   }),
   reviews: many(reviews, {
     fields: [tutorProfiles.id],
@@ -174,25 +174,47 @@ export const tutorProfilesRelations = relations(tutorProfiles, ({ one, many }) =
   }),
 }));
 
+export const tutorSubjectsRelations = relations(tutorSubjects, ({ one }) => ({
+  tutor: one(tutorProfiles, {
+    fields: [tutorSubjects.tutor_id],
+    references: [tutorProfiles.id],
+  }),
+  subject: one(subjects, {
+    fields: [tutorSubjects.subject_id],
+    references: [subjects.id],
+  }),
+}));
+
 export const subjectsRelations = relations(subjects, ({ many }) => ({
   tutors: many(tutorSubjects, {
     fields: [subjects.id],
-    references: [tutorSubjects.subjectId],
+    references: [tutorSubjects.subject_id],
   }),
   ads: many(ads, {
     fields: [subjects.id],
-    references: [ads.subjectId],
+    references: [ads.subject_id],
+  }),
+}));
+
+export const tutorEducationLevelsRelations = relations(tutorEducationLevels, ({ one }) => ({
+  tutor: one(tutorProfiles, {
+    fields: [tutorEducationLevels.tutor_id],
+    references: [tutorProfiles.id],
+  }),
+  level: one(educationLevels, {
+    fields: [tutorEducationLevels.level_id],
+    references: [educationLevels.id],
   }),
 }));
 
 export const educationLevelsRelations = relations(educationLevels, ({ many }) => ({
   tutors: many(tutorEducationLevels, {
     fields: [educationLevels.id],
-    references: [tutorEducationLevels.levelId],
+    references: [tutorEducationLevels.level_id],
   }),
   ads: many(ads, {
     fields: [educationLevels.id],
-    references: [ads.levelId],
+    references: [ads.level_id],
   }),
 }));
 
