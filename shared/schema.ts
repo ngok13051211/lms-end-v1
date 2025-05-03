@@ -133,10 +133,18 @@ export const usersRelations = relations(users, ({ one, many }) => ({
     fields: [users.id],
     references: [tutorProfiles.user_id],
   }),
-  sentMessages: many(messages),
-  studentConversations: many(conversations),
-  tutorConversations: many(conversations),
-  reviews: many(reviews),
+  sentMessages: many(messages, {
+    relationName: 'sentMessages',
+  }),
+  studentConversations: many(conversations, {
+    relationName: 'studentConversations',
+  }),
+  tutorConversations: many(conversations, {
+    relationName: 'tutorConversations',
+  }),
+  reviews: many(reviews, {
+    relationName: 'reviews',
+  }),
 }));
 
 export const tutorProfilesRelations = relations(tutorProfiles, ({ one, many }) => ({
@@ -147,8 +155,8 @@ export const tutorProfilesRelations = relations(tutorProfiles, ({ one, many }) =
   subjects: many(tutorSubjects, {
     relationName: 'subjects',
   }),
-  educationLevels: many(tutorEducationLevels, {
-    relationName: 'educationLevels',
+  levels: many(tutorEducationLevels, {
+    relationName: 'levels',
   }),
   ads: many(ads, {
     relationName: 'ads',
@@ -208,8 +216,7 @@ export const conversationsRelations = relations(conversations, ({ one, many }) =
     references: [users.id],
   }),
   messages: many(messages, {
-    fields: [conversations.id],
-    references: [messages.conversation_id],
+    relationName: 'messages',
   }),
 }));
 
