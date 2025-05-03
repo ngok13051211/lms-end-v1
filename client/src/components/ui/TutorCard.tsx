@@ -185,27 +185,9 @@ export default function TutorCard({ tutor, compact = false }: TutorCardProps) {
               Lịch trống:
             </p>
             <div className="grid grid-cols-2 gap-2">
-              {Object.entries(JSON.parse(typeof tutor.availability === 'string' ? tutor.availability : '{}')).slice(0, 4).map(([day, slots]: [string, any]) => (
-                <TooltipProvider key={day}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="text-xs bg-secondary/10 rounded p-2 flex items-center">
-                        <Clock className="h-3 w-3 mr-1" />
-                        <span className="font-medium">{day}</span>
-                        <span className="text-muted-foreground ml-1">({slots.length} ca)</span>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="font-medium text-xs">{day}:</p>
-                      <div className="text-xs">
-                        {slots.map((slot: string, index: number) => (
-                          <div key={index}>{slot}</div>
-                        ))}
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              ))}
+              <div className="text-xs text-muted-foreground p-2 bg-secondary/10 rounded">
+                Có lịch trống. Xem chi tiết để biết thêm.
+              </div>
             </div>
           </div>
         )}
