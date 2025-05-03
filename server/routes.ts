@@ -53,7 +53,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Serve test avatar upload HTML page - DEBUG ONLY
   app.get('/test-avatar-upload', (req, res) => {
     try {
-      const fs = require('fs');
       const htmlContent = fs.readFileSync(path.join(process.cwd(), 'test-avatar-upload.html'), 'utf8');
       res.setHeader('Content-Type', 'text/html');
       res.send(htmlContent);
