@@ -49,26 +49,10 @@ export const startConversation = async (req: Request, res: Response) => {
       .values({
         student_id: studentId,
         tutor_id: tutorProfile.user.id,
-        createdAt: new Date(),
-        lastMessageAt: new Date()
+        lastMessageAt: new Date(),
+        createdAt: new Date()
       })
       .returning();
-    
-    // Create initial message if provided
-    if (req.body.message) {
-      await db.insert(schema.messages)
-        .values({
-          conversation_id: conversation.id,
-          sender_id: studentId,
-          content: req.body.message,
-          createdAt: new Date()
-        });
-      
-      // Update conversation's lastMessageAt
-      await db.update(schema.conversations)
-        .set({ lastMessageAt: new Date() })
-        .where(eq(schema.conversations.id, conversation.id));
-    }
     
     return res.status(201).json({
       message: "Conversation started successfully",
@@ -80,7 +64,7 @@ export const startConversation = async (req: Request, res: Response) => {
   }
 };
 
-// Get conversations for the current user
+// Get user's conversations
 export const getConversations = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.id;
@@ -169,8 +153,8 @@ export const getConversation = async (req: Request, res: Response) => {
       where: and(
         eq(schema.conversations.id, conversationId),
         or(
-          eq(schema.conversations.studentId, userId),
-          eq(schema.conversations.tutorId, userId)
+          eq(schema.conversations.student_id, userId),
+          eq(schema.conversations.tutor_id, userId)
         )
       ),
       with: {
@@ -205,19 +189,19 @@ export const getConversation = async (req: Request, res: Response) => {
     // Mark messages as read
     if (userRole === "student") {
       await db.update(schema.messages)
-        .set({ isRead: true })
+        .set({ read: true })
         .where(and(
-          eq(schema.messages.conversationId, conversationId),
-          eq(schema.messages.senderId, conversation.tutor.id),
-          eq(schema.messages.isRead, false)
+          eq(schema.messages.conversation_id, conversationId),
+          eq(schema.messages.sender_id, conversation.tutor.id),
+          eq(schema.messages.read, false)
         ));
     } else if (userRole === "tutor") {
       await db.update(schema.messages)
-        .set({ isRead: true })
+        .set({ read: true })
         .where(and(
-          eq(schema.messages.conversationId, conversationId),
-          eq(schema.messages.senderId, conversation.student.id),
-          eq(schema.messages.isRead, false)
+          eq(schema.messages.conversation_id, conversationId),
+          eq(schema.messages.sender_id, conversation.student.id),
+          eq(schema.messages.read, false)
         ));
     }
     
@@ -251,8 +235,8 @@ export const sendMessage = async (req: Request, res: Response) => {
       where: and(
         eq(schema.conversations.id, conversationId),
         or(
-          eq(schema.conversations.studentId, userId),
-          eq(schema.conversations.tutorId, userId)
+          eq(schema.conversations.student_id, userId),
+          eq(schema.conversations.tutor_id, userId)
         )
       )
     });
@@ -264,10 +248,10 @@ export const sendMessage = async (req: Request, res: Response) => {
     // Create new message
     const [message] = await db.insert(schema.messages)
       .values({
-        conversationId,
-        senderId: userId,
+        conversation_id: conversationId,
+        sender_id: userId,
         content: req.body.content.trim(),
-        isRead: false,
+        read: false,
         createdAt: new Date()
       })
       .returning();
@@ -307,8 +291,8 @@ export const markMessageAsRead = async (req: Request, res: Response) => {
       where: and(
         eq(schema.conversations.id, conversationId),
         or(
-          eq(schema.conversations.studentId, userId),
-          eq(schema.conversations.tutorId, userId)
+          eq(schema.conversations.student_id, userId),
+          eq(schema.conversations.tutor_id, userId)
         )
       )
     });
@@ -321,7 +305,7 @@ export const markMessageAsRead = async (req: Request, res: Response) => {
     const message = await db.query.messages.findFirst({
       where: and(
         eq(schema.messages.id, messageId),
-        eq(schema.messages.conversationId, conversationId)
+        eq(schema.messages.conversation_id, conversationId)
       )
     });
     
@@ -330,9 +314,9 @@ export const markMessageAsRead = async (req: Request, res: Response) => {
     }
     
     // Mark message as read if not the sender
-    if (message.senderId !== userId) {
+    if (message.sender_id !== userId) {
       await db.update(schema.messages)
-        .set({ isRead: true })
+        .set({ read: true })
         .where(eq(schema.messages.id, messageId));
     }
     
