@@ -248,11 +248,23 @@ export default function TutorDashboard() {
       
       console.log("Uploading avatar file:", avatar.name, "size:", avatar.size);
       
+      // Lấy token từ localStorage
+      const token = localStorage.getItem("token");
+      
+      // Tạo headers với token nếu có
+      const headers: HeadersInit = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+      
+      console.log("Uploading avatar with token:", token ? "Token exists" : "No token");
+      
       const response = await fetch("/api/v1/users/avatar", {
         method: "POST",
         body: formData,
         credentials: "include",
-        // Do not set Content-Type header, browser will automatically set it with the boundary
+        headers,
+        // Không set Content-Type header cho form-data, trình duyệt sẽ tự động thêm với boundary
       });
       
       // Log response for debugging
