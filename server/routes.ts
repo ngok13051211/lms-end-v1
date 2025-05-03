@@ -52,7 +52,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Serve test avatar upload HTML page - DEBUG ONLY
   app.get('/test-avatar-upload', (req, res) => {
-    res.sendFile(path.join(process.cwd(), 'test-avatar-upload.html'));
+    try {
+      const fs = require('fs');
+      const htmlContent = fs.readFileSync(path.join(process.cwd(), 'test-avatar-upload.html'), 'utf8');
+      res.setHeader('Content-Type', 'text/html');
+      res.send(htmlContent);
+    } catch (error) {
+      console.error('Error serving test HTML:', error);
+      res.status(500).send(`Error serving test page: ${error.message}`);
+    }
   });
 
   // Auth routes
