@@ -42,13 +42,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get(`${apiPrefix}/tutors`, tutorController.getTutors);
   app.get(`${apiPrefix}/tutors/featured`, tutorController.getFeaturedTutors);
   app.get(`${apiPrefix}/tutors/similar/:id`, tutorController.getSimilarTutors);
-  app.get(`${apiPrefix}/tutors/:id`, tutorController.getTutorById);
-  app.get(`${apiPrefix}/tutors/:id/ads`, adController.getTutorAds);
   app.get(`${apiPrefix}/tutors/:id/reviews`, tutorController.getTutorReviews);
+  app.get(`${apiPrefix}/tutors/:id/ads`, adController.getTutorAds);
+  
+  // Special routes for tutors
   app.post(`${apiPrefix}/tutors/profile`, authMiddleware, roleMiddleware(["tutor"]), tutorController.createTutorProfile);
   app.patch(`${apiPrefix}/tutors/profile`, authMiddleware, roleMiddleware(["tutor"]), tutorController.updateTutorProfile);
-  app.get(`${apiPrefix}/tutors/profile`, authMiddleware, roleMiddleware(["tutor"]), tutorController.getOwnTutorProfile);
+  app.get(`${apiPrefix}/tutors/profile`, authMiddleware, roleMiddleware(["tutor"]), tutorController.getOwnTutorProfile); 
   app.get(`${apiPrefix}/tutors/stats`, authMiddleware, roleMiddleware(["tutor"]), tutorController.getTutorStats);
+  
+  // This route must be last to avoid conflicts with the /tutors/profile route
+  app.get(`${apiPrefix}/tutors/:id`, tutorController.getTutorById);
 
   // Ad routes
   app.post(`${apiPrefix}/tutors/ads`, authMiddleware, roleMiddleware(["tutor"]), adController.createAd);
