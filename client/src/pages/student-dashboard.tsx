@@ -80,9 +80,29 @@ export default function StudentDashboard() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   
   // Get favorite tutors
-  const { data: favoriteTutors = [], isLoading: tutorsLoading } = useQuery<FavoriteTutor[]>({
+  const { data: favoriteTutors = [], isLoading: tutorsLoading, refetch: refetchFavoriteTutors } = useQuery<FavoriteTutor[]>({
     queryKey: ['/api/v1/students/favorite-tutors'],
   });
+  
+  // Remove tutor from favorites
+  const handleRemoveFromFavorites = async (tutorId: number) => {
+    try {
+      await apiRequest('DELETE', `/api/v1/students/favorite-tutors/${tutorId}`);
+      toast({
+        title: "Đã xóa khỏi danh sách yêu thích",
+        description: "Gia sư đã được xóa khỏi danh sách yêu thích của bạn.",
+        variant: "default",
+      });
+      refetchFavoriteTutors();
+    } catch (error) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể xóa gia sư khỏi danh sách yêu thích.",
+        variant: "destructive",
+      });
+      console.error(error);
+    }
+  };
   
   // Get recent conversations
   const { data: conversations = [], isLoading: conversationsLoading } = useQuery<Conversation[]>({
@@ -446,7 +466,12 @@ export default function StudentDashboard() {
                 {favoriteTutors && favoriteTutors.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {favoriteTutors.map((tutor: FavoriteTutor) => (
-                      <TutorCard key={tutor.id} tutor={tutor} />
+                      <TutorCard 
+                        key={tutor.id} 
+                        tutor={tutor} 
+                        isFavorite={true} 
+                        onRemoveFromFavorites={handleRemoveFromFavorites} 
+                      />
                     ))}
                   </div>
                 ) : (

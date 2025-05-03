@@ -73,7 +73,7 @@ interface TutorCardProps {
   onRemoveFromFavorites?: (tutorId: number) => void;
 }
 
-export default function TutorCard({ tutor, compact = false }: TutorCardProps) {
+export default function TutorCard({ tutor, compact = false, isFavorite = false, onRemoveFromFavorites }: TutorCardProps) {
   const formatPrice = (price: number | string) => {
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
@@ -138,15 +138,48 @@ export default function TutorCard({ tutor, compact = false }: TutorCardProps) {
                 {formatPrice(tutor.hourly_rate)}
                 <span className="text-xs text-muted-foreground">/giờ</span>
               </p>
-              <Link href={`/tutors/${tutor.id}`}>
-                <Button
-                  variant="default"
-                  size="sm"
-                  className="bg-primary text-white hover:bg-primary-dark h-7 px-2"
-                >
-                  Xem
-                </Button>
-              </Link>
+              <div className="flex items-center gap-2">
+                {isFavorite && onRemoveFromFavorites && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center text-red-500 border-red-200 hover:bg-red-50 h-7 px-2"
+                      >
+                        <HeartOff className="h-4 w-4 mr-1" />
+                        Xóa
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Xóa khỏi danh sách yêu thích?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Bạn có chắc chắn muốn xóa gia sư này khỏi danh sách yêu thích không?
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Hủy</AlertDialogCancel>
+                        <AlertDialogAction 
+                          onClick={() => onRemoveFromFavorites(tutor.id)}
+                          className="bg-red-600 hover:bg-red-700"
+                        >
+                          Xóa
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+                <Link href={`/tutors/${tutor.id}`}>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="bg-primary text-white hover:bg-primary-dark h-7 px-2"
+                  >
+                    Xem
+                  </Button>
+                </Link>
+              </div>
             </div>
           </div>
         </div>
@@ -222,14 +255,46 @@ export default function TutorCard({ tutor, compact = false }: TutorCardProps) {
             </span>
             <span className="text-muted-foreground text-sm">/giờ</span>
           </div>
-          <Link href={`/tutors/${tutor.id}`}>
-            <Button
-              variant="default"
-              className="bg-primary text-white hover:bg-primary-dark"
-            >
-              Xem chi tiết
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            {isFavorite && onRemoveFromFavorites && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="flex items-center text-red-500 border-red-200 hover:bg-red-50"
+                  >
+                    <HeartOff className="h-4 w-4 mr-1" />
+                    Xóa khỏi yêu thích
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Xóa khỏi danh sách yêu thích?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Bạn có chắc chắn muốn xóa gia sư này khỏi danh sách yêu thích không?
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Hủy</AlertDialogCancel>
+                    <AlertDialogAction 
+                      onClick={() => onRemoveFromFavorites(tutor.id)}
+                      className="bg-red-600 hover:bg-red-700"
+                    >
+                      Xóa
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+            <Link href={`/tutors/${tutor.id}`}>
+              <Button
+                variant="default"
+                className="bg-primary text-white hover:bg-primary-dark"
+              >
+                Xem chi tiết
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
     </Card>

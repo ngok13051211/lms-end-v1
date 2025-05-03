@@ -11,10 +11,12 @@ import { Loader2, Star, Search } from "lucide-react";
 import { Link } from "wouter";
 import TutorCard from "@/components/ui/TutorCard";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
 
 export default function StudentDashboardTutors() {
   const { user } = useSelector((state: RootState) => state.auth);
   const [searchQuery, setSearchQuery] = useState("");
+  const { toast } = useToast();
   
   // Get favorite tutors
   const { data: favoriteTutors, isLoading } = useQuery({
@@ -26,8 +28,18 @@ export default function StudentDashboardTutors() {
     try {
       await apiRequest("DELETE", `/api/v1/students/favorite-tutors/${tutorId}`);
       queryClient.invalidateQueries({ queryKey: ['/api/v1/students/favorite-tutors'] });
+      toast({
+        title: "Đã xóa khỏi danh sách yêu thích",
+        description: "Gia sư đã được xóa khỏi danh sách yêu thích của bạn.",
+        variant: "default",
+      });
     } catch (error) {
       console.error("Error removing favorite:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể xóa gia sư khỏi danh sách yêu thích.",
+        variant: "destructive",
+      });
     }
   };
   
@@ -97,15 +109,11 @@ export default function StudentDashboardTutors() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredTutors.map((tutor: any) => (
                   <div key={tutor.id} className="relative">
-                    <TutorCard tutor={tutor} />
-                    <Button 
-                      variant="outline" 
-                      size="icon"
-                      className="absolute top-2 right-2 bg-background hover:bg-destructive hover:text-white z-10"
-                      onClick={() => removeFavorite(tutor.id)}
-                    >
-                      <Star className="h-4 w-4 fill-primary text-primary hover:fill-white hover:text-white" />
-                    </Button>
+                    <TutorCard 
+                      tutor={tutor} 
+                      isFavorite={true}
+                      onRemoveFromFavorites={removeFavorite}
+                    />
                   </div>
                 ))}
               </div>
