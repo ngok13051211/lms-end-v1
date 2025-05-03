@@ -45,16 +45,11 @@ export const authMiddleware = async (
       columns: {
         id: true,
         role: true,
-        active: true,
       },
     });
 
     if (!user) {
       return res.status(401).json({ message: "Unauthorized: User not found" });
-    }
-
-    if (!user.active) {
-      return res.status(403).json({ message: "Account is deactivated" });
     }
 
     // Attach user to request
