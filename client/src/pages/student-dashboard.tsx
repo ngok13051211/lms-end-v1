@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "@/store";
+import { updateUserProfile, updateAvatar } from "@/features/auth/authSlice";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -71,6 +73,8 @@ type Conversation = {
 
 export default function StudentDashboard() {
   const { user } = useSelector((state: RootState) => state.auth);
+  const dispatch = useDispatch();
+  const { toast } = useToast();
   const [, navigate] = useLocation();
   const [avatar, setAvatar] = useState<File | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -95,6 +99,17 @@ export default function StudentDashboard() {
     },
   });
   
+  // Cập nhật form khi user thay đổi
+  useEffect(() => {
+    if (user) {
+      form.reset({
+        firstName: user.first_name || "",
+        lastName: user.last_name || "",
+        email: user.email || "",
+      });
+    }
+  }, [user, form]);
+  
   // Upload avatar
   const uploadAvatar = async () => {
     if (!avatar) return;
@@ -112,10 +127,31 @@ export default function StudentDashboard() {
       });
       
       if (response.ok) {
+        const data = await response.json();
+        
+        // Cập nhật Redux store với avatar URL mới
+        if (data.user?.avatar) {
+          dispatch(updateAvatar(data.user.avatar));
+        }
+        
+        // Cập nhật React Query cache
         queryClient.invalidateQueries({ queryKey: ['/api/v1/auth/me'] });
+        
+        // Hiển thị thông báo thành công
+        toast({
+          title: "Thành công",
+          description: "Ảnh đại diện đã được cập nhật",
+          variant: "default",
+        });
       }
     } catch (error) {
       console.error("Error uploading avatar:", error);
+      // Hiển thị thông báo lỗi
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải lên ảnh đại diện. Vui lòng thử lại sau.",
+        variant: "destructive",
+      });
     } finally {
       setUploadingAvatar(false);
       setAvatar(null);
