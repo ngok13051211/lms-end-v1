@@ -61,6 +61,10 @@ export const getTutors = async (req: Request, res: Response) => {
     const minExperience = parseInt(req.query.minExperience as string || '0');
     const hasCertifications = req.query.hasCertifications === 'true';
     const availability = req.query.availability as string || 'all';
+    const minRating = parseFloat(req.query.minRating as string || '0');
+    const location = req.query.location as string || '';
+    const specificDay = req.query.day as string || 'all';
+    const specificTime = req.query.time as string || 'all';
     const page = parseInt(req.query.page as string || '1');
     const limit = parseInt(req.query.limit as string || '12');
     const offset = (page - 1) * limit;
@@ -188,6 +192,65 @@ export const getTutors = async (req: Request, res: Response) => {
       conditions.push(
         like(schema.tutorProfiles.availability, `%${availability}%`)
       );
+    }
+    
+    // Add minimum rating filter
+    if (minRating > 0) {
+      conditions.push(
+        sql`CAST(${schema.tutorProfiles.rating} AS DECIMAL) >= ${minRating}`
+      );
+    }
+    
+    // Add location filter for offline tutoring
+    if (location && (mode === 'offline' || mode === 'both' || mode === 'all')) {
+      // Search for location in user profile - this would be better with proper location fields
+      const tutorsInLocation = await db.select({ id: schema.tutorProfiles.id })
+        .from(schema.tutorProfiles)
+        .innerJoin(schema.users, eq(schema.tutorProfiles.user_id, schema.users.id))
+        .where(
+          and(
+            or(
+              eq(schema.tutorProfiles.teaching_mode, 'offline'),
+              eq(schema.tutorProfiles.teaching_mode, 'both')
+            ),
+            // Here we're assuming the location might be stored in the bio or description 
+            // In a real app, you'd have proper location fields
+            like(schema.tutorProfiles.bio, `%${location}%`)
+          )
+        );
+      
+      if (tutorsInLocation.length > 0) {
+        conditions.push(inArray(schema.tutorProfiles.id, tutorsInLocation.map(t => t.id)));
+      } else {
+        // No tutors in this location
+        return res.status(200).json({
+          tutors: [],
+          total: 0,
+          total_pages: 0,
+          current_page: page
+        });
+      }
+    }
+    
+    // Filter by specific day and time in availability
+    if (specificDay !== 'all' || specificTime !== 'all') {
+      // This is a simplified approach - in a real app, you'd parse the JSON availability properly
+      // For now, we're doing a simple string search in the JSON data
+      let timePattern = '';
+      
+      if (specificDay !== 'all' && specificTime !== 'all') {
+        timePattern = `"day":"${specificDay}".*"startTime":"${specificTime}"`;
+      } else if (specificDay !== 'all') {
+        timePattern = `"day":"${specificDay}"`;
+      } else if (specificTime !== 'all') {
+        timePattern = `"startTime":"${specificTime}"`;
+      }
+      
+      if (timePattern) {
+        conditions.push(
+          like(schema.tutorProfiles.availability, `%${timePattern}%`)
+        );
+      }
     }
     
     // Count total tutors matching criteria

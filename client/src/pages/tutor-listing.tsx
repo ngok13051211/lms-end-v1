@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Loader2, Search, Filter, SlidersHorizontal } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Loader2, Search, Filter, SlidersHorizontal, Calendar, MapPin, Star, Clock } from "lucide-react";
 import { Subject, EducationLevel } from "@shared/schema";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
@@ -23,6 +24,10 @@ export default function TutorListing() {
   const [rateRange, setRateRange] = useState([0, 500000]);
   const [minExperienceFilter, setMinExperienceFilter] = useState("0");
   const [availabilityFilter, setAvailabilityFilter] = useState("all");
+  const [minRatingFilter, setMinRatingFilter] = useState("0");
+  const [locationFilter, setLocationFilter] = useState("");
+  const [dayFilter, setDayFilter] = useState("all");
+  const [timeFilter, setTimeFilter] = useState("all");
   const [hasCertifications, setHasCertifications] = useState(false);
   const [page, setPage] = useState(1);
   
