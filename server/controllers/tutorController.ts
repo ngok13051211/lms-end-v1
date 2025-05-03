@@ -348,7 +348,7 @@ export const getTutorById = async (req: Request, res: Response) => {
       availability: tutor.availability,
       is_verified: tutor.is_verified,
       is_featured: tutor.is_featured,
-      average_rating: tutor.average_rating,
+      rating: tutor.rating,
       created_at: tutor.created_at,
       user: {
         id: tutor.user.id,
@@ -446,7 +446,7 @@ export const getSimilarTutors = async (req: Request, res: Response) => {
       id: tutor.id,
       hourly_rate: tutor.hourly_rate,
       teaching_mode: tutor.teaching_mode,
-      average_rating: tutor.average_rating,
+      rating: tutor.rating,
       user: {
         id: tutor.user.id,
         name: `${tutor.user.first_name} ${tutor.user.last_name}`,
@@ -549,7 +549,7 @@ export const createTutorProfile = async (req: Request, res: Response) => {
       user_id: userId,
       is_verified: false,
       is_featured: false,
-      average_rating: 0,
+      rating: "0",
       created_at: new Date()
     });
     
@@ -783,7 +783,7 @@ export const getTutorStats = async (req: Request, res: Response) => {
       profile_status: tutorProfile.is_verified ? "Đã xác minh" : "Chờ xác minh",
       active_ads: Number(activeAdsCount[0]?.count || 0),
       reviews: Number(reviewsCount[0]?.count || 0),
-      average_rating: tutorProfile.average_rating,
+      rating: tutorProfile.rating,
       profile_views: profileViews,
       active_conversations: Number(conversationsCount[0]?.count || 0),
       unread_messages: Number(unreadMessagesCount[0]?.count || 0)
@@ -933,7 +933,7 @@ export const createReview = async (req: Request, res: Response) => {
     const averageRating = totalRating / allReviews.length;
     
     await db.update(schema.tutorProfiles)
-      .set({ average_rating: averageRating })
+      .set({ rating: averageRating.toString() })
       .where(eq(schema.tutorProfiles.id, tutorId));
     
     return res.status(201).json({
