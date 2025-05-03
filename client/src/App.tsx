@@ -13,11 +13,14 @@ import StudentDashboard from "@/pages/student-dashboard";
 import AdminDashboard from "@/pages/admin-dashboard";
 import BecomeTutor from "@/pages/become-tutor";
 import PrivateRoute from "@/components/auth/PrivateRoute";
-import { useEffect } from "react";
-import { useDispatch } from "react-redux";
+import { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { loadUser } from "@/features/auth/authSlice";
+import { RootState } from "./store";
 
 function Router() {
+  const { user } = useSelector((state: RootState) => state.auth);
+
   return (
     <Switch>
       <Route path="/" component={Home} />
@@ -50,9 +53,18 @@ function Router() {
 
 function App() {
   const dispatch = useDispatch();
+  const [authLoaded, setAuthLoaded] = useState(false);
 
   useEffect(() => {
-    dispatch(loadUser() as any);
+    // Check if token exists in localStorage on app start
+    const token = localStorage.getItem("token");
+    if (token) {
+      dispatch(loadUser() as any).finally(() => {
+        setAuthLoaded(true);
+      });
+    } else {
+      setAuthLoaded(true);
+    }
   }, [dispatch]);
 
   return (
