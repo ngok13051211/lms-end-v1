@@ -32,7 +32,7 @@ export default function StudentDashboardTutors() {
   };
   
   // Filter by search query
-  const filteredTutors = favoriteTutors 
+  const filteredTutors = Array.isArray(favoriteTutors) 
     ? favoriteTutors.filter((tutor: any) => {
         const fullName = `${tutor.first_name || ''} ${tutor.last_name || ''}`.toLowerCase();
         const searchLower = searchQuery.toLowerCase();

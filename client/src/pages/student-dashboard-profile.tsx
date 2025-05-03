@@ -110,9 +110,9 @@ export default function StudentDashboardProfile() {
               <div>
                 <div className="flex flex-col items-center">
                   <Avatar className="h-32 w-32 mb-4">
-                    <AvatarImage src={user?.avatar} alt={user?.firstName} />
+                    <AvatarImage src={user?.avatar || undefined} alt={user?.first_name} />
                     <AvatarFallback className="text-3xl">
-                      {user?.firstName?.[0]}{user?.lastName?.[0]}
+                      {user?.first_name?.[0]}{user?.last_name?.[0]}
                     </AvatarFallback>
                   </Avatar>
                   
@@ -214,7 +214,7 @@ export default function StudentDashboardProfile() {
                         Học viên
                       </Badge>
                       <Badge variant="outline">
-                        Tham gia {new Date(user?.createdAt || "").toLocaleDateString()}
+                        Tham gia {new Date(user?.created_at || "").toLocaleDateString()}
                       </Badge>
                     </div>
                     

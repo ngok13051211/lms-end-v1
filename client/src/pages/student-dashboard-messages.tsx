@@ -36,9 +36,10 @@ export default function StudentDashboardMessages() {
   });
 
   // Filter conversations by search query
-  const filteredConversations = conversations 
+  const filteredConversations = Array.isArray(conversations) 
     ? conversations.filter((conv: any) => {
-        const tutorName = `${conv.tutor?.first_name || ''} ${conv.tutor?.last_name || ''}`.toLowerCase();
+        if (!conv || !conv.tutor) return false;
+        const tutorName = `${conv.tutor.first_name || ''} ${conv.tutor.last_name || ''}`.toLowerCase();
         const searchLower = searchQuery.toLowerCase();
         // Search by tutor name or last message content
         return tutorName.includes(searchLower) || 
@@ -198,36 +199,43 @@ export default function StudentDashboardMessages() {
           
           {/* Selected conversation or empty state */}
           <Card className="md:col-span-2 flex flex-col">
-            {conversationId && conversation ? (
+            {conversationId && conversation && typeof conversation === 'object' ? (
               <>
                 <CardHeader className="p-4 border-b">
                   <div className="flex items-center">
                     <Avatar className="h-10 w-10">
-                      <AvatarImage src={conversation.tutor?.avatar} alt={conversation.tutor?.first_name} />
+                      <AvatarImage src={conversation.tutor && conversation.tutor.avatar ? conversation.tutor.avatar : undefined} alt={(conversation.tutor && conversation.tutor.first_name) || "Gia sư"} />
                       <AvatarFallback>
-                        {conversation.tutor?.first_name?.[0]}{conversation.tutor?.last_name?.[0]}
+                        {conversation.tutor && conversation.tutor.first_name ? conversation.tutor.first_name[0] : ''}
+                        {conversation.tutor && conversation.tutor.last_name ? conversation.tutor.last_name[0] : ''}
                       </AvatarFallback>
                     </Avatar>
                     
                     <div className="ml-3">
-                      <CardTitle className="text-lg">{conversation.tutor?.first_name} {conversation.tutor?.last_name}</CardTitle>
+                      <CardTitle className="text-lg">
+                        {conversation.tutor ? `${conversation.tutor.first_name || ''} ${conversation.tutor.last_name || ''}` : 'Gia sư'}
+                      </CardTitle>
                       <CardDescription>
-                        {conversation.tutor?.bio ? conversation.tutor.bio.substring(0, 50) + (conversation.tutor.bio.length > 50 ? '...' : '') : 'Gia sư'}
+                        {conversation.tutor && conversation.tutor.bio 
+                          ? conversation.tutor.bio.substring(0, 50) + (conversation.tutor.bio.length > 50 ? '...' : '') 
+                          : 'Gia sư'}
                       </CardDescription>
                     </div>
                     
-                    <Link href={`/tutors/${conversation.tutor?.id}`} className="ml-auto">
-                      <Button variant="ghost" size="sm" className="gap-1">
-                        Xem hồ sơ <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </Link>
+                    {conversation.tutor && (
+                      <Link href={`/tutors/${conversation.tutor.id}`} className="ml-auto">
+                        <Button variant="ghost" size="sm" className="gap-1">
+                          Xem hồ sơ <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                    )}
                   </div>
                 </CardHeader>
                 
                 <CardContent className="p-0 flex-1 overflow-hidden">
                   <ScrollArea className="h-[calc(80vh-17rem)]">
                     <div className="p-4 space-y-4">
-                      {conversation.messages && conversation.messages.length > 0 ? (
+                      {conversation.messages && Array.isArray(conversation.messages) && conversation.messages.length > 0 ? (
                         conversation.messages.map((message: any) => {
                           const isCurrentUser = message.senderId === user?.id;
                           
@@ -237,11 +245,11 @@ export default function StudentDashboardMessages() {
                               className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'}`}
                             >
                               <div className="flex items-end gap-2">
-                                {!isCurrentUser && (
+                                {!isCurrentUser && conversation.tutor && (
                                   <Avatar className="h-8 w-8">
-                                    <AvatarImage src={conversation.tutor?.avatar} alt={conversation.tutor?.first_name} />
+                                    <AvatarImage src={conversation.tutor.avatar || undefined} alt={conversation.tutor.first_name || "Gia sư"} />
                                     <AvatarFallback>
-                                      {conversation.tutor?.first_name?.[0]}{conversation.tutor?.last_name?.[0]}
+                                      {conversation.tutor.first_name?.[0] || ""}{conversation.tutor.last_name?.[0] || ""}
                                     </AvatarFallback>
                                   </Avatar>
                                 )}
@@ -265,9 +273,9 @@ export default function StudentDashboardMessages() {
                                 
                                 {isCurrentUser && (
                                   <Avatar className="h-8 w-8">
-                                    <AvatarImage src={user?.avatar} alt={user?.firstName} />
+                                    <AvatarImage src={user?.avatar || undefined} alt={user?.first_name} />
                                     <AvatarFallback>
-                                      {user?.firstName?.[0]}{user?.lastName?.[0]}
+                                      {user?.first_name?.[0]}{user?.last_name?.[0]}
                                     </AvatarFallback>
                                   </Avatar>
                                 )}
@@ -279,7 +287,10 @@ export default function StudentDashboardMessages() {
                         <div className="text-center py-8">
                           <MessageSquare className="h-8 w-8 mx-auto text-muted-foreground" />
                           <p className="mt-2 text-muted-foreground">
-                            Bắt đầu cuộc trò chuyện với {conversation.tutor?.first_name} {conversation.tutor?.last_name}
+                            {conversation.tutor ? 
+                              `Bắt đầu cuộc trò chuyện với ${conversation.tutor.first_name || ''} ${conversation.tutor.last_name || ''}` :
+                              'Bắt đầu cuộc trò chuyện mới'
+                            }
                           </p>
                         </div>
                       )}

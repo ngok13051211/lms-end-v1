@@ -156,18 +156,32 @@ export default function StudentDashboard() {
         
         <Tabs defaultValue="profile">
           <TabsList className="mb-8">
-            <TabsTrigger value="profile">Profile</TabsTrigger>
-            <TabsTrigger value="favorites">Favorite Tutors</TabsTrigger>
-            <TabsTrigger value="messages">Messages</TabsTrigger>
+            <TabsTrigger value="profile">Hồ sơ</TabsTrigger>
+            <TabsTrigger value="favorites">Gia sư yêu thích</TabsTrigger>
+            <TabsTrigger value="messages">Tin nhắn</TabsTrigger>
           </TabsList>
+          
+          <div className="mb-4 mt-2 flex justify-end">
+            <div className="space-x-2">
+              <Link href="/dashboard/student/profile">
+                <Button variant="outline" size="sm">Đi đến trang hồ sơ đầy đủ</Button>
+              </Link>
+              <Link href="/dashboard/student/tutors">
+                <Button variant="outline" size="sm">Đi đến trang gia sư yêu thích</Button>
+              </Link>
+              <Link href="/dashboard/student/messages">
+                <Button variant="outline" size="sm">Đi đến trang tin nhắn</Button>
+              </Link>
+            </div>
+          </div>
           
           {/* Profile Tab */}
           <TabsContent value="profile">
             <Card>
               <CardHeader>
-                <CardTitle>Your Profile</CardTitle>
+                <CardTitle>Hồ sơ của bạn</CardTitle>
                 <CardDescription>
-                  Manage your personal information
+                  Quản lý thông tin cá nhân của bạn
                 </CardDescription>
               </CardHeader>
               
