@@ -100,7 +100,7 @@ export default function TutorDashboardProfile() {
       // Limit hourly_rate to avoid numeric overflow (PostgreSQL decimal precision limit)
       const hourlyRate = data.hourlyRate > 99999999 ? 99999999 : data.hourlyRate;
       
-      // Ensure teachingMode has a value, defaulting to "online" if it's null or undefined
+      // Ensure teaching_mode is explicitly set (don't rely on serverside defaults)
       const teachingMode = data.teachingMode || "online";
       
       // Build request data with snake_case field names for the API
@@ -122,20 +122,31 @@ export default function TutorDashboardProfile() {
       console.log("Request method:", method);
       console.log("Request URL:", `/api/v1/tutors/profile`);
       
-      const res = await apiRequest(method, `/api/v1/tutors/profile`, completeData);
-      const responseData = await res.json();
-      console.log("API response:", JSON.stringify(responseData));
-      return responseData;
+      try {
+        const res = await apiRequest(method, `/api/v1/tutors/profile`, completeData);
+        const responseData = await res.json();
+        console.log("API response:", JSON.stringify(responseData));
+        return responseData;
+      } catch (error) {
+        console.error("API call error:", error);
+        throw error;
+      }
     },
     onSuccess: (data) => {
       console.log("Profile updated successfully:", data);
+      toast({
+        title: "Profile updated successfully",
+        description: "Your profile has been updated.",
+        variant: "default",
+      });
+      
       queryClient.invalidateQueries({ queryKey: [`/api/v1/tutors/profile`] });
       setProfileDialogOpen(false);
       
       // Thêm timeout trước khi reload để đảm bảo invalidateQueries hoàn tất
       setTimeout(() => {
         window.location.reload();
-      }, 500);
+      }, 800);
     },
     onError: (error) => {
       console.error("Profile update error:", error);
