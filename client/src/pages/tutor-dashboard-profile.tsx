@@ -47,6 +47,7 @@ export default function TutorDashboardProfile() {
     queryKey: [`/api/v1/tutors/profile`],
     retry: false, // Don't retry on error
     staleTime: 0, // Always revalidate to ensure fresh data
+    refetchInterval: 1000, // Poll every second while the component is mounted
   });
 
   // Get subjects and education levels for profile editing

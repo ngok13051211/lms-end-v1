@@ -813,14 +813,21 @@ export const getOwnTutorProfile = async (req: Request, res: Response) => {
       return res.status(200).json(null);
     }
     
+    // Ensure numeric fields are properly formatted
+    const hourlyRate = typeof tutorProfile.hourly_rate === 'string'
+      ? parseFloat(tutorProfile.hourly_rate)
+      : tutorProfile.hourly_rate;
+    
     // Format response
     const formattedProfile = {
       ...tutorProfile,
+      hourly_rate: hourlyRate,
+      teaching_mode: tutorProfile.teaching_mode || 'online',
       subjects: tutorProfile.subjects.map(ts => ts.subject),
       levels: tutorProfile.levels.map(tl => tl.level)
     };
     
-    console.log("Formatted profile for frontend:", formattedProfile);
+    console.log("Formatted profile for frontend:", JSON.stringify(formattedProfile));
     
     return res.status(200).json(formattedProfile);
   } catch (error) {
