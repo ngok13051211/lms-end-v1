@@ -14,6 +14,9 @@ import TutorDashboardAds from "@/pages/tutor-dashboard-ads";
 import TutorDashboardMessages from "@/pages/tutor-dashboard-messages";
 import TutorDashboardStats from "@/pages/tutor-dashboard-stats";
 import StudentDashboard from "@/pages/student-dashboard";
+import StudentDashboardProfile from "@/pages/student-dashboard-profile";
+import StudentDashboardTutors from "@/pages/student-dashboard-tutors";
+import StudentDashboardMessages from "@/pages/student-dashboard-messages";
 import AdminDashboard from "@/pages/admin-dashboard";
 import BecomeTutor from "@/pages/become-tutor";
 import PrivateRoute from "@/components/auth/PrivateRoute";
@@ -99,6 +102,22 @@ function Router() {
       {/* Student dashboard */}
       <Route path="/dashboard/student">
         <PrivateRoute role="student" component={StudentDashboard} />
+      </Route>
+      
+      <Route path="/dashboard/student/profile">
+        <PrivateRoute role="student" component={StudentDashboardProfile} />
+      </Route>
+      
+      <Route path="/dashboard/student/tutors">
+        <PrivateRoute role="student" component={StudentDashboardTutors} />
+      </Route>
+      
+      <Route path="/dashboard/student/messages">
+        <PrivateRoute role="student" component={StudentDashboardMessages} />
+      </Route>
+      
+      <Route path="/dashboard/student/messages/:id">
+        <PrivateRoute role="student" component={StudentDashboardMessages} />
       </Route>
       
       {/* Admin dashboard */}
