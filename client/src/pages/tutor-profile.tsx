@@ -1,22 +1,26 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import MainLayout from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Mail, Clock, Book, Award, Star, MapPin, Users } from "lucide-react";
+import { Loader2, Mail, Clock, Book, Award, Star, MapPin, Users, Heart } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store";
 import TutorCard from "@/components/ui/TutorCard";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function TutorProfile() {
   const { id } = useParams();
   const [, navigate] = useLocation();
   const { user } = useSelector((state: RootState) => state.auth);
+  const { toast } = useToast();
+  const [isFavorite, setIsFavorite] = useState(false);
   
   // Get tutor details
   const { data: tutor, isLoading: tutorLoading } = useQuery({
@@ -38,6 +42,81 @@ export default function TutorProfile() {
     queryKey: [`/api/v1/tutors/similar/${id}`],
     enabled: !!tutor,
   });
+  
+  // Check if tutor is in favorites
+  const { data: checkFavoriteData, isLoading: checkFavoriteLoading } = useQuery({
+    queryKey: [`/api/v1/students/favorite-tutors/check/${id}`],
+    enabled: !!user && user.role === 'student',
+    onSuccess: (data) => {
+      setIsFavorite(data?.isFavorite || false);
+    },
+  });
+  
+  // Add tutor to favorites
+  const addToFavoritesMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest('POST', `/api/v1/students/favorite-tutors/${id}`);
+    },
+    onSuccess: () => {
+      setIsFavorite(true);
+      toast({
+        title: "Đã thêm vào danh sách yêu thích",
+        description: "Gia sư đã được thêm vào danh sách yêu thích của bạn.",
+        variant: "default",
+      });
+      // Invalidate relevant queries
+      queryClient.invalidateQueries({ queryKey: [`/api/v1/students/favorite-tutors/check/${id}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v1/students/favorite-tutors'] });
+    },
+    onError: (error) => {
+      console.error("Error adding to favorites:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể thêm gia sư vào danh sách yêu thích.",
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Remove tutor from favorites
+  const removeFromFavoritesMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest('DELETE', `/api/v1/students/favorite-tutors/${id}`);
+    },
+    onSuccess: () => {
+      setIsFavorite(false);
+      toast({
+        title: "Đã xóa khỏi danh sách yêu thích",
+        description: "Gia sư đã được xóa khỏi danh sách yêu thích của bạn.",
+        variant: "default",
+      });
+      // Invalidate relevant queries
+      queryClient.invalidateQueries({ queryKey: [`/api/v1/students/favorite-tutors/check/${id}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v1/students/favorite-tutors'] });
+    },
+    onError: (error) => {
+      console.error("Error removing from favorites:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể xóa gia sư khỏi danh sách yêu thích.",
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Handle favorite toggle
+  const toggleFavorite = () => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+    
+    if (isFavorite) {
+      removeFromFavoritesMutation.mutate();
+    } else {
+      addToFavoritesMutation.mutate();
+    }
+  };
   
   const isLoading = tutorLoading || adsLoading || reviewsLoading;
   
