@@ -47,10 +47,14 @@ export default function TutorProfile() {
   const { data: checkFavoriteData, isLoading: checkFavoriteLoading } = useQuery({
     queryKey: [`/api/v1/students/favorite-tutors/check/${id}`],
     enabled: !!user && user.role === 'student',
-    onSuccess: (data) => {
-      setIsFavorite(data?.isFavorite || false);
-    },
   });
+  
+  // Update favorite status when data changes
+  useEffect(() => {
+    if (checkFavoriteData) {
+      setIsFavorite(checkFavoriteData.isFavorite || false);
+    }
+  }, [checkFavoriteData]);
   
   // Add tutor to favorites
   const addToFavoritesMutation = useMutation({
@@ -419,6 +423,20 @@ export default function TutorProfile() {
                 <Button onClick={startConversation} className="w-full mb-3">
                   <Mail className="mr-2 h-4 w-4" /> Message Tutor
                 </Button>
+                
+                {user && user.role === "student" && (
+                  <Button 
+                    variant={isFavorite ? "outline" : "secondary"}
+                    className={`w-full mb-3 ${isFavorite ? "border-primary text-primary hover:bg-primary/5" : ""}`}
+                    onClick={toggleFavorite}
+                    disabled={addToFavoritesMutation.isPending || removeFromFavoritesMutation.isPending}
+                  >
+                    <Heart 
+                      className={`mr-2 h-4 w-4 ${isFavorite ? "fill-primary" : ""}`} 
+                    />
+                    {isFavorite ? "Đã thêm vào yêu thích" : "Thêm vào yêu thích"}
+                  </Button>
+                )}
                 
                 <p className="text-xs text-center text-muted-foreground">
                   Usually responds within 24 hours
