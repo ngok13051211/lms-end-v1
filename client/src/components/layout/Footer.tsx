@@ -7,12 +7,10 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
-            <Link href="/">
-              <a className="flex items-center mb-4">
-                <span className="text-white text-xl font-medium">
-                  Homi<span className="text-secondary">Tutor</span>
-                </span>
-              </a>
+            <Link href="/" className="flex items-center mb-4">
+              <span className="text-white text-xl font-medium">
+                Homi<span className="text-secondary">Tutor</span>
+              </span>
             </Link>
             <p className="text-gray-400 mb-4">
               Nền tảng kết nối gia sư và học viên hàng đầu Việt Nam
@@ -53,38 +51,28 @@ export default function Footer() {
             <h3 className="font-medium text-lg mb-4">Dành cho học viên</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="/tutors">
-                  <a className="text-gray-400 hover:text-white transition-colors">
-                    Tìm gia sư
-                  </a>
+                <Link href="/tutors" className="text-gray-400 hover:text-white transition-colors">
+                  Tìm gia sư
                 </Link>
               </li>
               <li>
-                <Link href="/how-it-works">
-                  <a className="text-gray-400 hover:text-white transition-colors">
-                    Cách thức hoạt động
-                  </a>
+                <Link href="/how-it-works" className="text-gray-400 hover:text-white transition-colors">
+                  Cách thức hoạt động
                 </Link>
               </li>
               <li>
-                <Link href="/schedule">
-                  <a className="text-gray-400 hover:text-white transition-colors">
-                    Đặt lịch học
-                  </a>
+                <Link href="/schedule" className="text-gray-400 hover:text-white transition-colors">
+                  Đặt lịch học
                 </Link>
               </li>
               <li>
-                <Link href="/payment">
-                  <a className="text-gray-400 hover:text-white transition-colors">
-                    Thanh toán
-                  </a>
+                <Link href="/payment" className="text-gray-400 hover:text-white transition-colors">
+                  Thanh toán
                 </Link>
               </li>
               <li>
-                <Link href="/reviews">
-                  <a className="text-gray-400 hover:text-white transition-colors">
-                    Đánh giá gia sư
-                  </a>
+                <Link href="/reviews" className="text-gray-400 hover:text-white transition-colors">
+                  Đánh giá gia sư
                 </Link>
               </li>
             </ul>
@@ -94,38 +82,28 @@ export default function Footer() {
             <h3 className="font-medium text-lg mb-4">Dành cho gia sư</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="/become-tutor">
-                  <a className="text-gray-400 hover:text-white transition-colors">
-                    Đăng ký làm gia sư
-                  </a>
+                <Link href="/become-tutor" className="text-gray-400 hover:text-white transition-colors">
+                  Đăng ký làm gia sư
                 </Link>
               </li>
               <li>
-                <Link href="/tutor-profile">
-                  <a className="text-gray-400 hover:text-white transition-colors">
-                    Quản lý hồ sơ
-                  </a>
+                <Link href="/tutor-profile" className="text-gray-400 hover:text-white transition-colors">
+                  Quản lý hồ sơ
                 </Link>
               </li>
               <li>
-                <Link href="/create-ad">
-                  <a className="text-gray-400 hover:text-white transition-colors">
-                    Tạo quảng cáo
-                  </a>
+                <Link href="/create-ad" className="text-gray-400 hover:text-white transition-colors">
+                  Tạo quảng cáo
                 </Link>
               </li>
               <li>
-                <Link href="/tutor-payment">
-                  <a className="text-gray-400 hover:text-white transition-colors">
-                    Nhận thanh toán
-                  </a>
+                <Link href="/tutor-payment" className="text-gray-400 hover:text-white transition-colors">
+                  Nhận thanh toán
                 </Link>
               </li>
               <li>
-                <Link href="/teaching-tools">
-                  <a className="text-gray-400 hover:text-white transition-colors">
-                    Công cụ dạy học
-                  </a>
+                <Link href="/teaching-tools" className="text-gray-400 hover:text-white transition-colors">
+                  Công cụ dạy học
                 </Link>
               </li>
             </ul>
@@ -135,38 +113,28 @@ export default function Footer() {
             <h3 className="font-medium text-lg mb-4">Hỗ trợ</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="/help-center">
-                  <a className="text-gray-400 hover:text-white transition-colors">
-                    Trung tâm trợ giúp
-                  </a>
+                <Link href="/help-center" className="text-gray-400 hover:text-white transition-colors">
+                  Trung tâm trợ giúp
                 </Link>
               </li>
               <li>
-                <Link href="/faq">
-                  <a className="text-gray-400 hover:text-white transition-colors">
-                    Câu hỏi thường gặp
-                  </a>
+                <Link href="/faq" className="text-gray-400 hover:text-white transition-colors">
+                  Câu hỏi thường gặp
                 </Link>
               </li>
               <li>
-                <Link href="/contact">
-                  <a className="text-gray-400 hover:text-white transition-colors">
-                    Liên hệ
-                  </a>
+                <Link href="/contact" className="text-gray-400 hover:text-white transition-colors">
+                  Liên hệ
                 </Link>
               </li>
               <li>
-                <Link href="/terms">
-                  <a className="text-gray-400 hover:text-white transition-colors">
-                    Điều khoản sử dụng
-                  </a>
+                <Link href="/terms" className="text-gray-400 hover:text-white transition-colors">
+                  Điều khoản sử dụng
                 </Link>
               </li>
               <li>
-                <Link href="/privacy">
-                  <a className="text-gray-400 hover:text-white transition-colors">
-                    Chính sách bảo mật
-                  </a>
+                <Link href="/privacy" className="text-gray-400 hover:text-white transition-colors">
+                  Chính sách bảo mật
                 </Link>
               </li>
             </ul>
