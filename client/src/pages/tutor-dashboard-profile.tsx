@@ -101,6 +101,9 @@ export default function TutorDashboardProfile() {
         ...data,
         subject_ids: selectedSubjects,
         level_ids: selectedLevels,
+        // Convert camelCase form fields to snake_case for API
+        hourly_rate: data.hourlyRate,
+        teaching_mode: data.teachingMode
       };
       
       const res = await apiRequest(method, `/api/v1/tutors/profile`, completeData);
