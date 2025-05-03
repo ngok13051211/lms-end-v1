@@ -4,6 +4,7 @@ import { queryClient } from "@/lib/queryClient";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -48,6 +49,7 @@ const adSchema = z.object({
 
 export default function TutorDashboard() {
   const { user } = useSelector((state: RootState) => state.auth);
+  const { toast } = useToast();
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
   const [avatar, setAvatar] = useState<File | null>(null);
@@ -146,9 +148,25 @@ export default function TutorDashboard() {
       console.log("Profile created/updated successfully:", data);
       queryClient.invalidateQueries({ queryKey: [`/api/v1/tutors/profile`] });
       setProfileDialogOpen(false);
+      
+      // Show success notification
+      toast({
+        title: tutorProfile ? "Profile updated" : "Profile created",
+        description: tutorProfile 
+          ? "Your tutor profile has been updated successfully." 
+          : "Your tutor profile has been created successfully.",
+        variant: "default",
+      });
     },
     onError: (error) => {
       console.error("Error creating/updating profile:", error);
+      
+      // Show error notification
+      toast({
+        title: "Profile update failed",
+        description: error instanceof Error ? error.message : "Failed to save your profile information. Please try again.",
+        variant: "destructive",
+      });
     }
   });
   
@@ -166,6 +184,23 @@ export default function TutorDashboard() {
       queryClient.invalidateQueries({ queryKey: [`/api/v1/tutors/ads`] });
       adForm.reset();
       setAdDialogOpen(false);
+      
+      // Show success notification
+      toast({
+        title: "Ad created",
+        description: "Your teaching ad has been created successfully.",
+        variant: "default",
+      });
+    },
+    onError: (error) => {
+      console.error("Ad creation error:", error);
+      
+      // Show error notification
+      toast({
+        title: "Ad creation failed",
+        description: error instanceof Error ? error.message : "Failed to create your teaching ad. Please try again.",
+        variant: "destructive",
+      });
     },
   });
   
@@ -181,6 +216,23 @@ export default function TutorDashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/v1/tutors/ads`] });
+      
+      // Show success notification
+      toast({
+        title: "Ad deleted",
+        description: "Your teaching ad has been deleted successfully.",
+        variant: "default",
+      });
+    },
+    onError: (error) => {
+      console.error("Ad deletion error:", error);
+      
+      // Show error notification
+      toast({
+        title: "Deletion failed",
+        description: error instanceof Error ? error.message : "Failed to delete your teaching ad. Please try again.",
+        variant: "destructive",
+      });
     },
   });
   

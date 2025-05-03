@@ -205,20 +205,36 @@ export default function TutorDashboardProfile() {
       const formData = new FormData();
       formData.append("avatar", file);
       
-      const res = await fetch("/api/v1/auth/update-avatar", {
+      const res = await fetch("/api/v1/users/avatar", {
         method: "POST",
         credentials: "include",
         body: formData,
       });
       
       if (!res.ok) {
-        throw new Error("Failed to upload avatar");
+        throw new Error(`Upload failed with status: ${res.status}`);
       }
       
       return res.json();
     },
     onSuccess: () => {
+      // Invalidate both user data and tutor profile to ensure all avatar instances get updated
       queryClient.invalidateQueries({ queryKey: [`/api/v1/auth/me`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/v1/tutors/profile`] });
+      
+      toast({
+        title: "Avatar updated",
+        description: "Your profile photo has been updated successfully.",
+        variant: "default",
+      });
+    },
+    onError: (error) => {
+      console.error("Avatar upload error:", error);
+      toast({
+        title: "Upload failed",
+        description: error instanceof Error ? error.message : "Failed to upload profile photo. Please try again.",
+        variant: "destructive",
+      });
     },
   });
   
@@ -237,13 +253,27 @@ export default function TutorDashboardProfile() {
       });
       
       if (!res.ok) {
-        throw new Error("Failed to upload certifications");
+        throw new Error(`Upload failed with status: ${res.status}`);
       }
       
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/v1/tutors/profile`] });
+      
+      toast({
+        title: "Certifications uploaded",
+        description: "Your certification documents have been uploaded successfully.",
+        variant: "default",
+      });
+    },
+    onError: (error) => {
+      console.error("Certifications upload error:", error);
+      toast({
+        title: "Upload failed",
+        description: error instanceof Error ? error.message : "Failed to upload certification documents. Please try again.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -268,6 +298,12 @@ export default function TutorDashboardProfile() {
         setAvatar(null);
       } catch (error) {
         console.error("Avatar upload error:", error);
+        // Display error toast even if the mutation error handler doesn't catch it
+        toast({
+          title: "Upload failed",
+          description: error instanceof Error ? error.message : "Failed to upload profile photo. Please try again.",
+          variant: "destructive",
+        });
       } finally {
         setUploadingAvatar(false);
       }
@@ -282,6 +318,12 @@ export default function TutorDashboardProfile() {
         setCertifications([]);
       } catch (error) {
         console.error("Certifications upload error:", error);
+        // Display error toast even if the mutation error handler doesn't catch it
+        toast({
+          title: "Upload failed",
+          description: error instanceof Error ? error.message : "Failed to upload certification documents. Please try again.",
+          variant: "destructive",
+        });
       } finally {
         setUploadingCertifications(false);
       }
@@ -295,6 +337,13 @@ export default function TutorDashboardProfile() {
       console.log("Submitting profile data:", data);
       const response = await profileMutation.mutateAsync(data);
       console.log("Profile update response:", response);
+      
+      // Show success toast notification
+      toast({
+        title: "Profile updated",
+        description: "Your tutor profile has been updated successfully.",
+        variant: "default",
+      });
       
       // Manually add a slight delay before refetching to ensure DB has updated
       setTimeout(() => {
@@ -328,6 +377,13 @@ export default function TutorDashboardProfile() {
       }, 500);
     } catch (error) {
       console.error("Profile update error:", error);
+      
+      // Show error toast notification
+      toast({
+        title: "Update failed",
+        description: error instanceof Error ? error.message : "Failed to update your profile. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
