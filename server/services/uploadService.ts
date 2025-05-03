@@ -150,7 +150,29 @@ const uploadAvatar = (req: Request, res: Response, next: NextFunction) => {
 
 // Multer middleware for document uploads
 const uploadDocuments = (req: Request, res: Response, next: NextFunction) => {
-  const documentUpload = upload.array("documents", 5); // Allow up to 5 documents
+  // Custom file filter for documents (allow PDF files too)
+  const documentFileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+    const filetypes = /jpeg|jpg|png|pdf/;
+    const mimetype = filetypes.test(file.mimetype);
+    const extname = filetypes.test(
+      path.extname(file.originalname).toLowerCase()
+    );
+
+    if (mimetype && extname) {
+      return cb(null, true);
+    }
+    
+    cb(new Error("Only image files (JPEG, PNG) and PDF documents are allowed"));
+  };
+  
+  // Create document-specific multer instance with extended file types
+  const documentUpload = multer({
+    storage,
+    limits: {
+      fileSize: 5 * 1024 * 1024, // 5MB limit
+    },
+    fileFilter: documentFileFilter
+  }).array("documents", 5); // Allow up to 5 documents
 
   documentUpload(req, res, async (err) => {
     if (err instanceof multer.MulterError) {
@@ -170,6 +192,8 @@ const uploadDocuments = (req: Request, res: Response, next: NextFunction) => {
     }
     
     try {
+      console.log("Uploading documents to Cloudinary, files count:", req.files.length);
+      
       // Upload each file to Cloudinary
       const files = req.files as Express.Multer.File[];
       const cloudinaryResults = await Promise.all(

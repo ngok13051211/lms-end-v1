@@ -276,10 +276,6 @@ export default function TutorDashboardProfile() {
         throw new Error(`Upload failed with status: ${res.status}. ${errorText}`);
       }
       
-      if (!res.ok) {
-        throw new Error(`Upload failed with status: ${res.status}`);
-      }
-      
       return res.json();
     },
     onSuccess: () => {
@@ -345,7 +341,46 @@ export default function TutorDashboardProfile() {
   const handleCertificationsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const fileArray = Array.from(e.target.files);
+      
+      // Log selected files
+      console.log("Selected certification files:", fileArray.map(file => ({
+        name: file.name,
+        size: file.size,
+        type: file.type
+      })));
+      
+      // Validate file sizes (each under 5MB)
+      const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+      const oversizedFiles = fileArray.filter(file => file.size > maxSize);
+      
+      if (oversizedFiles.length > 0) {
+        toast({
+          title: "Files too large",
+          description: `${oversizedFiles.length} file(s) exceed the 5MB size limit.`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Validate file types
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+      const invalidFiles = fileArray.filter(file => !validTypes.includes(file.type));
+      
+      if (invalidFiles.length > 0) {
+        toast({
+          title: "Invalid file type(s)",
+          description: "Please select only image files (JPEG, PNG) or PDF documents.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       setCertifications(fileArray);
+      toast({
+        title: "Files selected",
+        description: `${fileArray.length} file(s) ready to upload. Click Upload to continue.`,
+        variant: "default",
+      });
     }
   };
 
