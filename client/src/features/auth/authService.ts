@@ -47,14 +47,29 @@ const login = async (userData: { email: string; password: string }): Promise<Use
   }
 
   const data = await response.json();
+  
+  // Store token in localStorage
+  if (data.token) {
+    localStorage.setItem("token", data.token);
+  }
+  
   return data.user;
 };
 
 // Load user profile
 const loadUser = async (): Promise<User> => {
+  // Get token from localStorage
+  const token = localStorage.getItem("token");
+  const headers: HeadersInit = {};
+  
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  
   const response = await fetch("/api/v1/auth/me", {
     method: "GET",
     credentials: "include",
+    headers
   });
 
   if (!response.ok) {
@@ -67,6 +82,9 @@ const loadUser = async (): Promise<User> => {
 
 // Logout user
 const logout = async (): Promise<void> => {
+  // Remove token from localStorage
+  localStorage.removeItem("token");
+  
   await fetch("/api/v1/auth/logout", {
     method: "POST",
     credentials: "include",

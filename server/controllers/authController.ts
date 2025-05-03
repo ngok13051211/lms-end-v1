@@ -112,19 +112,13 @@ export const login = async (req: Request, res: Response) => {
       { expiresIn: '7d' }
     );
     
-    // Set cookie
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-    });
-    
-    // Return user data (excluding password)
+    // Return user data (excluding password) and token
     const { password, ...userData } = user;
     
     return res.status(200).json({
       message: "Login successful",
-      user: userData
+      user: userData,
+      token // Send token to client for storage in localStorage
     });
   } catch (error) {
     if (error instanceof ZodError) {
