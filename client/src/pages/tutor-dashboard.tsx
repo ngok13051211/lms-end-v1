@@ -118,21 +118,32 @@ export default function TutorDashboard() {
   const profileMutation = useMutation({
     mutationFn: async (data: z.infer<typeof tutorProfileSchema>) => {
       const method = tutorProfile ? "PATCH" : "POST";
+      console.log("Sending data to create/update profile:", {
+        ...data,
+        subject_ids: selectedSubjects,
+        level_ids: selectedLevels,
+        hourly_rate: data.hourlyRate.toString()
+      });
       const response = await apiRequest(
         method,
         "/api/v1/tutors/profile",
         {
           ...data,
-          subjects: selectedSubjects,
-          educationLevels: selectedLevels,
+          subject_ids: selectedSubjects,
+          level_ids: selectedLevels,
+          hourly_rate: data.hourlyRate.toString() // Convert to string as backend expects string
         }
       );
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log("Profile created/updated successfully:", data);
       queryClient.invalidateQueries({ queryKey: [`/api/v1/tutors/profile`] });
       setProfileDialogOpen(false);
     },
+    onError: (error) => {
+      console.error("Error creating/updating profile:", error);
+    }
   });
   
   // Create ad
@@ -1098,7 +1109,15 @@ export default function TutorDashboard() {
                         <FormControl>
                           <div className="relative">
                             <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input type="number" className="pl-9" {...field} />
+                            <Input 
+                              type="number" 
+                              className="pl-9" 
+                              {...field}
+                              onChange={(e) => {
+                                const value = e.target.value === "" ? "0" : e.target.value;
+                                field.onChange(Number(value));
+                              }}
+                            />
                           </div>
                         </FormControl>
                         <FormDescription>
