@@ -50,6 +50,7 @@ const adSchema = z.object({
 
 export default function TutorDashboard() {
   const { user } = useSelector((state: RootState) => state.auth);
+  const dispatch = useDispatch();
   const { toast } = useToast();
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
@@ -283,13 +284,9 @@ export default function TutorDashboard() {
       
       // Cập nhật store với avatar mới
       if (responseData.user && responseData.user.avatar) {
-        // Cập nhật user trong redux store để hiển thị avatar mới ngay lập tức
-        // Lưu ý: Đây là cách giải pháp tạm thời, cách tốt nhất là refetch dữ liệu
-        const authStore = useSelector((state: RootState) => state.auth);
-        if (authStore && authStore.user) {
-          // Cập nhật user trong redux store
-          authStore.user.avatar = responseData.user.avatar;
-        }
+        // Dispatch action để cập nhật avatar trong Redux store
+        dispatch(updateAvatar(responseData.user.avatar));
+        console.log("Dispatched updateAvatar action with:", responseData.user.avatar);
       }
       
       // Thực hiện refetch ngay lập tức để lấy dữ liệu mới nhất
