@@ -16,7 +16,7 @@ export const createAd = async (req: Request, res: Response) => {
     
     // Get tutor profile
     const tutorProfile = await db.query.tutorProfiles.findFirst({
-      where: eq(schema.tutorProfiles.userId, userId)
+      where: eq(schema.tutorProfiles.user_id, userId)
     });
     
     if (!tutorProfile) {
@@ -26,22 +26,22 @@ export const createAd = async (req: Request, res: Response) => {
     // Validate ad data
     const adData = schema.adInsertSchema.parse({
       ...req.body,
-      tutorId: tutorProfile.id
+      tutor_id: tutorProfile.id
     });
     
     // Create ad
     const [ad] = await db.insert(schema.ads)
       .values({
-        tutorId: tutorProfile.id,
+        tutor_id: tutorProfile.id,
         title: adData.title,
         description: adData.description,
-        subjectId: adData.subjectId !== undefined ? parseInt(adData.subjectId as string) : undefined,
-        levelId: adData.levelId !== undefined ? parseInt(adData.levelId as string) : undefined,
-        hourlyRate: adData.hourlyRate,
-        teachingMode: adData.teachingMode,
+        subject_id: adData.subject_id !== undefined ? parseInt(adData.subject_id as string) : undefined,
+        level_id: adData.level_id !== undefined ? parseInt(adData.level_id as string) : undefined,
+        hourly_rate: adData.hourly_rate,
+        teaching_mode: adData.teaching_mode,
         status: "active",
-        createdAt: new Date(),
-        updatedAt: new Date()
+        created_at: new Date(),
+        updated_at: new Date()
       })
       .returning();
     
@@ -79,7 +79,7 @@ export const getOwnAds = async (req: Request, res: Response) => {
     
     // Get tutor profile
     const tutorProfile = await db.query.tutorProfiles.findFirst({
-      where: eq(schema.tutorProfiles.userId, userId)
+      where: eq(schema.tutorProfiles.user_id, userId)
     });
     
     if (!tutorProfile) {
@@ -88,12 +88,12 @@ export const getOwnAds = async (req: Request, res: Response) => {
     
     // Get ads for tutor
     const ads = await db.query.ads.findMany({
-      where: eq(schema.ads.tutorId, tutorProfile.id),
+      where: eq(schema.ads.tutor_id, tutorProfile.id),
       with: {
         subject: true,
         level: true
       },
-      orderBy: schema.ads.createdAt
+      orderBy: schema.ads.created_at
     });
     
     return res.status(200).json(ads);
@@ -124,14 +124,14 @@ export const getTutorAds = async (req: Request, res: Response) => {
     // Get active ads for tutor
     const ads = await db.query.ads.findMany({
       where: and(
-        eq(schema.ads.tutorId, tutorId),
+        eq(schema.ads.tutor_id, tutorId),
         eq(schema.ads.status, "active")
       ),
       with: {
         subject: true,
         level: true
       },
-      orderBy: schema.ads.createdAt
+      orderBy: schema.ads.created_at
     });
     
     return res.status(200).json(ads);
@@ -157,7 +157,7 @@ export const updateAd = async (req: Request, res: Response) => {
     
     // Get tutor profile
     const tutorProfile = await db.query.tutorProfiles.findFirst({
-      where: eq(schema.tutorProfiles.userId, userId)
+      where: eq(schema.tutorProfiles.user_id, userId)
     });
     
     if (!tutorProfile) {
@@ -168,7 +168,7 @@ export const updateAd = async (req: Request, res: Response) => {
     const existingAd = await db.query.ads.findFirst({
       where: and(
         eq(schema.ads.id, adId),
-        eq(schema.ads.tutorId, tutorProfile.id)
+        eq(schema.ads.tutor_id, tutorProfile.id)
       )
     });
     
@@ -179,7 +179,7 @@ export const updateAd = async (req: Request, res: Response) => {
     // Validate ad data
     const adData = schema.adInsertSchema.partial().parse({
       ...req.body,
-      tutorId: tutorProfile.id
+      tutor_id: tutorProfile.id
     });
     
     // Update ad
@@ -187,12 +187,12 @@ export const updateAd = async (req: Request, res: Response) => {
       .set({
         title: adData.title !== undefined ? adData.title : existingAd.title,
         description: adData.description !== undefined ? adData.description : existingAd.description,
-        subjectId: adData.subjectId !== undefined ? parseInt(adData.subjectId as string) : existingAd.subjectId,
-        levelId: adData.levelId !== undefined ? parseInt(adData.levelId as string) : existingAd.levelId,
-        hourlyRate: adData.hourlyRate !== undefined ? adData.hourlyRate : existingAd.hourlyRate,
-        teachingMode: adData.teachingMode !== undefined ? adData.teachingMode : existingAd.teachingMode,
+        subject_id: adData.subject_id !== undefined ? parseInt(adData.subject_id as string) : existingAd.subject_id,
+        level_id: adData.level_id !== undefined ? parseInt(adData.level_id as string) : existingAd.level_id,
+        hourly_rate: adData.hourly_rate !== undefined ? adData.hourly_rate : existingAd.hourly_rate,
+        teaching_mode: adData.teaching_mode !== undefined ? adData.teaching_mode : existingAd.teaching_mode,
         status: adData.status !== undefined ? adData.status : existingAd.status,
-        updatedAt: new Date()
+        updated_at: new Date()
       })
       .where(eq(schema.ads.id, adId))
       .returning();
@@ -236,7 +236,7 @@ export const deleteAd = async (req: Request, res: Response) => {
     
     // Get tutor profile
     const tutorProfile = await db.query.tutorProfiles.findFirst({
-      where: eq(schema.tutorProfiles.userId, userId)
+      where: eq(schema.tutorProfiles.user_id, userId)
     });
     
     if (!tutorProfile) {
@@ -247,7 +247,7 @@ export const deleteAd = async (req: Request, res: Response) => {
     const existingAd = await db.query.ads.findFirst({
       where: and(
         eq(schema.ads.id, adId),
-        eq(schema.ads.tutorId, tutorProfile.id)
+        eq(schema.ads.tutor_id, tutorProfile.id)
       )
     });
     

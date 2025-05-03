@@ -37,7 +37,7 @@ export const getEducationLevels = async (req: Request, res: Response) => {
 export const getTestimonials = async (req: Request, res: Response) => {
   try {
     const testimonials = await db.query.testimonials.findMany({
-      where: eq(schema.testimonials.isFeatured, true),
+      where: eq(schema.testimonials.is_featured, true),
       limit: 3
     });
     
@@ -62,18 +62,18 @@ export const getTutors = async (req: Request, res: Response) => {
     const offset = (page - 1) * limit;
     
     // Build query conditions
-    const conditions = [eq(schema.tutorProfiles.isVerified, true)];
+    const conditions = [eq(schema.tutorProfiles.is_verified, true)];
     
     // Add search condition if provided
     if (search) {
       // We need to join with users table to search by name
       const tutorsByName = await db.select({ id: schema.tutorProfiles.id })
         .from(schema.tutorProfiles)
-        .innerJoin(schema.users, eq(schema.tutorProfiles.userId, schema.users.id))
+        .innerJoin(schema.users, eq(schema.tutorProfiles.user_id, schema.users.id))
         .where(
           or(
-            like(schema.users.firstName, `%${search}%`),
-            like(schema.users.lastName, `%${search}%`)
+            like(schema.users.first_name, `%${search}%`),
+            like(schema.users.last_name, `%${search}%`)
           )
         );
       
@@ -92,14 +92,14 @@ export const getTutors = async (req: Request, res: Response) => {
     
     // Add subject filter if not 'all'
     if (subject !== 'all') {
-      const tutorsWithSubject = await db.select({ tutorId: schema.tutorSubjects.tutorId })
+      const tutorsWithSubject = await db.select({ tutor_id: schema.tutorSubjects.tutor_id })
         .from(schema.tutorSubjects)
-        .where(eq(schema.tutorSubjects.subjectId, parseInt(subject)));
+        .where(eq(schema.tutorSubjects.subject_id, parseInt(subject)));
       
       if (tutorsWithSubject.length > 0) {
-        conditions.push(inArray(schema.tutorProfiles.id, tutorsWithSubject.map(t => t.tutorId)));
+        conditions.push(inArray(schema.tutorProfiles.id, tutorsWithSubject.map(t => t.tutor_id)));
       } else {
-        // If no tutors with subject, return empty result
+        // If no tutors with this subject, return empty result
         return res.status(200).json({
           tutors: [],
           total: 0,
@@ -111,14 +111,14 @@ export const getTutors = async (req: Request, res: Response) => {
     
     // Add level filter if not 'all'
     if (level !== 'all') {
-      const tutorsWithLevel = await db.select({ tutorId: schema.tutorEducationLevels.tutorId })
+      const tutorsWithLevel = await db.select({ tutor_id: schema.tutorEducationLevels.tutor_id })
         .from(schema.tutorEducationLevels)
-        .where(eq(schema.tutorEducationLevels.levelId, parseInt(level)));
+        .where(eq(schema.tutorEducationLevels.level_id, parseInt(level)));
       
       if (tutorsWithLevel.length > 0) {
-        conditions.push(inArray(schema.tutorProfiles.id, tutorsWithLevel.map(t => t.tutorId)));
+        conditions.push(inArray(schema.tutorProfiles.id, tutorsWithLevel.map(t => t.tutor_id)));
       } else {
-        // If no tutors with level, return empty result
+        // If no tutors with this level, return empty result
         return res.status(200).json({
           tutors: [],
           total: 0,
@@ -130,31 +130,54 @@ export const getTutors = async (req: Request, res: Response) => {
     
     // Add teaching mode filter if not 'all'
     if (mode !== 'all') {
+      const tutorsWithTeachingMode = await db.select({ id: schema.tutorProfiles.id })
+        .from(schema.tutorProfiles)
+        .where(or(
+          eq(schema.tutorProfiles.teaching_mode, mode),
+          eq(schema.tutorProfiles.teaching_mode, 'both')
+        ));
+      
+      if (tutorsWithTeachingMode.length > 0) {
+        conditions.push(inArray(schema.tutorProfiles.id, tutorsWithTeachingMode.map(t => t.id)));
+      } else {
+        // If no tutors with this teaching mode, return empty result
+        return res.status(200).json({
+          tutors: [],
+          total: 0,
+          totalPages: 0,
+          currentPage: page
+        });
+      }
+    }
+    
+    // Add price range filter
+    if (minRate > 0 || maxRate < 1000000) {
       conditions.push(
-        or(
-          eq(schema.tutorProfiles.teachingMode, mode),
-          eq(schema.tutorProfiles.teachingMode, 'both')
+        and(
+          sql`${schema.tutorProfiles.hourly_rate} >= ${minRate}`,
+          sql`${schema.tutorProfiles.hourly_rate} <= ${maxRate}`
         )
       );
     }
     
-    // Add price range filter
-    conditions.push(
-      and(
-        sql`CAST(${schema.tutorProfiles.hourlyRate} AS NUMERIC) >= ${minRate}`,
-        sql`CAST(${schema.tutorProfiles.hourlyRate} AS NUMERIC) <= ${maxRate}`
-      )
-    );
+    // Count total tutors matching criteria
+    const countResult = await db.select({ count: sql<number>`count(*)` })
+      .from(schema.tutorProfiles)
+      .where(and(...conditions));
+      
+    const total = Number(countResult[0]?.count || 0);
+    const totalPages = Math.ceil(total / limit);
     
-    // Get tutors with filters and pagination
+    // Get paginated tutors
     const tutors = await db.query.tutorProfiles.findMany({
       where: and(...conditions),
       with: {
         user: {
           columns: {
             id: true,
-            firstName: true,
-            lastName: true,
+            first_name: true,
+            last_name: true,
+            email: true,
             avatar: true
           }
         },
@@ -163,39 +186,42 @@ export const getTutors = async (req: Request, res: Response) => {
             subject: true
           }
         },
-        educationLevels: {
+        levels: {
           with: {
             level: true
           }
+        },
+        reviews: {
+          columns: {
+            rating: true
+          }
         }
       },
-      limit,
-      offset,
       orderBy: [
-        // First featured tutors, then by rating
-        desc(schema.tutorProfiles.isFeatured),
-        desc(schema.tutorProfiles.rating)
-      ]
+        desc(schema.tutorProfiles.average_rating),
+        desc(schema.tutorProfiles.created_at)
+      ],
+      limit,
+      offset
     });
     
-    // Transform tutor data to include subject and level objects directly
-    const transformedTutors = tutors.map(tutor => ({
-      ...tutor,
-      subjects: tutor.subjects.map(ts => ts.subject),
-      educationLevels: tutor.educationLevels.map(tel => tel.level)
-    }));
-    
-    // Get total count for pagination
-    const totalResult = await db.select({ count: sql<number>`count(*)` })
-      .from(schema.tutorProfiles)
-      .where(and(...conditions));
-    
-    const total = totalResult[0]?.count || 0;
+    // Calculate average rating for each tutor based on reviews
+    const tutorsWithRating = tutors.map(tutor => {
+      const reviews = tutor.reviews || [];
+      const totalReviews = reviews.length;
+      
+      return {
+        ...tutor,
+        totalReviews,
+        subjects: tutor.subjects.map(ts => ts.subject),
+        levels: tutor.levels.map(tl => tl.level)
+      };
+    });
     
     return res.status(200).json({
-      tutors: transformedTutors,
+      tutors: tutorsWithRating,
       total,
-      totalPages: Math.ceil(total / limit),
+      totalPages,
       currentPage: page
     });
   } catch (error) {
@@ -204,66 +230,51 @@ export const getTutors = async (req: Request, res: Response) => {
   }
 };
 
-// Get featured tutors for homepage
+// Get featured tutors
 export const getFeaturedTutors = async (req: Request, res: Response) => {
   try {
-    // Fetch featured tutors with basic info
     const tutors = await db.query.tutorProfiles.findMany({
       where: and(
-        eq(schema.tutorProfiles.isFeatured, true),
-        eq(schema.tutorProfiles.isVerified, true)
+        eq(schema.tutorProfiles.is_verified, true),
+        eq(schema.tutorProfiles.is_featured, true)
       ),
-      limit: 3,
-      orderBy: desc(schema.tutorProfiles.rating)
+      with: {
+        user: {
+          columns: {
+            id: true,
+            first_name: true,
+            last_name: true,
+            email: true,
+            avatar: true
+          }
+        },
+        subjects: {
+          with: {
+            subject: true
+          },
+          limit: 3
+        }
+      },
+      limit: 6
     });
     
-    // Fetch related data separately to avoid relation inference issues
-    const transformedTutors = await Promise.all(tutors.map(async (tutor) => {
-      // Get user info
-      const userData = await db.query.users.findFirst({
-        where: eq(schema.users.id, tutor.userId),
-        columns: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          avatar: true
-        }
-      });
-      
-      // Get subject IDs for this tutor
-      const tutorSubjectIds = await db.select({ subjectId: schema.tutorSubjects.subjectId })
-        .from(schema.tutorSubjects)
-        .where(eq(schema.tutorSubjects.tutorId, tutor.id));
-        
-      // Get subjects data
-      const subjectsData = tutorSubjectIds.length > 0 
-        ? await db.query.subjects.findMany({
-            where: inArray(schema.subjects.id, tutorSubjectIds.map(s => s.subjectId))
-          })
-        : [];
-        
-      // Get level IDs for this tutor  
-      const tutorLevelIds = await db.select({ levelId: schema.tutorEducationLevels.levelId })
-        .from(schema.tutorEducationLevels)
-        .where(eq(schema.tutorEducationLevels.tutorId, tutor.id));
-        
-      // Get education levels data  
-      const levelsData = tutorLevelIds.length > 0
-        ? await db.query.educationLevels.findMany({
-            where: inArray(schema.educationLevels.id, tutorLevelIds.map(l => l.levelId))
-          })
-        : [];
-      
-      // Return tutor with related data
-      return {
-        ...tutor,
-        user: userData,
-        subjects: subjectsData,
-        educationLevels: levelsData
-      };
+    // Format response to include only necessary data
+    const formattedTutors = tutors.map(tutor => ({
+      id: tutor.id,
+      user_id: tutor.user_id,
+      bio: tutor.bio,
+      hourly_rate: tutor.hourly_rate,
+      teaching_mode: tutor.teaching_mode,
+      average_rating: tutor.average_rating,
+      user: {
+        id: tutor.user.id,
+        name: `${tutor.user.first_name} ${tutor.user.last_name}`,
+        avatar: tutor.user.avatar
+      },
+      subjects: tutor.subjects.map(ts => ts.subject)
     }));
     
-    return res.status(200).json(transformedTutors);
+    return res.status(200).json(formattedTutors);
   } catch (error) {
     console.error("Get featured tutors error:", error);
     return res.status(500).json({ message: "Internal server error" });
@@ -279,62 +290,91 @@ export const getTutorById = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Invalid tutor ID" });
     }
     
-    // Get basic tutor profile data
+    // Get tutor with details
     const tutor = await db.query.tutorProfiles.findFirst({
-      where: eq(schema.tutorProfiles.id, tutorId)
+      where: eq(schema.tutorProfiles.id, tutorId),
+      with: {
+        user: {
+          columns: {
+            id: true,
+            first_name: true,
+            last_name: true,
+            email: true,
+            avatar: true,
+            phone: true
+          }
+        },
+        subjects: {
+          with: {
+            subject: true
+          }
+        },
+        levels: {
+          with: {
+            level: true
+          }
+        },
+        reviews: {
+          with: {
+            student: {
+              columns: {
+                id: true,
+                first_name: true,
+                last_name: true,
+                avatar: true
+              }
+            }
+          },
+          orderBy: desc(schema.reviews.created_at),
+          limit: 5
+        }
+      }
     });
     
     if (!tutor) {
       return res.status(404).json({ message: "Tutor not found" });
     }
     
-    // Get user info
-    const userData = await db.query.users.findFirst({
-      where: eq(schema.users.id, tutor.userId),
-      columns: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        avatar: true
-      }
-    });
-    
-    // Get subject IDs for this tutor
-    const tutorSubjectIds = await db.select({ subjectId: schema.tutorSubjects.subjectId })
-      .from(schema.tutorSubjects)
-      .where(eq(schema.tutorSubjects.tutorId, tutor.id));
-    
-    // Get subjects data
-    const subjectsData = tutorSubjectIds.length > 0 
-      ? await db.query.subjects.findMany({
-          where: inArray(schema.subjects.id, tutorSubjectIds.map(s => s.subjectId))
-        })
-      : [];
-    
-    // Get level IDs for this tutor  
-    const tutorLevelIds = await db.select({ levelId: schema.tutorEducationLevels.levelId })
-      .from(schema.tutorEducationLevels)
-      .where(eq(schema.tutorEducationLevels.tutorId, tutor.id));
-    
-    // Get education levels data  
-    const levelsData = tutorLevelIds.length > 0
-      ? await db.query.educationLevels.findMany({
-          where: inArray(schema.educationLevels.id, tutorLevelIds.map(l => l.levelId))
-        })
-      : [];
-    
-    // Combine data into a single response
-    const transformedTutor = {
-      ...tutor,
-      user: userData,
-      subjects: subjectsData,
-      educationLevels: levelsData
+    // Format response data
+    const formattedTutor = {
+      id: tutor.id,
+      user_id: tutor.user_id,
+      bio: tutor.bio,
+      experience_years: tutor.experience_years,
+      hourly_rate: tutor.hourly_rate,
+      teaching_mode: tutor.teaching_mode,
+      education: tutor.education,
+      certifications: tutor.certifications,
+      availability: tutor.availability,
+      is_verified: tutor.is_verified,
+      is_featured: tutor.is_featured,
+      average_rating: tutor.average_rating,
+      created_at: tutor.created_at,
+      user: {
+        id: tutor.user.id,
+        name: `${tutor.user.first_name} ${tutor.user.last_name}`,
+        first_name: tutor.user.first_name,
+        last_name: tutor.user.last_name,
+        email: tutor.user.email,
+        avatar: tutor.user.avatar,
+        phone: tutor.user.phone
+      },
+      subjects: tutor.subjects.map(ts => ts.subject),
+      levels: tutor.levels.map(tl => tl.level),
+      reviews: tutor.reviews.map(review => ({
+        id: review.id,
+        rating: review.rating,
+        comment: review.comment,
+        created_at: review.created_at,
+        student: {
+          id: review.student.id,
+          name: `${review.student.first_name} ${review.student.last_name}`,
+          avatar: review.student.avatar
+        }
+      }))
     };
     
-    // Track profile view (for analytics)
-    // This could be implemented with a separate analytics service or table
-    
-    return res.status(200).json(transformedTutor);
+    return res.status(200).json(formattedTutor);
   } catch (error) {
     console.error("Get tutor by ID error:", error);
     return res.status(500).json({ message: "Internal server error" });
@@ -350,92 +390,72 @@ export const getSimilarTutors = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Invalid tutor ID" });
     }
     
-    // Get the tutor's subjects
-    const tutorSubjects = await db.select({ subjectId: schema.tutorSubjects.subjectId })
+    // Get original tutor's subjects
+    const tutorSubjects = await db.select({ subject_id: schema.tutorSubjects.subject_id })
       .from(schema.tutorSubjects)
-      .where(eq(schema.tutorSubjects.tutorId, tutorId));
+      .where(eq(schema.tutorSubjects.tutor_id, tutorId));
     
     if (tutorSubjects.length === 0) {
       return res.status(200).json([]);
     }
     
-    const subjectIds = tutorSubjects.map(ts => ts.subjectId);
+    const subjectIds = tutorSubjects.map(ts => ts.subject_id);
     
-    // Get tutors with similar subjects
-    const similarTutorIds = await db.select({ tutorId: schema.tutorSubjects.tutorId })
+    // Find tutors with similar subjects
+    const similarTutorIds = await db.select({ tutor_id: schema.tutorSubjects.tutor_id })
       .from(schema.tutorSubjects)
       .where(
         and(
-          inArray(schema.tutorSubjects.subjectId, subjectIds),
-          not(eq(schema.tutorSubjects.tutorId, tutorId))
+          inArray(schema.tutorSubjects.subject_id, subjectIds),
+          not(eq(schema.tutorSubjects.tutor_id, tutorId))
         )
       )
-      .groupBy(schema.tutorSubjects.tutorId);
+      .groupBy(schema.tutorSubjects.tutor_id);
     
     if (similarTutorIds.length === 0) {
       return res.status(200).json([]);
     }
     
-    // Get basic tutor profiles for similar tutors
-    const tutors = await db.query.tutorProfiles.findMany({
+    // Get tutor details
+    const similarTutors = await db.query.tutorProfiles.findMany({
       where: and(
-        inArray(schema.tutorProfiles.id, similarTutorIds.map(t => t.tutorId)),
-        eq(schema.tutorProfiles.isVerified, true)
+        inArray(schema.tutorProfiles.id, similarTutorIds.map(t => t.tutor_id)),
+        eq(schema.tutorProfiles.is_verified, true)
       ),
-      limit: 3,
-      orderBy: [
-        desc(schema.tutorProfiles.rating),
-        desc(schema.tutorProfiles.isFeatured)
-      ]
+      with: {
+        user: {
+          columns: {
+            id: true,
+            first_name: true,
+            last_name: true,
+            avatar: true
+          }
+        },
+        subjects: {
+          with: {
+            subject: true
+          },
+          limit: 3
+        }
+      },
+      limit: 4
     });
     
-    // Get details for each tutor separately to avoid relation inference issues
-    const transformedTutors = await Promise.all(tutors.map(async (tutor) => {
-      // Get user info
-      const userData = await db.query.users.findFirst({
-        where: eq(schema.users.id, tutor.userId),
-        columns: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          avatar: true
-        }
-      });
-      
-      // Get subject IDs for this tutor
-      const tutorSubjectIds = await db.select({ subjectId: schema.tutorSubjects.subjectId })
-        .from(schema.tutorSubjects)
-        .where(eq(schema.tutorSubjects.tutorId, tutor.id));
-        
-      // Get subjects data
-      const subjectsData = tutorSubjectIds.length > 0 
-        ? await db.query.subjects.findMany({
-            where: inArray(schema.subjects.id, tutorSubjectIds.map(s => s.subjectId))
-          })
-        : [];
-        
-      // Get level IDs for this tutor  
-      const tutorLevelIds = await db.select({ levelId: schema.tutorEducationLevels.levelId })
-        .from(schema.tutorEducationLevels)
-        .where(eq(schema.tutorEducationLevels.tutorId, tutor.id));
-        
-      // Get education levels data  
-      const levelsData = tutorLevelIds.length > 0
-        ? await db.query.educationLevels.findMany({
-            where: inArray(schema.educationLevels.id, tutorLevelIds.map(l => l.levelId))
-          })
-        : [];
-      
-      // Return tutor with related data
-      return {
-        ...tutor,
-        user: userData,
-        subjects: subjectsData,
-        educationLevels: levelsData
-      };
+    // Format response
+    const formattedTutors = similarTutors.map(tutor => ({
+      id: tutor.id,
+      hourly_rate: tutor.hourly_rate,
+      teaching_mode: tutor.teaching_mode,
+      average_rating: tutor.average_rating,
+      user: {
+        id: tutor.user.id,
+        name: `${tutor.user.first_name} ${tutor.user.last_name}`,
+        avatar: tutor.user.avatar
+      },
+      subjects: tutor.subjects.map(ts => ts.subject)
     }));
     
-    return res.status(200).json(transformedTutors);
+    return res.status(200).json(formattedTutors);
   } catch (error) {
     console.error("Get similar tutors error:", error);
     return res.status(500).json({ message: "Internal server error" });
@@ -446,28 +466,59 @@ export const getSimilarTutors = async (req: Request, res: Response) => {
 export const getTutorReviews = async (req: Request, res: Response) => {
   try {
     const tutorId = parseInt(req.params.id);
+    const page = parseInt(req.query.page as string || '1');
+    const limit = parseInt(req.query.limit as string || '10');
+    const offset = (page - 1) * limit;
     
     if (isNaN(tutorId)) {
       return res.status(400).json({ message: "Invalid tutor ID" });
     }
     
-    // Get reviews for tutor
+    // Count total reviews
+    const countResult = await db.select({ count: sql<number>`count(*)` })
+      .from(schema.reviews)
+      .where(eq(schema.reviews.tutor_id, tutorId));
+    
+    const total = Number(countResult[0]?.count || 0);
+    const totalPages = Math.ceil(total / limit);
+    
+    // Get paginated reviews
     const reviews = await db.query.reviews.findMany({
       where: eq(schema.reviews.tutor_id, tutorId),
       with: {
         student: {
           columns: {
             id: true,
-            firstName: true,
-            lastName: true,
+            first_name: true,
+            last_name: true,
             avatar: true
           }
         }
       },
-      orderBy: desc(schema.reviews.createdAt)
+      orderBy: desc(schema.reviews.created_at),
+      limit,
+      offset
     });
     
-    return res.status(200).json(reviews);
+    // Format reviews
+    const formattedReviews = reviews.map(review => ({
+      id: review.id,
+      rating: review.rating,
+      comment: review.comment,
+      created_at: review.created_at,
+      student: {
+        id: review.student.id,
+        name: `${review.student.first_name} ${review.student.last_name}`,
+        avatar: review.student.avatar
+      }
+    }));
+    
+    return res.status(200).json({
+      reviews: formattedReviews,
+      total,
+      totalPages,
+      currentPage: page
+    });
   } catch (error) {
     console.error("Get tutor reviews error:", error);
     return res.status(500).json({ message: "Internal server error" });
@@ -483,91 +534,60 @@ export const createTutorProfile = async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
     
-    // Check if tutor profile already exists
+    // Check if user already has a tutor profile
     const existingProfile = await db.query.tutorProfiles.findFirst({
-      where: eq(schema.tutorProfiles.userId, userId)
+      where: eq(schema.tutorProfiles.user_id, userId)
     });
     
     if (existingProfile) {
-      return res.status(400).json({ message: "Tutor profile already exists" });
+      return res.status(400).json({ message: "You already have a tutor profile" });
     }
     
-    // Validate profile data
+    // Validate tutor profile data
     const profileData = schema.tutorProfileInsertSchema.parse({
       ...req.body,
-      userId
+      user_id: userId,
+      is_verified: false,
+      is_featured: false,
+      average_rating: 0,
+      created_at: new Date()
     });
-    
-    // Check if subjects and education levels are provided
-    if (!req.body.subjects || !Array.isArray(req.body.subjects) || req.body.subjects.length === 0) {
-      return res.status(400).json({ message: "At least one subject is required" });
-    }
-    
-    if (!req.body.educationLevels || !Array.isArray(req.body.educationLevels) || req.body.educationLevels.length === 0) {
-      return res.status(400).json({ message: "At least one education level is required" });
-    }
     
     // Create tutor profile
     const [tutorProfile] = await db.insert(schema.tutorProfiles)
-      .values({
-        userId,
-        bio: profileData.bio,
-        education: profileData.education,
-        experience: profileData.experience,
-        hourlyRate: profileData.hourlyRate,
-        teachingMode: profileData.teachingMode,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      })
+      .values(profileData)
       .returning();
     
-    // Add subjects to tutor profile
-    for (const subjectId of req.body.subjects) {
+    // Associate subjects
+    if (req.body.subjects && Array.isArray(req.body.subjects)) {
+      const subjectValues = req.body.subjects.map((subjectId: string) => ({
+        tutor_id: tutorProfile.id,
+        subject_id: parseInt(subjectId)
+      }));
+      
       await db.insert(schema.tutorSubjects)
-        .values({
-          tutorId: tutorProfile.id,
-          subjectId: parseInt(subjectId),
-          createdAt: new Date()
-        });
+        .values(subjectValues);
     }
     
-    // Add education levels to tutor profile
-    for (const levelId of req.body.educationLevels) {
+    // Associate education levels
+    if (req.body.levels && Array.isArray(req.body.levels)) {
+      const levelValues = req.body.levels.map((levelId: string) => ({
+        tutor_id: tutorProfile.id,
+        level_id: parseInt(levelId)
+      }));
+      
       await db.insert(schema.tutorEducationLevels)
-        .values({
-          tutorId: tutorProfile.id,
-          levelId: parseInt(levelId),
-          createdAt: new Date()
-        });
+        .values(levelValues);
     }
     
-    // Get the complete tutor profile with related data
-    const completeProfile = await db.query.tutorProfiles.findFirst({
-      where: eq(schema.tutorProfiles.id, tutorProfile.id),
-      with: {
-        subjects: {
-          with: {
-            subject: true
-          }
-        },
-        educationLevels: {
-          with: {
-            level: true
-          }
-        }
-      }
-    });
-    
-    // Transform to include subject and level objects directly
-    const transformedProfile = {
-      ...completeProfile,
-      subjects: completeProfile?.subjects.map(ts => ts.subject) || [],
-      educationLevels: completeProfile?.educationLevels.map(tel => tel.level) || []
-    };
+    // Update user role to tutor
+    await db.update(schema.users)
+      .set({ role: 'tutor' })
+      .where(eq(schema.users.id, userId));
     
     return res.status(201).json({
       message: "Tutor profile created successfully",
-      profile: transformedProfile
+      profile: tutorProfile
     });
   } catch (error) {
     if (error instanceof ZodError) {
@@ -590,102 +610,64 @@ export const updateTutorProfile = async (req: Request, res: Response) => {
     
     // Get existing tutor profile
     const existingProfile = await db.query.tutorProfiles.findFirst({
-      where: eq(schema.tutorProfiles.userId, userId)
+      where: eq(schema.tutorProfiles.user_id, userId),
+      with: {
+        subjects: true,
+        levels: true
+      }
     });
     
     if (!existingProfile) {
       return res.status(404).json({ message: "Tutor profile not found" });
     }
     
-    // Validate profile data
-    const profileData = schema.tutorProfileInsertSchema.partial().parse({
+    // Validate update data
+    const updateData = schema.tutorProfileInsertSchema.partial().parse({
       ...req.body,
-      userId
+      user_id: userId
     });
-    
-    // Check if subjects and education levels are provided
-    if (req.body.subjects && (!Array.isArray(req.body.subjects) || req.body.subjects.length === 0)) {
-      return res.status(400).json({ message: "At least one subject is required" });
-    }
-    
-    if (req.body.educationLevels && (!Array.isArray(req.body.educationLevels) || req.body.educationLevels.length === 0)) {
-      return res.status(400).json({ message: "At least one education level is required" });
-    }
     
     // Update tutor profile
     const [updatedProfile] = await db.update(schema.tutorProfiles)
-      .set({
-        bio: profileData.bio !== undefined ? profileData.bio : existingProfile.bio,
-        education: profileData.education !== undefined ? profileData.education : existingProfile.education,
-        experience: profileData.experience !== undefined ? profileData.experience : existingProfile.experience,
-        hourlyRate: profileData.hourlyRate !== undefined ? profileData.hourlyRate : existingProfile.hourlyRate,
-        teachingMode: profileData.teachingMode !== undefined ? profileData.teachingMode : existingProfile.teachingMode,
-        updatedAt: new Date()
-      })
+      .set(updateData)
       .where(eq(schema.tutorProfiles.id, existingProfile.id))
       .returning();
     
     // Update subjects if provided
-    if (req.body.subjects) {
-      // Delete existing subjects
+    if (req.body.subjects && Array.isArray(req.body.subjects)) {
+      // Delete existing subject associations
       await db.delete(schema.tutorSubjects)
-        .where(eq(schema.tutorSubjects.tutorId, existingProfile.id));
+        .where(eq(schema.tutorSubjects.tutor_id, existingProfile.id));
       
-      // Add new subjects
-      for (const subjectId of req.body.subjects) {
-        await db.insert(schema.tutorSubjects)
-          .values({
-            tutorId: existingProfile.id,
-            subjectId: parseInt(subjectId),
-            createdAt: new Date()
-          });
-      }
+      // Create new subject associations
+      const subjectValues = req.body.subjects.map((subjectId: string) => ({
+        tutor_id: existingProfile.id,
+        subject_id: parseInt(subjectId)
+      }));
+      
+      await db.insert(schema.tutorSubjects)
+        .values(subjectValues);
     }
     
     // Update education levels if provided
-    if (req.body.educationLevels) {
-      // Delete existing education levels
+    if (req.body.levels && Array.isArray(req.body.levels)) {
+      // Delete existing level associations
       await db.delete(schema.tutorEducationLevels)
-        .where(eq(schema.tutorEducationLevels.tutorId, existingProfile.id));
+        .where(eq(schema.tutorEducationLevels.tutor_id, existingProfile.id));
       
-      // Add new education levels
-      for (const levelId of req.body.educationLevels) {
-        await db.insert(schema.tutorEducationLevels)
-          .values({
-            tutorId: existingProfile.id,
-            levelId: parseInt(levelId),
-            createdAt: new Date()
-          });
-      }
+      // Create new level associations
+      const levelValues = req.body.levels.map((levelId: string) => ({
+        tutor_id: existingProfile.id,
+        level_id: parseInt(levelId)
+      }));
+      
+      await db.insert(schema.tutorEducationLevels)
+        .values(levelValues);
     }
-    
-    // Get the complete updated tutor profile with related data
-    const completeProfile = await db.query.tutorProfiles.findFirst({
-      where: eq(schema.tutorProfiles.id, updatedProfile.id),
-      with: {
-        subjects: {
-          with: {
-            subject: true
-          }
-        },
-        educationLevels: {
-          with: {
-            level: true
-          }
-        }
-      }
-    });
-    
-    // Transform to include subject and level objects directly
-    const transformedProfile = {
-      ...completeProfile,
-      subjects: completeProfile?.subjects.map(ts => ts.subject) || [],
-      educationLevels: completeProfile?.educationLevels.map(tel => tel.level) || []
-    };
     
     return res.status(200).json({
       message: "Tutor profile updated successfully",
-      profile: transformedProfile
+      profile: updatedProfile
     });
   } catch (error) {
     if (error instanceof ZodError) {
@@ -706,46 +688,42 @@ export const getOwnTutorProfile = async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
     
-    // Get basic tutor profile info
+    // Get tutor profile with details
     const tutorProfile = await db.query.tutorProfiles.findFirst({
-      where: eq(schema.tutorProfiles.userId, userId)
+      where: eq(schema.tutorProfiles.user_id, userId),
+      with: {
+        subjects: {
+          with: {
+            subject: true
+          }
+        },
+        levels: {
+          with: {
+            level: true
+          }
+        }
+      }
     });
     
     if (!tutorProfile) {
       return res.status(404).json({ message: "Tutor profile not found" });
     }
     
-    // Get subjects for this tutor
-    const tutorSubjectsData = await db.query.tutorSubjects.findMany({
-      where: eq(schema.tutorSubjects.tutorId, tutorProfile.id),
-      with: {
-        subject: true
-      }
-    });
-    
-    // Get education levels for this tutor
-    const tutorLevelsData = await db.query.tutorEducationLevels.findMany({
-      where: eq(schema.tutorEducationLevels.tutorId, tutorProfile.id),
-      with: {
-        level: true
-      }
-    });
-    
-    // Combine all data into a single response
-    const transformedProfile = {
+    // Format response
+    const formattedProfile = {
       ...tutorProfile,
-      subjects: tutorSubjectsData.map(ts => ts.subject),
-      educationLevels: tutorLevelsData.map(tel => tel.level)
+      subjects: tutorProfile.subjects.map(ts => ts.subject),
+      levels: tutorProfile.levels.map(tl => tl.level)
     };
     
-    return res.status(200).json(transformedProfile);
+    return res.status(200).json(formattedProfile);
   } catch (error) {
     console.error("Get own tutor profile error:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 };
 
-// Get tutor statistics
+// Get tutor stats
 export const getTutorStats = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.id;
@@ -756,19 +734,59 @@ export const getTutorStats = async (req: Request, res: Response) => {
     
     // Get tutor profile
     const tutorProfile = await db.query.tutorProfiles.findFirst({
-      where: eq(schema.tutorProfiles.userId, userId)
+      where: eq(schema.tutorProfiles.user_id, userId)
     });
     
     if (!tutorProfile) {
       return res.status(404).json({ message: "Tutor profile not found" });
     }
     
-    // This could be expanded with more detailed statistics from a separate analytics service or table
+    // Get active ads count
+    const activeAdsCount = await db.select({ count: sql<number>`count(*)` })
+      .from(schema.ads)
+      .where(
+        and(
+          eq(schema.ads.tutor_id, tutorProfile.id),
+          eq(schema.ads.status, "active")
+        )
+      );
+    
+    // Get total reviews count
+    const reviewsCount = await db.select({ count: sql<number>`count(*)` })
+      .from(schema.reviews)
+      .where(eq(schema.reviews.tutor_id, tutorProfile.id));
+    
+    // Get profile views (to be implemented with separate table)
+    const profileViews = 0; // Placeholder
+    
+    // Get active conversations count
+    const conversationsCount = await db.select({ count: sql<number>`count(*)` })
+      .from(schema.conversations)
+      .where(eq(schema.conversations.tutor_id, userId));
+    
+    // Get unread messages count
+    const unreadMessagesCount = await db.select({ count: sql<number>`count(*)` })
+      .from(schema.messages)
+      .innerJoin(
+        schema.conversations,
+        eq(schema.messages.conversation_id, schema.conversations.id)
+      )
+      .where(
+        and(
+          eq(schema.conversations.tutor_id, userId),
+          not(eq(schema.messages.sender_id, userId)),
+          eq(schema.messages.read, false)
+        )
+      );
+    
     const stats = {
-      profileViews: Math.floor(Math.random() * 100) + 20, // Mock data for profile views
-      totalStudents: Math.floor(Math.random() * 15), // Mock data for total students
-      averageRating: tutorProfile.rating,
-      completedLessons: Math.floor(Math.random() * 50), // Mock data for completed lessons
+      profile_status: tutorProfile.is_verified ? "Đã xác minh" : "Chờ xác minh",
+      active_ads: Number(activeAdsCount[0]?.count || 0),
+      reviews: Number(reviewsCount[0]?.count || 0),
+      average_rating: tutorProfile.average_rating,
+      profile_views: profileViews,
+      active_conversations: Number(conversationsCount[0]?.count || 0),
+      unread_messages: Number(unreadMessagesCount[0]?.count || 0)
     };
     
     return res.status(200).json(stats);
@@ -778,7 +796,7 @@ export const getTutorStats = async (req: Request, res: Response) => {
   }
 };
 
-// Get favorite tutors for student
+// Get favorite tutors
 export const getFavoriteTutors = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.id;
@@ -787,8 +805,9 @@ export const getFavoriteTutors = async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
     
-    // This would typically use a favorites or bookmarks table
-    // For now, return mock data or empty array
+    // Get favorite tutors (to be implemented)
+    // Placeholder implementation - will need a favorites table
+    
     return res.status(200).json([]);
   } catch (error) {
     console.error("Get favorite tutors error:", error);
@@ -796,45 +815,11 @@ export const getFavoriteTutors = async (req: Request, res: Response) => {
   }
 };
 
-// Add favorite tutor for student
+// Add favorite tutor
 export const addFavoriteTutor = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.id;
-    
-    if (!userId) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-    
-    // This would typically add to a favorites or bookmarks table
-    return res.status(200).json({ message: "Tutor added to favorites" });
-  } catch (error) {
-    console.error("Add favorite tutor error:", error);
-    return res.status(500).json({ message: "Internal server error" });
-  }
-};
-
-// Remove favorite tutor for student
-export const removeFavoriteTutor = async (req: Request, res: Response) => {
-  try {
-    const userId = req.user?.id;
-    
-    if (!userId) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-    
-    // This would typically remove from a favorites or bookmarks table
-    return res.status(200).json({ message: "Tutor removed from favorites" });
-  } catch (error) {
-    console.error("Remove favorite tutor error:", error);
-    return res.status(500).json({ message: "Internal server error" });
-  }
-};
-
-// Create review for tutor
-export const createReview = async (req: Request, res: Response) => {
-  try {
-    const userId = req.user?.id;
-    const tutorId = parseInt(req.params.tutorId);
+    const tutorId = parseInt(req.params.id);
     
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
@@ -853,42 +838,106 @@ export const createReview = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Tutor not found" });
     }
     
+    // Add to favorites (to be implemented)
+    // Placeholder implementation - will need a favorites table
+    
+    return res.status(200).json({ message: "Tutor added to favorites" });
+  } catch (error) {
+    console.error("Add favorite tutor error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// Remove favorite tutor
+export const removeFavoriteTutor = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const tutorId = parseInt(req.params.id);
+    
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    if (isNaN(tutorId)) {
+      return res.status(400).json({ message: "Invalid tutor ID" });
+    }
+    
+    // Remove from favorites (to be implemented)
+    // Placeholder implementation - will need a favorites table
+    
+    return res.status(200).json({ message: "Tutor removed from favorites" });
+  } catch (error) {
+    console.error("Remove favorite tutor error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// Create a review for a tutor
+export const createReview = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const tutorId = parseInt(req.params.id);
+    
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    if (isNaN(tutorId)) {
+      return res.status(400).json({ message: "Invalid tutor ID" });
+    }
+    
+    // Check if tutor exists
+    const tutor = await db.query.tutorProfiles.findFirst({
+      where: eq(schema.tutorProfiles.id, tutorId)
+    });
+    
+    if (!tutor) {
+      return res.status(404).json({ message: "Tutor not found" });
+    }
+    
+    // Check if user has already reviewed this tutor
+    const existingReview = await db.query.reviews.findFirst({
+      where: and(
+        eq(schema.reviews.student_id, userId),
+        eq(schema.reviews.tutor_id, tutorId)
+      )
+    });
+    
+    if (existingReview) {
+      return res.status(400).json({ message: "You have already reviewed this tutor" });
+    }
+    
     // Validate review data
     const reviewData = schema.reviewInsertSchema.parse({
-      ...req.body,
+      tutor_id: tutorId,
       student_id: userId,
-      tutor_id: tutorId
+      rating: req.body.rating,
+      comment: req.body.comment,
+      created_at: new Date()
     });
     
     // Create review
     const [review] = await db.insert(schema.reviews)
-      .values({
-        student_id: userId,
-        tutor_id: tutorId,
-        rating: reviewData.rating,
-        comment: reviewData.comment,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      })
+      .values(reviewData)
       .returning();
     
-    // Update tutor's average rating
-    const reviews = await db.query.reviews.findMany({
-      where: eq(schema.reviews.tutor_id, tutorId)
+    // Update tutor average rating
+    const allReviews = await db.query.reviews.findMany({
+      where: eq(schema.reviews.tutor_id, tutorId),
+      columns: {
+        rating: true
+      }
     });
     
-    const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
-    const averageRating = totalRating / reviews.length;
+    const totalRating = allReviews.reduce((sum, review) => sum + review.rating, 0);
+    const averageRating = totalRating / allReviews.length;
     
     await db.update(schema.tutorProfiles)
-      .set({
-        rating: averageRating,
-        totalReviews: reviews.length
-      })
+      .set({ average_rating: averageRating })
       .where(eq(schema.tutorProfiles.id, tutorId));
     
     return res.status(201).json({
-      message: "Review created successfully",
+      message: "Review submitted successfully",
       review
     });
   } catch (error) {
@@ -901,124 +950,69 @@ export const createReview = async (req: Request, res: Response) => {
   }
 };
 
-// Get tutor verification requests (admin)
+// Get tutor verification requests (admin only)
 export const getTutorVerifications = async (req: Request, res: Response) => {
   try {
-    const search = req.query.search as string || '';
-    const status = req.query.status as string || 'pending';
-    const page = parseInt(req.query.page as string || '1');
-    const pageSize = parseInt(req.query.pageSize as string || '10');
-    const offset = (page - 1) * pageSize;
-    
-    // Build query conditions
-    let conditions = [];
-    
-    // Add status condition
-    if (status === 'pending') {
-      conditions.push(eq(schema.tutorProfiles.isVerified, false));
-    } else if (status === 'approved') {
-      conditions.push(eq(schema.tutorProfiles.isVerified, true));
-    } else if (status === 'rejected') {
-      // This would require a status field which isn't in the current schema
-      // For now, we can use isVerified = false as approximation
-      conditions.push(eq(schema.tutorProfiles.isVerified, false));
-    }
-    
-    // Add search condition if provided
-    if (search) {
-      // We need to join with users table to search by name
-      const tutorsByName = await db.select({ id: schema.tutorProfiles.id })
-        .from(schema.tutorProfiles)
-        .innerJoin(schema.users, eq(schema.tutorProfiles.userId, schema.users.id))
-        .where(
-          or(
-            like(schema.users.firstName, `%${search}%`),
-            like(schema.users.lastName, `%${search}%`)
-          )
-        );
-      
-      if (tutorsByName.length > 0) {
-        conditions.push(inArray(schema.tutorProfiles.id, tutorsByName.map(t => t.id)));
-      } else {
-        // If no name matches, return empty result
-        return res.status(200).json({
-          tutors: [],
-          total: 0,
-          totalPages: 0,
-          currentPage: page
-        });
-      }
-    }
-    
-    // Get basic tutor profiles with filters and pagination
-    const tutors = await db.query.tutorProfiles.findMany({
-      where: conditions.length > 0 ? and(...conditions) : undefined,
+    // Get pending verification requests
+    const pendingTutors = await db.query.tutorProfiles.findMany({
+      where: and(
+        eq(schema.tutorProfiles.is_verified, false),
+        isNull(schema.tutorProfiles.rejection_reason)
+      ),
       with: {
         user: {
           columns: {
             id: true,
-            firstName: true,
-            lastName: true,
-            avatar: true
+            first_name: true,
+            last_name: true,
+            email: true,
+            avatar: true,
+            phone: true
+          }
+        },
+        subjects: {
+          with: {
+            subject: true
+          }
+        },
+        levels: {
+          with: {
+            level: true
           }
         }
-      },
-      limit: pageSize,
-      offset,
-      orderBy: desc(schema.tutorProfiles.createdAt)
+      }
     });
     
-    // Get details for each tutor separately to avoid relation inference issues
-    const transformedTutors = await Promise.all(tutors.map(async (tutor) => {
-      // Get subjects for this tutor
-      const tutorSubjectsData = await db.query.tutorSubjects.findMany({
-        where: eq(schema.tutorSubjects.tutorId, tutor.id),
-        with: {
-          subject: true
-        }
-      });
-      
-      // Get education levels for this tutor
-      const tutorLevelsData = await db.query.tutorEducationLevels.findMany({
-        where: eq(schema.tutorEducationLevels.tutorId, tutor.id),
-        with: {
-          level: true
-        }
-      });
-      
-      // Return tutor with related data
-      return {
-        ...tutor,
-        subjects: tutorSubjectsData.map(ts => ts.subject),
-        educationLevels: tutorLevelsData.map(tel => tel.level),
-        // Add a status field since we don't have one in the schema
-        status: tutor.isVerified ? "approved" : "pending"
-      };
+    // Format response
+    const formattedTutors = pendingTutors.map(tutor => ({
+      id: tutor.id,
+      bio: tutor.bio,
+      experience_years: tutor.experience_years,
+      education: tutor.education,
+      certifications: tutor.certifications,
+      created_at: tutor.created_at,
+      user: {
+        id: tutor.user.id,
+        name: `${tutor.user.first_name} ${tutor.user.last_name}`,
+        email: tutor.user.email,
+        avatar: tutor.user.avatar,
+        phone: tutor.user.phone
+      },
+      subjects: tutor.subjects.map(ts => ts.subject),
+      levels: tutor.levels.map(tl => tl.level)
     }));
     
-    // Get total count for pagination
-    const totalResult = await db.select({ count: sql<number>`count(*)` })
-      .from(schema.tutorProfiles)
-      .where(conditions.length > 0 ? and(...conditions) : undefined);
-    
-    const total = totalResult[0]?.count || 0;
-    
-    return res.status(200).json({
-      tutors: transformedTutors,
-      total,
-      totalPages: Math.ceil(total / pageSize),
-      currentPage: page
-    });
+    return res.status(200).json(formattedTutors);
   } catch (error) {
     console.error("Get tutor verifications error:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 };
 
-// Approve tutor verification
+// Approve tutor (admin only)
 export const approveTutor = async (req: Request, res: Response) => {
   try {
-    const tutorId = parseInt(req.params.tutorId);
+    const tutorId = parseInt(req.params.id);
     
     if (isNaN(tutorId)) {
       return res.status(400).json({ message: "Invalid tutor ID" });
@@ -1033,18 +1027,16 @@ export const approveTutor = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Tutor not found" });
     }
     
-    // Update tutor verification status
-    const [updatedTutor] = await db.update(schema.tutorProfiles)
+    // Update tutor to verified
+    await db.update(schema.tutorProfiles)
       .set({
-        isVerified: true,
-        updatedAt: new Date()
+        is_verified: true,
+        rejection_reason: null
       })
-      .where(eq(schema.tutorProfiles.id, tutorId))
-      .returning();
+      .where(eq(schema.tutorProfiles.id, tutorId));
     
     return res.status(200).json({
-      message: "Tutor approved successfully",
-      tutor: updatedTutor
+      message: "Tutor approved successfully"
     });
   } catch (error) {
     console.error("Approve tutor error:", error);
@@ -1052,13 +1044,18 @@ export const approveTutor = async (req: Request, res: Response) => {
   }
 };
 
-// Reject tutor verification
+// Reject tutor (admin only)
 export const rejectTutor = async (req: Request, res: Response) => {
   try {
-    const tutorId = parseInt(req.params.tutorId);
+    const tutorId = parseInt(req.params.id);
+    const { reason } = req.body;
     
     if (isNaN(tutorId)) {
       return res.status(400).json({ message: "Invalid tutor ID" });
+    }
+    
+    if (!reason) {
+      return res.status(400).json({ message: "Rejection reason is required" });
     }
     
     // Check if tutor exists
@@ -1070,19 +1067,16 @@ export const rejectTutor = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Tutor not found" });
     }
     
-    // Ideally, we would have a status field to set to "rejected"
-    // For now, we can just keep isVerified as false and add a rejectReason field in the future
-    const [updatedTutor] = await db.update(schema.tutorProfiles)
+    // Update tutor with rejection reason
+    await db.update(schema.tutorProfiles)
       .set({
-        isVerified: false,
-        updatedAt: new Date()
+        is_verified: false,
+        rejection_reason: reason
       })
-      .where(eq(schema.tutorProfiles.id, tutorId))
-      .returning();
+      .where(eq(schema.tutorProfiles.id, tutorId));
     
     return res.status(200).json({
-      message: "Tutor rejected successfully",
-      tutor: updatedTutor
+      message: "Tutor application rejected"
     });
   } catch (error) {
     console.error("Reject tutor error:", error);
