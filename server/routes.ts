@@ -57,7 +57,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const htmlContent = fs.readFileSync(path.join(process.cwd(), 'test-avatar-upload.html'), 'utf8');
       res.setHeader('Content-Type', 'text/html');
       res.send(htmlContent);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error serving test HTML:', error);
       res.status(500).send(`Error serving test page: ${error.message}`);
     }
