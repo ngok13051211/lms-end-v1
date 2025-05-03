@@ -77,8 +77,8 @@ export default function TutorDashboardProfile() {
         bio: tutorProfile.bio || "",
         education: tutorProfile.education || "",
         experience: tutorProfile.experience || "",
-        hourlyRate: tutorProfile.hourlyRate ? Number(tutorProfile.hourlyRate) : 10000,
-        teachingMode: (tutorProfile.teachingMode as "online" | "offline" | "both") || "online",
+        hourlyRate: tutorProfile.hourly_rate ? Number(tutorProfile.hourly_rate) : 10000,
+        teachingMode: (tutorProfile.teaching_mode as "online" | "offline" | "both") || "online",
       });
     } else {
       profileForm.reset({
@@ -339,7 +339,7 @@ export default function TutorDashboardProfile() {
                       <div>
                         <h3 className="font-medium mb-2">Cấp độ giảng dạy</h3>
                         <div className="flex flex-wrap gap-2">
-                          {tutorProfile.educationLevels?.map((level: any) => (
+                          {tutorProfile.levels?.map((level: any) => (
                             <Badge key={level.id} variant="outline">
                               {level.name}
                             </Badge>
@@ -355,7 +355,7 @@ export default function TutorDashboardProfile() {
                         {new Intl.NumberFormat('vi-VN', { 
                           style: 'currency', 
                           currency: 'VND' 
-                        }).format(Number(tutorProfile.hourlyRate))}
+                        }).format(Number(tutorProfile.hourly_rate))}
                         <span className="text-sm text-muted-foreground ml-1">/giờ</span>
                       </p>
                     </div>
@@ -363,11 +363,11 @@ export default function TutorDashboardProfile() {
                     <div className="mt-6">
                       <h3 className="font-medium mb-2">Hình thức dạy</h3>
                       <Badge>
-                        {tutorProfile.teachingMode && {
+                        {tutorProfile.teaching_mode && {
                           online: "Trực tuyến",
                           offline: "Tại chỗ",
                           both: "Cả hai"
-                        }[tutorProfile.teachingMode as 'online' | 'offline' | 'both'] || "Không xác định"}
+                        }[tutorProfile.teaching_mode as 'online' | 'offline' | 'both'] || "Không xác định"}
                       </Badge>
                     </div>
                   </>
