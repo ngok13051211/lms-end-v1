@@ -138,14 +138,14 @@ export default function TutorCard({ tutor, compact = false, isFavorite = false, 
                 {formatPrice(tutor.hourly_rate)}
                 <span className="text-xs text-muted-foreground">/giờ</span>
               </p>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-shrink-0">
                 {isFavorite && onRemoveFromFavorites && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button
                         variant="outline"
                         size="sm"
-                        className="flex items-center text-red-500 border-red-200 hover:bg-red-50 h-7 px-2"
+                        className="flex items-center text-red-500 border-red-200 hover:bg-red-50 h-7 px-2 whitespace-nowrap"
                       >
                         <HeartOff className="h-4 w-4 mr-1" />
                         Xóa
@@ -170,15 +170,14 @@ export default function TutorCard({ tutor, compact = false, isFavorite = false, 
                     </AlertDialogContent>
                   </AlertDialog>
                 )}
-                <Link href={`/tutors/${tutor.id}`}>
-                  <Button
-                    variant="default"
-                    size="sm"
-                    className="bg-primary text-white hover:bg-primary-dark h-7 px-2"
-                  >
-                    Xem
-                  </Button>
-                </Link>
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="bg-primary text-white hover:bg-primary-dark h-7 px-2 whitespace-nowrap"
+                  onClick={() => window.location.href = `/tutors/${tutor.id}`}
+                >
+                  Xem
+                </Button>
               </div>
             </div>
           </div>
@@ -255,13 +254,13 @@ export default function TutorCard({ tutor, compact = false, isFavorite = false, 
             </span>
             <span className="text-muted-foreground text-sm">/giờ</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             {isFavorite && onRemoveFromFavorites && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button
                     variant="outline"
-                    className="flex items-center text-red-500 border-red-200 hover:bg-red-50"
+                    className="flex items-center text-red-500 border-red-200 hover:bg-red-50 whitespace-nowrap"
                   >
                     <HeartOff className="h-4 w-4 mr-1" />
                     Xóa khỏi yêu thích
@@ -286,14 +285,13 @@ export default function TutorCard({ tutor, compact = false, isFavorite = false, 
                 </AlertDialogContent>
               </AlertDialog>
             )}
-            <Link href={`/tutors/${tutor.id}`}>
-              <Button
-                variant="default"
-                className="bg-primary text-white hover:bg-primary-dark"
-              >
-                Xem chi tiết
-              </Button>
-            </Link>
+            <Button
+              variant="default"
+              className="bg-primary text-white hover:bg-primary-dark whitespace-nowrap"
+              onClick={() => window.location.href = `/tutors/${tutor.id}`}
+            >
+              Xem chi tiết
+            </Button>
           </div>
         </div>
       </div>
