@@ -71,7 +71,8 @@ export const register = async (req: Request, res: Response) => {
     
     return res.status(201).json({
       message: "User registered successfully",
-      user: newUser
+      user: newUser,
+      token // Send token to client for storage in localStorage
     });
   } catch (error) {
     if (error instanceof ZodError) {
