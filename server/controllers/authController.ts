@@ -38,21 +38,21 @@ export const register = async (req: Request, res: Response) => {
         username: userData.username,
         email: userData.email,
         password: hashedPassword,
-        firstName: userData.firstName,
-        lastName: userData.lastName,
+        first_name: userData.first_name,
+        last_name: userData.last_name,
         role: userData.role,
-        createdAt: new Date(),
-        updatedAt: new Date()
+        created_at: new Date(),
+        updated_at: new Date()
       })
       .returning({
         id: schema.users.id,
         username: schema.users.username,
         email: schema.users.email,
-        firstName: schema.users.firstName,
-        lastName: schema.users.lastName,
+        first_name: schema.users.first_name,
+        last_name: schema.users.last_name,
         role: schema.users.role,
         avatar: schema.users.avatar,
-        createdAt: schema.users.createdAt,
+        created_at: schema.users.created_at,
       });
     
     // Generate JWT token
@@ -180,11 +180,11 @@ export const updateProfile = async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
     
-    // Update only allowed fields (firstName, lastName)
+    // Update only allowed fields (first_name, last_name)
     const updates = {
-      firstName: req.body.firstName,
-      lastName: req.body.lastName,
-      updatedAt: new Date()
+      first_name: req.body.first_name,
+      last_name: req.body.last_name,
+      updated_at: new Date()
     };
     
     const [updatedUser] = await db.update(schema.users)
@@ -194,12 +194,12 @@ export const updateProfile = async (req: Request, res: Response) => {
         id: schema.users.id,
         username: schema.users.username,
         email: schema.users.email,
-        firstName: schema.users.firstName,
-        lastName: schema.users.lastName,
+        first_name: schema.users.first_name,
+        last_name: schema.users.last_name,
         role: schema.users.role,
         avatar: schema.users.avatar,
-        createdAt: schema.users.createdAt,
-        updatedAt: schema.users.updatedAt
+        created_at: schema.users.created_at,
+        updated_at: schema.users.updated_at
       });
     
     return res.status(200).json({
@@ -232,7 +232,7 @@ export const updateAvatar = async (req: Request, res: Response) => {
     const [updatedUser] = await db.update(schema.users)
       .set({
         avatar: avatarUrl,
-        updatedAt: new Date()
+        updated_at: new Date()
       })
       .where(eq(schema.users.id, userId))
       .returning({
@@ -266,8 +266,8 @@ export const getUsers = async (req: Request, res: Response) => {
     if (search) {
       conditions.push(
         or(
-          like(schema.users.firstName, `%${search}%`),
-          like(schema.users.lastName, `%${search}%`),
+          like(schema.users.first_name, `%${search}%`),
+          like(schema.users.last_name, `%${search}%`),
           like(schema.users.email, `%${search}%`),
           like(schema.users.username, `%${search}%`)
         )
@@ -289,7 +289,7 @@ export const getUsers = async (req: Request, res: Response) => {
       where: whereClause,
       limit: pageSize,
       offset,
-      orderBy: desc(schema.users.createdAt)
+      orderBy: desc(schema.users.created_at)
     });
     
     // Get total count for pagination
@@ -323,12 +323,12 @@ export const getAdminStats = async (req: Request, res: Response) => {
     
     // Count verified tutors
     const verifiedTutorsResult = await db.select({ count: count() }).from(schema.tutorProfiles)
-      .where(eq(schema.tutorProfiles.isVerified, true));
+      .where(eq(schema.tutorProfiles.is_verified, true));
     const verifiedTutors = verifiedTutorsResult[0].count || 0;
     
     // Count pending verifications
     const pendingVerificationsResult = await db.select({ count: count() }).from(schema.tutorProfiles)
-      .where(eq(schema.tutorProfiles.isVerified, false));
+      .where(eq(schema.tutorProfiles.is_verified, false));
     const pendingVerifications = pendingVerificationsResult[0].count || 0;
     
     // Count users by role
