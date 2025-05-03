@@ -198,7 +198,7 @@ export const getTutors = async (req: Request, res: Response) => {
         }
       },
       orderBy: [
-        desc(schema.tutorProfiles.average_rating),
+        desc(schema.tutorProfiles.rating),
         desc(schema.tutorProfiles.created_at)
       ],
       limit,
@@ -208,11 +208,11 @@ export const getTutors = async (req: Request, res: Response) => {
     // Calculate average rating for each tutor based on reviews
     const tutorsWithRating = tutors.map(tutor => {
       const reviews = tutor.reviews || [];
-      const totalReviews = reviews.length;
+      const total_reviews = reviews.length;
       
       return {
         ...tutor,
-        totalReviews,
+        total_reviews,
         subjects: tutor.subjects.map(ts => ts.subject),
         levels: tutor.levels.map(tl => tl.level)
       };
@@ -221,8 +221,8 @@ export const getTutors = async (req: Request, res: Response) => {
     return res.status(200).json({
       tutors: tutorsWithRating,
       total,
-      totalPages,
-      currentPage: page
+      total_pages: totalPages,
+      current_page: page
     });
   } catch (error) {
     console.error("Get tutors error:", error);
@@ -516,8 +516,8 @@ export const getTutorReviews = async (req: Request, res: Response) => {
     return res.status(200).json({
       reviews: formattedReviews,
       total,
-      totalPages,
-      currentPage: page
+      total_pages: totalPages,
+      current_page: page
     });
   } catch (error) {
     console.error("Get tutor reviews error:", error);
