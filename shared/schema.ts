@@ -254,7 +254,10 @@ export const loginSchema = z.object({
 export const userInsertSchema = createInsertSchema(users);
 export const userSelectSchema = createSelectSchema(users);
 
-export const tutorProfileInsertSchema = createInsertSchema(tutorProfiles);
+export const tutorProfileInsertSchema = createInsertSchema(tutorProfiles, {
+  // Add validation rules
+  hourly_rate: (schema) => schema.transform(val => val.toString()),
+});
 export const tutorProfileSelectSchema = createSelectSchema(tutorProfiles);
 
 export const adInsertSchema = createInsertSchema(ads);

@@ -85,8 +85,8 @@ export default function BecomeTutor() {
         "/api/v1/tutors/profile",
         {
           ...data,
-          subjects: selectedSubjects,
-          levels: selectedLevels,
+          subject_ids: selectedSubjects,
+          level_ids: selectedLevels,
         }
       );
       return response.json();
