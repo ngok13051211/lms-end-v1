@@ -55,6 +55,7 @@ export default function TutorDashboard() {
   const { data: tutorProfile, isLoading: profileLoading, error: profileError, refetch: refetchTutorProfile } = useQuery({
     queryKey: [`/api/v1/tutors/profile`],
     retry: false, // Don't retry on error
+    refetchInterval: 3000, // Refetch every 3 seconds to keep data fresh
   });
 
   // Only load other data if profile exists
@@ -96,8 +97,8 @@ export default function TutorDashboard() {
       bio: tutorProfile?.bio || "",
       education: tutorProfile?.education || "",
       experience: tutorProfile?.experience || "",
-      hourlyRate: tutorProfile?.hourlyRate ? Number(tutorProfile.hourlyRate) : 0,
-      teachingMode: tutorProfile?.teachingMode || "online",
+      hourlyRate: tutorProfile?.hourly_rate ? Number(tutorProfile.hourly_rate) : 0,
+      teachingMode: tutorProfile?.teaching_mode || "online",
     },
   });
   
@@ -109,8 +110,8 @@ export default function TutorDashboard() {
       description: "",
       subjectId: "",
       levelId: "",
-      hourlyRate: tutorProfile?.hourlyRate ? Number(tutorProfile.hourlyRate) : 0,
-      teachingMode: tutorProfile?.teachingMode || "online",
+      hourlyRate: tutorProfile?.hourly_rate ? Number(tutorProfile.hourly_rate) : 0,
+      teachingMode: tutorProfile?.teaching_mode || "online",
     },
   });
   
@@ -218,8 +219,8 @@ export default function TutorDashboard() {
           bio: tutorProfile.bio || "",
           education: tutorProfile.education || "",
           experience: tutorProfile.experience || "",
-          hourlyRate: Number(tutorProfile.hourlyRate) || 0,
-          teachingMode: tutorProfile.teachingMode || "online",
+          hourlyRate: Number(tutorProfile.hourly_rate) || 0,
+          teachingMode: tutorProfile.teaching_mode || "online",
         });
         
         // Set selected subjects and levels
