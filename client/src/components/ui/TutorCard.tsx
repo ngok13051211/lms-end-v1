@@ -9,7 +9,9 @@ import { TutorProfile } from "@shared/schema";
 
 interface FeaturedTutorUser {
   id: number;
-  name: string;
+  name?: string;
+  first_name?: string;
+  last_name?: string;
   avatar: string;
 }
 
@@ -34,10 +36,16 @@ interface FeaturedTutor {
   subjects: FeaturedTutorSubject[];
   is_featured?: boolean;
   education?: string;
+  availability?: string;
+}
+
+interface ExtendedTutorProfile extends TutorProfile {
+  subjects?: any[];
+  user?: any;
 }
 
 interface TutorCardProps {
-  tutor: TutorProfile | FeaturedTutor;
+  tutor: ExtendedTutorProfile | FeaturedTutor;
   compact?: boolean;
 }
 
@@ -54,7 +62,7 @@ export default function TutorCard({ tutor, compact = false }: TutorCardProps) {
     if ('user' in tutor && tutor.user) {
       if ('name' in tutor.user) {
         return tutor.user.name;
-      } else if ('first_name' in tutor.user && 'last_name' in tutor.user) {
+      } else if (tutor.user.first_name && tutor.user.last_name) {
         return `${tutor.user.first_name} ${tutor.user.last_name}`;
       }
     }
