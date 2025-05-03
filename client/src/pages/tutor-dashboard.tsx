@@ -16,11 +16,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
-import { Loader2, PlusCircle, Edit, Trash2, Upload, AlertCircle, ChevronRight, UserCircle, BookOpen, MessageSquare, BadgeCheck, DollarSign, Star } from "lucide-react";
+import { Loader2, PlusCircle, Edit, Trash2, Upload, AlertCircle, ChevronRight, UserCircle, BookOpen, MessageSquare, BadgeCheck, DollarSign, Star, FileText, Check } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { CheckboxGroup, CheckboxItem } from "@/components/ui/checkbox-group";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 
 // Form schema for tutor profile
@@ -52,32 +52,41 @@ export default function TutorDashboard() {
   const [adDialogOpen, setAdDialogOpen] = useState(false);
   
   // Get tutor profile
-  const { data: tutorProfile, isLoading: profileLoading } = useQuery({
+  const { data: tutorProfile, isLoading: profileLoading, error: profileError } = useQuery({
     queryKey: [`/api/v1/tutors/profile`],
+    retry: false, // Don't retry on error
   });
 
-  // Get subjects and education levels
+  // Only load other data if profile exists
+  const hasProfile = !!tutorProfile && !profileError;
+
+  // Get subjects and education levels for profile editing
   const { data: subjects } = useQuery({
     queryKey: [`/api/v1/subjects`],
+    enabled: true, // Always fetch subjects for profile creation
   });
   
   const { data: educationLevels } = useQuery({
     queryKey: [`/api/v1/education-levels`],
+    enabled: true, // Always fetch education levels for profile creation
   });
   
   // Get tutor's ads
   const { data: ads, isLoading: adsLoading } = useQuery({
     queryKey: [`/api/v1/tutors/ads`],
+    enabled: hasProfile, // Only fetch if profile exists
   });
   
   // Get all conversations
   const { data: conversations, isLoading: conversationsLoading } = useQuery({
     queryKey: [`/api/v1/conversations`],
+    enabled: hasProfile, // Only fetch if profile exists
   });
   
   // Get tutor's stats
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: [`/api/v1/tutors/stats`],
+    enabled: hasProfile, // Only fetch if profile exists
   });
 
   // Tutor profile form
@@ -217,6 +226,101 @@ export default function TutorDashboard() {
   
   const isLoading = profileLoading || adsLoading || conversationsLoading || statsLoading;
   
+  // Show complete profile notice if no tutor profile
+  if (profileError && profileError.message === "Invalid tutor ID") {
+    return (
+      <DashboardLayout>
+        <div className="p-6 max-w-7xl mx-auto">
+          <div className="mb-8">
+            <h1 className="text-2xl font-medium mb-4">Complete Your Tutor Profile</h1>
+            <Alert className="mb-8">
+              <AlertCircle className="h-5 w-5" />
+              <AlertTitle>Profile Required</AlertTitle>
+              <AlertDescription>
+                You've registered as a tutor, but you need to complete your profile before students can find you.
+                Please fill out your profile information to start teaching.
+              </AlertDescription>
+            </Alert>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>Complete Your Tutor Profile</CardTitle>
+                <CardDescription>
+                  Tell students about yourself, your teaching style, and your expertise
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button onClick={handleOpenProfileDialog} className="w-full sm:w-auto">
+                  <FileText className="mr-2 h-4 w-4" />
+                  Create Your Profile
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Why Complete Your Profile?</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-2">
+                  <li className="flex items-start">
+                    <Check className="mr-2 h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                    <span>Be discovered by students looking for tutors in your subjects</span>
+                  </li>
+                  <li className="flex items-start">
+                    <Check className="mr-2 h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                    <span>Create teaching ads for specific subjects and levels</span>
+                  </li>
+                  <li className="flex items-start">
+                    <Check className="mr-2 h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                    <span>Receive messages and inquiries from interested students</span>
+                  </li>
+                  <li className="flex items-start">
+                    <Check className="mr-2 h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                    <span>Build your reputation through ratings and reviews</span>
+                  </li>
+                </ul>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>Profile Review Process</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ol className="relative border-l border-gray-200 dark:border-gray-700 ml-3 space-y-6">
+                  <li className="mb-6 ml-6">
+                    <span className="absolute flex items-center justify-center w-8 h-8 bg-primary rounded-full -left-4 ring-4 ring-white dark:ring-gray-900 text-white">
+                      1
+                    </span>
+                    <h3 className="mb-1 text-lg font-semibold">Create Profile</h3>
+                    <p className="text-sm text-muted-foreground">Fill out your profile information completely</p>
+                  </li>
+                  <li className="mb-6 ml-6">
+                    <span className="absolute flex items-center justify-center w-8 h-8 bg-primary/70 rounded-full -left-4 ring-4 ring-white dark:ring-gray-900 text-white">
+                      2
+                    </span>
+                    <h3 className="mb-1 text-lg font-semibold">Admin Review</h3>
+                    <p className="text-sm text-muted-foreground">Our team will review your profile</p>
+                  </li>
+                  <li className="ml-6">
+                    <span className="absolute flex items-center justify-center w-8 h-8 bg-primary/50 rounded-full -left-4 ring-4 ring-white dark:ring-gray-900 text-white">
+                      3
+                    </span>
+                    <h3 className="mb-1 text-lg font-semibold">Start Teaching</h3>
+                    <p className="text-sm text-muted-foreground">Once approved, you can create ads and teach students</p>
+                  </li>
+                </ol>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   if (isLoading) {
     return (
       <DashboardLayout>
@@ -240,7 +344,7 @@ export default function TutorDashboard() {
           </div>
           
           {!tutorProfile && (
-            <Alert variant="warning" className="mt-4 md:mt-0 md:w-auto">
+            <Alert className="mt-4 md:mt-0 md:w-auto">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
                 Please complete your tutor profile to start receiving student inquiries.
