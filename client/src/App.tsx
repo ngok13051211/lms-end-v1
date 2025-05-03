@@ -17,9 +17,20 @@ import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { loadUser } from "@/features/auth/authSlice";
 import { RootState } from "./store";
+import { Loader2 } from "lucide-react";
 
 function Router() {
-  const { user } = useSelector((state: RootState) => state.auth);
+  const { user, isLoading } = useSelector((state: RootState) => state.auth);
+  
+  // Show loading spinner during authentication check
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <span className="ml-2 text-xl">Loading...</span>
+      </div>
+    );
+  }
 
   return (
     <Switch>
