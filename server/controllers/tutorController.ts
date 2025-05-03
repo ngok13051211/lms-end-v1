@@ -265,7 +265,7 @@ export const getFeaturedTutors = async (req: Request, res: Response) => {
       bio: tutor.bio,
       hourly_rate: tutor.hourly_rate,
       teaching_mode: tutor.teaching_mode,
-      average_rating: tutor.average_rating,
+      rating: tutor.rating,
       user: {
         id: tutor.user.id,
         name: `${tutor.user.first_name} ${tutor.user.last_name}`,

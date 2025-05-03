@@ -20,18 +20,18 @@ export const users = pgTable("users", {
 // Tutor Profile Model
 export const tutorProfiles = pgTable("tutor_profiles", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
+  user_id: integer("user_id").notNull().references(() => users.id),
   bio: text("bio").notNull(),
   education: text("education").notNull(),
   experience: text("experience").notNull(),
-  hourlyRate: decimal("hourly_rate", { precision: 10, scale: 2 }).notNull(),
-  teachingMode: text("teaching_mode").notNull(), // "online", "offline", "both"
-  isVerified: boolean("is_verified").default(false),
-  isFeatured: boolean("is_featured").default(false),
+  hourly_rate: decimal("hourly_rate", { precision: 10, scale: 2 }).notNull(),
+  teaching_mode: text("teaching_mode").notNull(), // "online", "offline", "both"
+  is_verified: boolean("is_verified").default(false),
+  is_featured: boolean("is_featured").default(false),
   rating: decimal("rating", { precision: 3, scale: 2 }).default("0.0"),
-  totalReviews: integer("total_reviews").default(0),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  total_reviews: integer("total_reviews").default(0),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
 // Subject Categories Model
@@ -131,7 +131,7 @@ export const testimonials = pgTable("testimonials", {
 export const usersRelations = relations(users, ({ one, many }) => ({
   tutorProfile: one(tutorProfiles, {
     fields: [users.id],
-    references: [tutorProfiles.userId],
+    references: [tutorProfiles.user_id],
   }),
   sentMessages: many(messages, {
     fields: [users.id],
@@ -153,7 +153,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
 
 export const tutorProfilesRelations = relations(tutorProfiles, ({ one, many }) => ({
   user: one(users, {
-    fields: [tutorProfiles.userId],
+    fields: [tutorProfiles.user_id],
     references: [users.id],
   }),
   subjects: many(tutorSubjects, {
