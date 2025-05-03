@@ -96,15 +96,16 @@ export default function TutorDashboardProfile() {
     mutationFn: async (data: z.infer<typeof tutorProfileSchema>) => {
       const method = tutorProfile ? "PATCH" : "POST";
       
-      // Combine form data with selected subjects and levels
-      // Convert camelCase form fields to snake_case for API
-      // Ensure hourly_rate is below 100 million to avoid numeric overflow
+      // Limit hourly_rate to avoid numeric overflow (PostgreSQL decimal precision limit)
       const hourlyRate = data.hourlyRate > 99999999 ? 99999999 : data.hourlyRate;
       
+      // Build request data with snake_case field names for the API
+      // Make sure experience_years is included as numeric value or undefined
       const completeData = {
         bio: data.bio,
         education: data.education,
         experience: data.experience,
+        experience_years: tutorProfile?.experience_years || undefined,
         hourly_rate: hourlyRate,
         teaching_mode: data.teachingMode,
         subject_ids: selectedSubjects,
@@ -116,10 +117,16 @@ export default function TutorDashboardProfile() {
       const res = await apiRequest(method, `/api/v1/tutors/profile`, completeData);
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log("Profile updated successfully:", data);
       queryClient.invalidateQueries({ queryKey: [`/api/v1/tutors/profile`] });
       setProfileDialogOpen(false);
+      // Force reload to ensure all data is properly refreshed
+      window.location.reload();
     },
+    onError: (error) => {
+      console.error("Profile update error:", error);
+    }
   });
 
   // Update avatar
