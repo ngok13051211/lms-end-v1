@@ -15,11 +15,11 @@ async function seed() {
         username: "admin",
         email: "admin@homitutor.vn",
         password: adminPassword,
-        firstName: "Admin",
-        lastName: "User",
+        first_name: "Admin",
+        last_name: "User",
         role: "admin",
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        created_at: new Date(),
+        updated_at: new Date(),
       })
       .returning()
       .onConflictDoNothing();
@@ -43,9 +43,9 @@ async function seed() {
           name: subject.name,
           description: subject.description,
           icon: subject.icon,
-          tutorCount: Math.floor(Math.random() * 200),
-          createdAt: new Date(),
-          updatedAt: new Date(),
+          tutor_count: Math.floor(Math.random() * 200),
+          created_at: new Date(),
+          updated_at: new Date(),
         })
         .onConflictDoNothing();
     }
@@ -65,8 +65,8 @@ async function seed() {
         .values({
           name: level.name,
           description: level.description,
-          createdAt: new Date(),
-          updatedAt: new Date(),
+          created_at: new Date(),
+          updated_at: new Date(),
         })
         .onConflictDoNothing();
     }
@@ -110,7 +110,7 @@ async function seed() {
           comment: testimonial.comment,
           avatar: testimonial.avatar,
           is_featured: true,
-          createdAt: new Date()
+          created_at: new Date()
         })
         .onConflictDoNothing();
     }
@@ -182,12 +182,12 @@ async function seed() {
           username: faker.internet.userName({ firstName: profile.firstName, lastName: profile.lastName }).toLowerCase(),
           email: faker.internet.email({ firstName: profile.firstName, lastName: profile.lastName }).toLowerCase(),
           password: password,
-          firstName: profile.firstName,
-          lastName: profile.lastName,
+          first_name: profile.firstName,
+          last_name: profile.lastName,
           role: "tutor",
           avatar: profile.avatar,
-          createdAt: new Date(),
-          updatedAt: new Date(),
+          created_at: new Date(),
+          updated_at: new Date(),
         })
         .returning()
         .onConflictDoNothing();
@@ -245,16 +245,16 @@ async function seed() {
           await db
             .insert(schema.ads)
             .values({
-              tutorId: tutorProfile.id,
+              tutor_id: tutorProfile.id,
               title: `Dạy ${subjects[profile.subjectIndices[0]].name} cho học sinh ${educationLevels[profile.levelIndices[0]].name}`,
               description: `Tôi cung cấp các buổi học ${subjects[profile.subjectIndices[0]].name} chất lượng cao dành cho học sinh ${educationLevels[profile.levelIndices[0]].name}. Phương pháp giảng dạy tập trung vào xây dựng nền tảng vững chắc và giải quyết bài tập thực tế.`,
-              subjectId: subjects[profile.subjectIndices[0]].id,
-              levelId: educationLevels[profile.levelIndices[0]].id,
-              hourlyRate: profile.hourlyRate,
-              teachingMode: profile.teachingMode,
+              subject_id: subjects[profile.subjectIndices[0]].id,
+              level_id: educationLevels[profile.levelIndices[0]].id,
+              hourly_rate: profile.hourlyRate.toString(),
+              teaching_mode: profile.teachingMode,
               status: "active",
-              createdAt: new Date(),
-              updatedAt: new Date(),
+              created_at: new Date(),
+              updated_at: new Date(),
             })
             .onConflictDoNothing();
         }
@@ -273,12 +273,12 @@ async function seed() {
           username: faker.internet.userName({ firstName, lastName }).toLowerCase(),
           email: faker.internet.email({ firstName, lastName }).toLowerCase(),
           password: password,
-          firstName,
-          lastName,
+          first_name: firstName,
+          last_name: lastName,
           role: "student",
           avatar: faker.image.avatar(),
-          createdAt: new Date(),
-          updatedAt: new Date(),
+          created_at: new Date(),
+          updated_at: new Date(),
         })
         .onConflictDoNothing();
     }
