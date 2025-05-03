@@ -115,6 +115,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Student-specific routes
   app.get(`${apiPrefix}/students/favorite-tutors`, authMiddleware, roleMiddleware(["student"]), tutorController.getFavoriteTutors);
+  app.get(`${apiPrefix}/students/favorite-tutors/check/:id`, authMiddleware, roleMiddleware(["student"]), tutorController.checkFavoriteTutor);
   app.post(`${apiPrefix}/students/favorite-tutors/:id`, authMiddleware, roleMiddleware(["student"]), tutorController.addFavoriteTutor);
   app.delete(`${apiPrefix}/students/favorite-tutors/:id`, authMiddleware, roleMiddleware(["student"]), tutorController.removeFavoriteTutor);
   app.post(`${apiPrefix}/tutors/:id/reviews`, authMiddleware, roleMiddleware(["student"]), tutorController.createReview);

@@ -1170,6 +1170,38 @@ export const removeFavoriteTutor = async (req: Request, res: Response) => {
     console.error("Remove favorite tutor error:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
+}
+
+// Check if a tutor is in favorites
+export const checkFavoriteTutor = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const tutorId = parseInt(req.params.id);
+    
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    if (isNaN(tutorId)) {
+      return res.status(400).json({ message: "Invalid tutor ID" });
+    }
+    
+    // Check if tutor is in favorites
+    const favorite = await db.query.favoriteTutors.findFirst({
+      where: and(
+        eq(schema.favoriteTutors.student_id, userId),
+        eq(schema.favoriteTutors.tutor_id, tutorId)
+      )
+    });
+    
+    return res.status(200).json({ 
+      isFavorite: !!favorite,
+      favoriteId: favorite ? favorite.id : null
+    });
+  } catch (error) {
+    console.error("Check favorite tutor error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
 };
 
 // Create a review for a tutor
