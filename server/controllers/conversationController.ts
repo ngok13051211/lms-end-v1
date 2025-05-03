@@ -95,7 +95,7 @@ export const getConversations = async (req: Request, res: Response) => {
     if (userRole === "student") {
       // Get student's conversations
       conversations = await db.query.conversations.findMany({
-        where: eq(schema.conversations.studentId, userId),
+        where: eq(schema.conversations.student_id, userId),
         with: {
           tutor: {
             columns: {
@@ -115,7 +115,7 @@ export const getConversations = async (req: Request, res: Response) => {
     } else if (userRole === "tutor") {
       // Get tutor's conversations
       conversations = await db.query.conversations.findMany({
-        where: eq(schema.conversations.tutorId, userId),
+        where: eq(schema.conversations.tutor_id, userId),
         with: {
           student: {
             columns: {
