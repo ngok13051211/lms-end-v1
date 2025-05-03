@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { updateAvatar } from "@/features/auth/authSlice";
 import { RootState } from "@/store";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -276,7 +277,25 @@ export default function TutorDashboard() {
         throw new Error(`Upload failed with status: ${response.status}. ${errorText}`);
       }
       
-      // Update both user data and tutor profile data
+      // Lấy phản hồi từ server để cập nhật avatar ngay lập tức
+      const responseData = await response.json();
+      console.log("Upload response data:", responseData);
+      
+      // Cập nhật store với avatar mới
+      if (responseData.user && responseData.user.avatar) {
+        // Cập nhật user trong redux store để hiển thị avatar mới ngay lập tức
+        // Lưu ý: Đây là cách giải pháp tạm thời, cách tốt nhất là refetch dữ liệu
+        const authStore = useSelector((state: RootState) => state.auth);
+        if (authStore && authStore.user) {
+          // Cập nhật user trong redux store
+          authStore.user.avatar = responseData.user.avatar;
+        }
+      }
+      
+      // Thực hiện refetch ngay lập tức để lấy dữ liệu mới nhất
+      await refetchTutorProfile();
+      
+      // Invalidate cả query cache để các phần khác của ứng dụng cũng được cập nhật
       queryClient.invalidateQueries({ queryKey: [`/api/v1/auth/me`] });
       queryClient.invalidateQueries({ queryKey: [`/api/v1/tutors/profile`] });
       
