@@ -74,7 +74,16 @@ export default function TutorDashboardAds() {
   // Create ad
   const createAdMutation = useMutation({
     mutationFn: async (data: z.infer<typeof adSchema>) => {
-      const res = await apiRequest("POST", `/api/v1/tutors/ads`, data);
+      // Chuyển đổi kiểu dữ liệu cho phù hợp với API
+      const formattedData = {
+        ...data,
+        subject_id: data.subject_id ? parseInt(data.subject_id) : undefined,
+        level_id: data.level_id ? parseInt(data.level_id) : undefined,
+        hourly_rate: data.hourly_rate ? data.hourly_rate.toString() : undefined,
+      };
+      
+      console.log("Sending data to API:", formattedData);
+      const res = await apiRequest("POST", `/api/v1/tutors/ads`, formattedData);
       return res.json();
     },
     onSuccess: () => {
@@ -87,6 +96,7 @@ export default function TutorDashboardAds() {
       });
     },
     onError: (error: any) => {
+      console.error("Ad creation error:", error);
       toast({
         title: "Error creating ad",
         description: error.message || "Something went wrong",
@@ -98,7 +108,16 @@ export default function TutorDashboardAds() {
   // Update ad
   const updateAdMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: z.infer<typeof adSchema> }) => {
-      const res = await apiRequest("PATCH", `/api/v1/tutors/ads/${id}`, data);
+      // Chuyển đổi kiểu dữ liệu cho phù hợp với API
+      const formattedData = {
+        ...data,
+        subject_id: data.subject_id ? parseInt(data.subject_id) : undefined,
+        level_id: data.level_id ? parseInt(data.level_id) : undefined,
+        hourly_rate: data.hourly_rate ? data.hourly_rate.toString() : undefined,
+      };
+      
+      console.log("Updating ad with data:", formattedData);
+      const res = await apiRequest("PATCH", `/api/v1/tutors/ads/${id}`, formattedData);
       return res.json();
     },
     onSuccess: () => {
@@ -112,6 +131,7 @@ export default function TutorDashboardAds() {
       });
     },
     onError: (error: any) => {
+      console.error("Ad update error:", error);
       toast({
         title: "Error updating ad",
         description: error.message || "Something went wrong",
@@ -487,6 +507,31 @@ export default function TutorDashboardAds() {
                   )}
                 />
               </div>
+              
+              <FormField
+                control={adForm.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Trạng thái</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Chọn trạng thái" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="active">Đang hiển thị</SelectItem>
+                        <SelectItem value="inactive">Không hiển thị</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      Chọn "Đang hiển thị" để thông báo được hiển thị cho học viên
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               
               <DialogFooter>
                 <Button 
