@@ -229,7 +229,7 @@ export default function TutorDashboard() {
         );
         
         setSelectedLevels(
-          tutorProfile.educationLevels?.map(level => level.id.toString()) || []
+          tutorProfile.levels?.map(level => level.id.toString()) || []
         );
       } else {
         // Reset form for new profile with empty values
@@ -528,7 +528,7 @@ export default function TutorDashboard() {
                               {new Intl.NumberFormat('vi-VN', { 
                                 style: 'currency', 
                                 currency: 'VND'
-                              }).format(Number(tutorProfile.hourlyRate))}{" "}
+                              }).format(Number(tutorProfile.hourly_rate))}{" "}
                               <span className="text-sm font-normal text-muted-foreground">/hour</span>
                             </p>
                           </div>
@@ -538,8 +538,8 @@ export default function TutorDashboard() {
                               Teaching Mode
                             </h3>
                             <p className="text-base capitalize">
-                              {tutorProfile.teachingMode === "online" ? "Online" : 
-                              tutorProfile.teachingMode === "offline" ? "In-person" : 
+                              {tutorProfile.teaching_mode === "online" ? "Online" : 
+                              tutorProfile.teaching_mode === "offline" ? "In-person" : 
                               "Online & In-person"}
                             </p>
                           </div>
@@ -549,7 +549,7 @@ export default function TutorDashboard() {
                               Verification Status
                             </h3>
                             <div className="flex items-center">
-                              {tutorProfile.isVerified ? (
+                              {tutorProfile.is_verified ? (
                                 <>
                                   <BadgeCheck className="h-4 w-4 text-success mr-1" />
                                   <span className="text-success">Verified</span>
@@ -595,12 +595,12 @@ export default function TutorDashboard() {
                             Education Levels
                           </h3>
                           <div className="flex flex-wrap gap-2">
-                            {tutorProfile.educationLevels?.map((level) => (
+                            {tutorProfile.levels?.map((level) => (
                               <Badge key={level.id} variant="outline">
                                 {level.name}
                               </Badge>
                             ))}
-                            {(tutorProfile.educationLevels?.length || 0) === 0 && (
+                            {(tutorProfile.levels?.length || 0) === 0 && (
                               <span className="text-muted-foreground">No education levels added</span>
                             )}
                           </div>
