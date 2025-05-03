@@ -40,18 +40,18 @@ export default function TutorDashboardProfile() {
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   
   // Get tutor profile
-  const { data: tutorProfile, isLoading: profileLoading, error: profileError, refetch: refetchTutorProfile } = useQuery({
+  const { data: tutorProfile, isLoading: profileLoading, error: profileError, refetch: refetchTutorProfile } = useQuery<any>({
     queryKey: [`/api/v1/tutors/profile`],
     retry: false, // Don't retry on error
   });
 
   // Get subjects and education levels for profile editing
-  const { data: subjects } = useQuery({
+  const { data: subjects = [] } = useQuery<any[]>({
     queryKey: [`/api/v1/subjects`],
     enabled: true, // Always fetch subjects for profile creation
   });
   
-  const { data: educationLevels } = useQuery({
+  const { data: educationLevels = [] } = useQuery<any[]>({
     queryKey: [`/api/v1/education-levels`],
     enabled: true, // Always fetch education levels for profile creation
   });
@@ -179,9 +179,9 @@ export default function TutorDashboardProfile() {
             <div className="flex flex-col md:flex-row gap-6">
               <div className="flex flex-col items-center">
                 <Avatar className="h-32 w-32 mb-4">
-                  <AvatarImage src={user?.avatar} alt={user?.firstName} />
+                  <AvatarImage src={user?.avatar} alt={user?.first_name} />
                   <AvatarFallback className="text-2xl">
-                    {user?.firstName?.[0]}{user?.lastName?.[0]}
+                    {user?.first_name?.[0]}{user?.last_name?.[0]}
                   </AvatarFallback>
                 </Avatar>
                 
@@ -217,7 +217,7 @@ export default function TutorDashboardProfile() {
                 <div className="flex flex-col md:flex-row justify-between">
                   <div>
                     <h2 className="text-xl font-medium">
-                      {user?.firstName} {user?.lastName}
+                      {user?.first_name} {user?.last_name}
                     </h2>
                     <p className="text-muted-foreground">{user?.email}</p>
                     
