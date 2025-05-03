@@ -9,6 +9,12 @@ interface AuthState {
   error: string | null;
 }
 
+interface ProfileUpdateData {
+  first_name?: string;
+  last_name?: string;
+  // Có thể thêm các trường khác ở đây nếu cần
+}
+
 const initialState: AuthState = {
   user: null,
   isLoading: false,
@@ -74,6 +80,18 @@ export const authSlice = createSlice({
         state.user.avatar = action.payload;
       }
     },
+    updateUserProfile: (state, action: PayloadAction<ProfileUpdateData>) => {
+      if (state.user) {
+        state.user = {
+          ...state.user,
+          ...action.payload,
+        };
+      }
+    },
+    // Action để cập nhật toàn bộ user object
+    setUser: (state, action: PayloadAction<User>) => {
+      state.user = action.payload;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -125,5 +143,5 @@ export const authSlice = createSlice({
   },
 });
 
-export const { reset, updateAvatar } = authSlice.actions;
+export const { reset, updateAvatar, updateUserProfile, setUser } = authSlice.actions;
 export default authSlice.reducer;
