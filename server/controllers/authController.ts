@@ -210,16 +210,22 @@ export const updateProfile = async (req: Request, res: Response) => {
 // Update user avatar
 export const updateAvatar = async (req: Request, res: Response) => {
   try {
+    console.log("updateAvatar controller called");
+    
     const userId = req.user?.id;
     
     if (!userId) {
+      console.log("Unauthorized - no user ID in request");
       return res.status(401).json({ message: "Unauthorized" });
     }
     
     // Get uploaded avatar URL from Cloudinary (set by the upload middleware)
     const avatarUrl = req.body.avatarUrl;
     
+    console.log("Avatar URL from middleware:", avatarUrl);
+    
     if (!avatarUrl) {
+      console.log("No avatar URL provided in request body");
       return res.status(400).json({ message: "No avatar provided" });
     }
     
@@ -229,10 +235,13 @@ export const updateAvatar = async (req: Request, res: Response) => {
       columns: { avatar: true }
     });
     
+    console.log("Current user avatar:", currentUser?.avatar);
+    
     // Here we could add code to delete the previous avatar from Cloudinary
     // if it exists and was uploaded to Cloudinary (starts with cloudinary URL)
     // using deleteFromCloudinary function
     
+    console.log("Updating user avatar in database");
     // Update user's avatar
     const [updatedUser] = await db.update(schema.users)
       .set({
@@ -245,13 +254,15 @@ export const updateAvatar = async (req: Request, res: Response) => {
         avatar: schema.users.avatar
       });
     
+    console.log("User avatar updated successfully:", updatedUser);
+    
     return res.status(200).json({
       message: "Avatar updated successfully",
       avatar: updatedUser.avatar
     });
   } catch (error) {
     console.error("Update avatar error:", error);
-    return res.status(500).json({ message: "Internal server error" });
+    return res.status(500).json({ message: "Internal server error", error });
   }
 };
 

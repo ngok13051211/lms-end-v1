@@ -28,16 +28,25 @@ const upload = multer({
 
 // Upload avatar middleware
 const uploadAvatar = (req: Request, res: Response, next: NextFunction) => {
+  console.log("Avatar upload middleware started");
+  
+  // Log request information
+  console.log("Request headers:", req.headers);
+  console.log("Request method:", req.method);
+  console.log("Content-Type:", req.headers['content-type']);
+  
   const avatarUpload = upload.single("avatar");
 
   avatarUpload(req, res, async (err) => {
     if (err instanceof multer.MulterError) {
       // A Multer error occurred when uploading
+      console.error("Multer error:", err);
       return res.status(400).json({
         message: `Upload error: ${err.message}`,
       });
     } else if (err) {
       // An unknown error occurred
+      console.error("Unknown upload error:", err);
       return res.status(400).json({
         message: err.message || "Error uploading file",
       });
@@ -45,15 +54,30 @@ const uploadAvatar = (req: Request, res: Response, next: NextFunction) => {
     
     // If no file is uploaded, just continue
     if (!req.file) {
-      console.log("No file uploaded");
-      return next();
+      console.log("No file uploaded in request");
+      return res.status(400).json({
+        message: "No file uploaded in request"
+      });
     }
     
+    // Log file information
+    console.log("File received:", {
+      fieldname: req.file.fieldname,
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+      path: req.file.path
+    });
+    
     try {
+      console.log("Uploading to Cloudinary...");
       // Upload to Cloudinary
       const cloudinaryResult = await uploadToCloudinary(req.file.path, 'homitutor/avatars');
       
+      console.log("Cloudinary result:", cloudinaryResult);
+      
       if (!cloudinaryResult.success) {
+        console.error("Cloudinary upload failed:", cloudinaryResult.error);
         return res.status(500).json({
           message: "Error uploading to Cloudinary",
           error: cloudinaryResult.error
@@ -64,6 +88,7 @@ const uploadAvatar = (req: Request, res: Response, next: NextFunction) => {
       req.body.avatarUrl = cloudinaryResult.url;
       req.body.avatarPublicId = cloudinaryResult.public_id;
       
+      console.log("Avatar upload successful. URL:", cloudinaryResult.url);
       next();
     } catch (error) {
       console.error("Avatar upload error:", error);
