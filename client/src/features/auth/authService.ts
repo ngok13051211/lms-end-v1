@@ -2,13 +2,23 @@ import { User } from "@shared/schema";
 
 // Register user
 const register = async (userData: any): Promise<User> => {
+  // Transform camelCase to snake_case for backend compatibility
+  const transformedData = {
+    username: userData.username,
+    email: userData.email,
+    password: userData.password,
+    first_name: userData.firstName,
+    last_name: userData.lastName,
+    role: userData.role
+  };
+
   const response = await fetch("/api/v1/auth/register", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     credentials: "include",
-    body: JSON.stringify(userData),
+    body: JSON.stringify(transformedData),
   });
 
   if (!response.ok) {
