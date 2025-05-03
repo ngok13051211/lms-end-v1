@@ -717,11 +717,16 @@ export const updateTutorProfile = async (req: Request, res: Response) => {
       user_id: userId
     });
     
+    // Log the data being sent to the update operation
+    console.log("Updating tutor profile with data:", updateData);
+    
     // Update tutor profile
     const [updatedProfile] = await db.update(schema.tutorProfiles)
       .set(updateData)
       .where(eq(schema.tutorProfiles.id, existingProfile.id))
       .returning();
+      
+    console.log("Updated profile:", updatedProfile);
     
     // Update subjects if provided
     if (req.body.subject_ids && Array.isArray(req.body.subject_ids)) {
@@ -806,6 +811,8 @@ export const getOwnTutorProfile = async (req: Request, res: Response) => {
       subjects: tutorProfile.subjects.map(ts => ts.subject),
       levels: tutorProfile.levels.map(tl => tl.level)
     };
+    
+    console.log("Formatted profile for frontend:", formattedProfile);
     
     return res.status(200).json(formattedProfile);
   } catch (error) {
