@@ -9,12 +9,12 @@ export const users = pgTable("users", {
   username: text("username").notNull().unique(),
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
-  firstName: text("first_name").notNull(),
-  lastName: text("last_name").notNull(),
+  first_name: text("first_name").notNull(),
+  last_name: text("last_name").notNull(),
   role: text("role").notNull().default("student"), // "student", "tutor", "admin"
   avatar: text("avatar"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
 // Tutor Profile Model
@@ -40,9 +40,9 @@ export const subjects = pgTable("subjects", {
   name: text("name").notNull().unique(),
   description: text("description"),
   icon: text("icon"),
-  tutorCount: integer("tutor_count").default(0),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  tutor_count: integer("tutor_count").default(0),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
 // Education Levels Model
@@ -50,8 +50,8 @@ export const educationLevels = pgTable("education_levels", {
   id: serial("id").primaryKey(),
   name: text("name").notNull().unique(),
   description: text("description"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
 // Tutor-Subject Many-to-Many Relationship
@@ -90,8 +90,8 @@ export const conversations = pgTable("conversations", {
   id: serial("id").primaryKey(),
   student_id: integer("student_id").notNull().references(() => users.id),
   tutor_id: integer("tutor_id").notNull().references(() => users.id),
-  lastMessageAt: timestamp("last_message_at").defaultNow().notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  last_message_at: timestamp("last_message_at").defaultNow().notNull(),
+  created_at: timestamp("created_at").defaultNow().notNull(),
 });
 
 // Messages Model
@@ -101,7 +101,7 @@ export const messages = pgTable("messages", {
   sender_id: integer("sender_id").notNull().references(() => users.id),
   content: text("content").notNull(),
   read: boolean("read").default(false),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  created_at: timestamp("created_at").defaultNow().notNull(),
 });
 
 // Reviews Model
@@ -111,8 +111,8 @@ export const reviews = pgTable("reviews", {
   tutor_id: integer("tutor_id").notNull().references(() => tutorProfiles.id),
   rating: integer("rating").notNull(),
   comment: text("comment"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
 // Testimonials Model (Featured reviews to display on homepage)
@@ -124,7 +124,7 @@ export const testimonials = pgTable("testimonials", {
   comment: text("comment").notNull(),
   avatar: text("avatar"),
   is_featured: boolean("is_featured").default(true),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  created_at: timestamp("created_at").defaultNow().notNull(),
 });
 
 // Define relations
@@ -249,8 +249,8 @@ export const registerSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
   email: z.string().email("Please enter a valid email"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  firstName: z.string().min(2, "First name is required"),
-  lastName: z.string().min(2, "Last name is required"),
+  first_name: z.string().min(2, "First name is required"),
+  last_name: z.string().min(2, "Last name is required"),
   role: z.enum(["student", "tutor", "admin"]).default("student"),
 });
 
