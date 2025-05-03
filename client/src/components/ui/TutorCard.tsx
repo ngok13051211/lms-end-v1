@@ -6,8 +6,37 @@ import { Button } from "@/components/ui/button";
 import { Star } from "lucide-react";
 import { TutorProfile } from "@shared/schema";
 
+interface FeaturedTutorUser {
+  id: number;
+  name: string;
+  avatar: string;
+}
+
+interface FeaturedTutorSubject {
+  id: number;
+  name: string;
+  description: string;
+  icon: string;
+  tutor_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+interface FeaturedTutor {
+  id: number;
+  user_id: number;
+  bio: string;
+  hourly_rate: string;
+  teaching_mode: string;
+  rating: string;
+  user: FeaturedTutorUser;
+  subjects: FeaturedTutorSubject[];
+  is_featured?: boolean;
+  education?: string;
+}
+
 interface TutorCardProps {
-  tutor: TutorProfile;
+  tutor: TutorProfile | FeaturedTutor;
   compact?: boolean;
 }
 
@@ -19,24 +48,49 @@ export default function TutorCard({ tutor, compact = false }: TutorCardProps) {
     }).format(Number(price));
   };
 
+  // Helper function to determine tutor name
+  const getTutorName = () => {
+    if ('user' in tutor && tutor.user) {
+      if ('name' in tutor.user) {
+        return tutor.user.name;
+      } else if ('first_name' in tutor.user && 'last_name' in tutor.user) {
+        return `${tutor.user.first_name} ${tutor.user.last_name}`;
+      }
+    }
+    return "Tutor";
+  };
+
+  // Helper function to get tutor avatar
+  const getTutorAvatar = () => {
+    if ('user' in tutor && tutor.user) {
+      return tutor.user.avatar;
+    }
+    return "";
+  };
+
+  // Helper function to get avatar fallback
+  const getAvatarFallback = () => {
+    const name = getTutorName();
+    return name ? name[0] : "T";
+  };
+
   if (compact) {
     return (
       <Card className="hover-rise">
         <div className="p-4 flex items-center gap-4">
           <Avatar className="h-12 w-12">
             <AvatarImage
-              src={tutor.user?.avatar}
-              alt={tutor.user?.first_name}
+              src={getTutorAvatar()}
+              alt={getTutorName()}
             />
             <AvatarFallback>
-              {tutor.user?.first_name?.[0]}
-              {tutor.user?.last_name?.[0]}
+              {getAvatarFallback()}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between">
               <h3 className="font-medium truncate">
-                {tutor.user?.first_name} {tutor.user?.last_name}
+                {getTutorName()}
               </h3>
               <div className="flex items-center ml-2 shrink-0">
                 <Star className="h-4 w-4 text-warning fill-warning" />
@@ -44,7 +98,7 @@ export default function TutorCard({ tutor, compact = false }: TutorCardProps) {
               </div>
             </div>
             <p className="text-sm text-muted-foreground truncate">
-              {tutor.education}
+              {tutor.education || ''}
             </p>
             <div className="flex items-center justify-between mt-1">
               <p className="text-secondary font-medium text-sm">
@@ -72,10 +126,10 @@ export default function TutorCard({ tutor, compact = false }: TutorCardProps) {
       <div className="relative h-48 rounded-t-lg overflow-hidden">
         <img
           src={
-            tutor.user?.avatar ||
-            `https://ui-avatars.com/api/?name=${tutor.user?.name || ''}&background=random`
+            getTutorAvatar() ||
+            `https://ui-avatars.com/api/?name=${encodeURIComponent(getTutorName())}&background=random`
           }
-          alt={tutor.user?.name || "Tutor"}
+          alt={getTutorName()}
           className="w-full h-full object-cover"
         />
         {tutor.is_featured && (
@@ -87,16 +141,16 @@ export default function TutorCard({ tutor, compact = false }: TutorCardProps) {
       <div className="p-4 flex-1 flex flex-col">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-medium text-lg">
-            {tutor.user?.first_name} {tutor.user?.last_name}
+            {getTutorName()}
           </h3>
           <div className="flex items-center">
             <Star className="h-4 w-4 text-warning fill-warning" />
             <span className="text-sm ml-1">{tutor.rating}</span>
           </div>
         </div>
-        <p className="text-muted-foreground text-sm mb-3">{tutor.education}</p>
+        <p className="text-muted-foreground text-sm mb-3">{tutor.bio || tutor.education || ''}</p>
         <div className="flex flex-wrap gap-2 mb-4">
-          {tutor.subjects?.slice(0, 3).map((subject) => (
+          {tutor.subjects && Array.isArray(tutor.subjects) && tutor.subjects.slice(0, 3).map((subject: any) => (
             <Badge
               key={subject.id}
               className="bg-primary-light/20 text-primary-dark hover:bg-primary-light/30"
