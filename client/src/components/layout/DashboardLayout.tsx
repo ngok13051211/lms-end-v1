@@ -21,6 +21,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useDispatch } from "react-redux";
 import { logout } from "@/features/auth/authSlice";
 import { useMobile } from "@/hooks/use-mobile";
+import { queryClient } from "@/lib/queryClient";
 
 interface DashboardLayoutProps {
   children: ReactNode;
