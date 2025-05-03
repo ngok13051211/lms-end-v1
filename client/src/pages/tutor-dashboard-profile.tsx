@@ -64,7 +64,7 @@ export default function TutorDashboardProfile() {
       education: tutorProfile?.education || "",
       experience: tutorProfile?.experience || "",
       hourlyRate: tutorProfile?.hourlyRate ? Number(tutorProfile.hourlyRate) : 0,
-      teachingMode: tutorProfile?.teachingMode || "online",
+      teachingMode: (tutorProfile?.teachingMode as "online" | "offline" | "both") || "online",
     },
   });
 
@@ -179,9 +179,9 @@ export default function TutorDashboardProfile() {
             <div className="flex flex-col md:flex-row gap-6">
               <div className="flex flex-col items-center">
                 <Avatar className="h-32 w-32 mb-4">
-                  <AvatarImage src={user?.avatar} alt={user?.first_name} />
+                  <AvatarImage src={user?.avatar || undefined} alt={user?.first_name || "User"} />
                   <AvatarFallback className="text-2xl">
-                    {user?.first_name?.[0]}{user?.last_name?.[0]}
+                    {(user?.first_name?.[0] || "") + (user?.last_name?.[0] || "")}
                   </AvatarFallback>
                 </Avatar>
                 
@@ -227,7 +227,9 @@ export default function TutorDashboardProfile() {
                       </Badge>
                       {tutorProfile?.rating && (
                         <Badge variant="outline" className="bg-yellow-50">
-                          ★ {tutorProfile.rating.toFixed(1)} ({tutorProfile.totalReviews})
+                          ★ {typeof tutorProfile.rating === 'number' 
+                              ? tutorProfile.rating.toFixed(1) 
+                              : tutorProfile.rating} ({tutorProfile.totalReviews || 0})
                         </Badge>
                       )}
                     </div>
@@ -283,11 +285,11 @@ export default function TutorDashboardProfile() {
                     <div className="mt-6">
                       <h3 className="font-medium mb-2">Hình thức dạy</h3>
                       <Badge>
-                        {{
+                        {tutorProfile.teachingMode && {
                           online: "Trực tuyến",
                           offline: "Tại chỗ",
                           both: "Cả hai"
-                        }[tutorProfile.teachingMode]}
+                        }[tutorProfile.teachingMode as 'online' | 'offline' | 'both'] || "Không xác định"}
                       </Badge>
                     </div>
                   </>
