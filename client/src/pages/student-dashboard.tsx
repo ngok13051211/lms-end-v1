@@ -47,8 +47,8 @@ export default function StudentDashboard() {
   const form = useForm<z.infer<typeof profileSchema>>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      firstName: user?.firstName || "",
-      lastName: user?.lastName || "",
+      firstName: user?.first_name || "",
+      lastName: user?.last_name || "",
       email: user?.email || "",
     },
   });
@@ -103,7 +103,7 @@ export default function StudentDashboard() {
       <DashboardLayout>
         <div className="flex items-center justify-center min-h-[60vh]">
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          <span className="ml-2 text-xl">Loading dashboard...</span>
+          <span className="ml-2 text-xl">Đang tải bảng điều khiển...</span>
         </div>
       </DashboardLayout>
     );
@@ -190,9 +190,9 @@ export default function StudentDashboard() {
                   <div>
                     <div className="flex flex-col items-center">
                       <Avatar className="h-32 w-32 mb-4">
-                        <AvatarImage src={user?.avatar} alt={user?.firstName} />
+                        <AvatarImage src={user?.avatar} alt={user?.first_name} />
                         <AvatarFallback className="text-3xl">
-                          {user?.firstName?.[0]}{user?.lastName?.[0]}
+                          {user?.first_name?.[0]}{user?.last_name?.[0]}
                         </AvatarFallback>
                       </Avatar>
                       
@@ -359,16 +359,16 @@ export default function StudentDashboard() {
                       <Link key={conversation.id} href={`/dashboard/student/messages/${conversation.id}`}>
                         <a className="flex items-center p-4 border rounded-lg hover:border-primary transition-colors">
                           <Avatar className="h-10 w-10">
-                            <AvatarImage src={conversation.tutor?.avatar} alt={conversation.tutor?.firstName} />
+                            <AvatarImage src={conversation.tutor?.avatar} alt={conversation.tutor?.first_name} />
                             <AvatarFallback>
-                              {conversation.tutor?.firstName?.[0]}{conversation.tutor?.lastName?.[0]}
+                              {conversation.tutor?.first_name?.[0]}{conversation.tutor?.last_name?.[0]}
                             </AvatarFallback>
                           </Avatar>
                           
                           <div className="ml-4 flex-1">
                             <div className="flex items-center justify-between">
                               <h4 className="font-medium">
-                                {conversation.tutor?.firstName} {conversation.tutor?.lastName}
+                                {conversation.tutor?.first_name} {conversation.tutor?.last_name}
                               </h4>
                               <span className="text-sm text-muted-foreground">
                                 {new Date(conversation.lastMessageAt).toLocaleDateString()}
