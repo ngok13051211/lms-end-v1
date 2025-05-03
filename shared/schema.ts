@@ -132,6 +132,26 @@ export const testimonials = pgTable("testimonials", {
   created_at: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Favorite Tutors Model
+export const favoriteTutors = pgTable("favorite_tutors", {
+  id: serial("id").primaryKey(),
+  student_id: integer("student_id").notNull().references(() => users.id),
+  tutor_id: integer("tutor_id").notNull().references(() => tutorProfiles.id),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Relations for favorite tutors
+export const favoriteTutorsRelations = relations(favoriteTutors, ({ one }) => ({
+  student: one(users, {
+    fields: [favoriteTutors.student_id],
+    references: [users.id],
+  }),
+  tutor: one(tutorProfiles, {
+    fields: [favoriteTutors.tutor_id],
+    references: [tutorProfiles.id],
+  }),
+}));
+
 // Define relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   tutorProfile: one(tutorProfiles, {
@@ -142,6 +162,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   studentConversations: many(conversations),
   tutorConversations: many(conversations),
   reviews: many(reviews),
+  favoriteTutors: many(favoriteTutors),
 }));
 
 export const tutorProfilesRelations = relations(tutorProfiles, ({ one, many }) => ({
@@ -153,6 +174,7 @@ export const tutorProfilesRelations = relations(tutorProfiles, ({ one, many }) =
   levels: many(tutorEducationLevels),
   ads: many(ads),
   reviews: many(reviews),
+  favoritedBy: many(favoriteTutors),
 }));
 
 export const tutorSubjectsRelations = relations(tutorSubjects, ({ one }) => ({
