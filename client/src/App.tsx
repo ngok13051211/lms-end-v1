@@ -11,6 +11,7 @@ import TutorListing from "@/pages/tutor-listing";
 import TutorDashboard from "@/pages/tutor-dashboard";
 import StudentDashboard from "@/pages/student-dashboard";
 import AdminDashboard from "@/pages/admin-dashboard";
+import BecomeTutor from "@/pages/become-tutor";
 import PrivateRoute from "@/components/auth/PrivateRoute";
 import { useEffect } from "react";
 import { useDispatch } from "react-redux";
@@ -24,6 +25,11 @@ function Router() {
       <Route path="/register" component={Register} />
       <Route path="/tutors" component={TutorListing} />
       <Route path="/tutors/:id" component={TutorProfile} />
+      <Route path="/become-tutor" component={BecomeTutor} />
+      
+      <Route path="/tutor-dashboard">
+        <PrivateRoute role="tutor" component={TutorDashboard} />
+      </Route>
       
       <Route path="/dashboard/tutor">
         <PrivateRoute role="tutor" component={TutorDashboard} />
