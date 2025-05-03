@@ -115,15 +115,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Student-specific routes
   app.get(`${apiPrefix}/students/favorite-tutors`, authMiddleware, roleMiddleware(["student"]), tutorController.getFavoriteTutors);
-  app.post(`${apiPrefix}/students/favorite-tutors/:tutorId`, authMiddleware, roleMiddleware(["student"]), tutorController.addFavoriteTutor);
-  app.delete(`${apiPrefix}/students/favorite-tutors/:tutorId`, authMiddleware, roleMiddleware(["student"]), tutorController.removeFavoriteTutor);
-  app.post(`${apiPrefix}/tutors/:tutorId/reviews`, authMiddleware, roleMiddleware(["student"]), tutorController.createReview);
+  app.post(`${apiPrefix}/students/favorite-tutors/:id`, authMiddleware, roleMiddleware(["student"]), tutorController.addFavoriteTutor);
+  app.delete(`${apiPrefix}/students/favorite-tutors/:id`, authMiddleware, roleMiddleware(["student"]), tutorController.removeFavoriteTutor);
+  app.post(`${apiPrefix}/tutors/:id/reviews`, authMiddleware, roleMiddleware(["student"]), tutorController.createReview);
 
   // Admin routes
   app.get(`${apiPrefix}/admin/users`, authMiddleware, roleMiddleware(["admin"]), authController.getUsers);
   app.get(`${apiPrefix}/admin/tutors/verification`, authMiddleware, roleMiddleware(["admin"]), tutorController.getTutorVerifications);
-  app.patch(`${apiPrefix}/admin/tutors/:tutorId/approve`, authMiddleware, roleMiddleware(["admin"]), tutorController.approveTutor);
-  app.patch(`${apiPrefix}/admin/tutors/:tutorId/reject`, authMiddleware, roleMiddleware(["admin"]), tutorController.rejectTutor);
+  app.patch(`${apiPrefix}/admin/tutors/:id/approve`, authMiddleware, roleMiddleware(["admin"]), tutorController.approveTutor);
+  app.patch(`${apiPrefix}/admin/tutors/:id/reject`, authMiddleware, roleMiddleware(["admin"]), tutorController.rejectTutor);
   app.get(`${apiPrefix}/admin/stats`, authMiddleware, roleMiddleware(["admin"]), authController.getAdminStats);
 
   return httpServer;

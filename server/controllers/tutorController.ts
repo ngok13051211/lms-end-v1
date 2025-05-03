@@ -986,10 +986,52 @@ export const getFavoriteTutors = async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
     
-    // Get favorite tutors (to be implemented)
-    // Placeholder implementation - will need a favorites table
+    // Get favorite tutors with tutor profile information
+    const favorites = await db.query.favoriteTutors.findMany({
+      where: eq(schema.favoriteTutors.student_id, userId),
+      with: {
+        tutor: {
+          with: {
+            user: true,
+            subjects: {
+              with: {
+                subject: true
+              }
+            }
+          }
+        }
+      }
+    });
     
-    return res.status(200).json([]);
+    // Format the result to include the information needed for the UI
+    const formattedFavorites = favorites.map(favorite => {
+      const tutor = favorite.tutor;
+      
+      return {
+        id: tutor.id,
+        user_id: tutor.user_id,
+        bio: tutor.bio,
+        education: tutor.education,
+        experience: tutor.experience,
+        hourly_rate: tutor.hourly_rate,
+        teaching_mode: tutor.teaching_mode,
+        rating: tutor.rating,
+        favorite_id: favorite.id,
+        created_at: favorite.created_at,
+        user: {
+          id: tutor.user.id,
+          first_name: tutor.user.first_name,
+          last_name: tutor.user.last_name,
+          avatar: tutor.user.avatar,
+        },
+        subjects: tutor.subjects.map(s => ({
+          id: s.subject.id,
+          name: s.subject.name
+        }))
+      };
+    });
+    
+    return res.status(200).json(formattedFavorites);
   } catch (error) {
     console.error("Get favorite tutors error:", error);
     return res.status(500).json({ message: "Internal server error" });
@@ -1019,10 +1061,71 @@ export const addFavoriteTutor = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Tutor not found" });
     }
     
-    // Add to favorites (to be implemented)
-    // Placeholder implementation - will need a favorites table
+    // Check if tutor is already in favorites
+    const existingFavorite = await db.query.favoriteTutors.findFirst({
+      where: and(
+        eq(schema.favoriteTutors.student_id, userId),
+        eq(schema.favoriteTutors.tutor_id, tutorId)
+      )
+    });
     
-    return res.status(200).json({ message: "Tutor added to favorites" });
+    if (existingFavorite) {
+      return res.status(400).json({ message: "Tutor is already in favorites" });
+    }
+    
+    // Add to favorites
+    const [favorite] = await db.insert(schema.favoriteTutors)
+      .values({
+        student_id: userId,
+        tutor_id: tutorId,
+        created_at: new Date()
+      })
+      .returning();
+    
+    // Get complete tutor information to return to the client
+    const tutorWithDetails = await db.query.tutorProfiles.findFirst({
+      where: eq(schema.tutorProfiles.id, tutorId),
+      with: {
+        user: true,
+        subjects: {
+          with: {
+            subject: true
+          }
+        }
+      }
+    });
+    
+    if (!tutorWithDetails) {
+      return res.status(500).json({ message: "Failed to retrieve tutor details" });
+    }
+    
+    const formattedTutor = {
+      id: tutorWithDetails.id,
+      user_id: tutorWithDetails.user_id,
+      bio: tutorWithDetails.bio,
+      education: tutorWithDetails.education,
+      experience: tutorWithDetails.experience,
+      hourly_rate: tutorWithDetails.hourly_rate,
+      teaching_mode: tutorWithDetails.teaching_mode,
+      rating: tutorWithDetails.rating,
+      favorite_id: favorite.id,
+      created_at: favorite.created_at,
+      user: {
+        id: tutorWithDetails.user.id,
+        first_name: tutorWithDetails.user.first_name,
+        last_name: tutorWithDetails.user.last_name,
+        avatar: tutorWithDetails.user.avatar,
+      },
+      subjects: tutorWithDetails.subjects.map(s => ({
+        id: s.subject.id,
+        name: s.subject.name
+      }))
+    };
+    
+    return res.status(201).json({
+      message: "Tutor added to favorites",
+      tutor: formattedTutor
+    });
   } catch (error) {
     console.error("Add favorite tutor error:", error);
     return res.status(500).json({ message: "Internal server error" });
@@ -1043,10 +1146,26 @@ export const removeFavoriteTutor = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Invalid tutor ID" });
     }
     
-    // Remove from favorites (to be implemented)
-    // Placeholder implementation - will need a favorites table
+    // Find the favorite entry
+    const favorite = await db.query.favoriteTutors.findFirst({
+      where: and(
+        eq(schema.favoriteTutors.student_id, userId),
+        eq(schema.favoriteTutors.tutor_id, tutorId)
+      )
+    });
     
-    return res.status(200).json({ message: "Tutor removed from favorites" });
+    if (!favorite) {
+      return res.status(404).json({ message: "Tutor not found in favorites" });
+    }
+    
+    // Remove from favorites
+    await db.delete(schema.favoriteTutors)
+      .where(eq(schema.favoriteTutors.id, favorite.id));
+    
+    return res.status(200).json({ 
+      message: "Tutor removed from favorites",
+      tutorId // Return the removed tutor ID for frontend state updates
+    });
   } catch (error) {
     console.error("Remove favorite tutor error:", error);
     return res.status(500).json({ message: "Internal server error" });

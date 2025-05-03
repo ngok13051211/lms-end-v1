@@ -300,6 +300,9 @@ export const messageSelectSchema = createSelectSchema(messages);
 export const reviewInsertSchema = createInsertSchema(reviews);
 export const reviewSelectSchema = createSelectSchema(reviews);
 
+export const favoriteTutorInsertSchema = createInsertSchema(favoriteTutors);
+export const favoriteTutorSelectSchema = createSelectSchema(favoriteTutors);
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 
@@ -326,3 +329,6 @@ export type NewConversation = typeof conversations.$inferInsert;
 
 export type Review = typeof reviews.$inferSelect;
 export type NewReview = typeof reviews.$inferInsert;
+
+export type FavoriteTutor = typeof favoriteTutors.$inferSelect;
+export type NewFavoriteTutor = typeof favoriteTutors.$inferInsert;
