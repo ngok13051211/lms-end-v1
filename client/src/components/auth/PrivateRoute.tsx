@@ -1,7 +1,8 @@
-import { ComponentType } from "react";
+import { ComponentType, useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "@/store";
+import { loadUser } from "@/features/auth/authSlice";
 import UnauthorizedPage from "@/components/auth/UnauthorizedPage";
 import { Loader2 } from "lucide-react";
 
@@ -13,8 +14,24 @@ interface PrivateRouteProps {
 export default function PrivateRoute({ component: Component, role }: PrivateRouteProps) {
   const { user, isLoading } = useSelector((state: RootState) => state.auth);
   const [, navigate] = useLocation();
+  const dispatch = useDispatch();
+  const [authChecked, setAuthChecked] = useState(false);
 
-  if (isLoading) {
+  // On mount, check if token exists but user is not loaded (page refresh case)
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    
+    // If token exists but no user (after page refresh), try to load user
+    if (token && !user && !isLoading && !authChecked) {
+      dispatch(loadUser() as any);
+    }
+    
+    // Mark auth as checked to prevent infinite loop
+    setAuthChecked(true);
+  }, [user, isLoading, dispatch, authChecked]);
+
+  // Show loading spinner during authentication check
+  if (isLoading || (localStorage.getItem("token") && !user && !authChecked)) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -23,14 +40,14 @@ export default function PrivateRoute({ component: Component, role }: PrivateRout
     );
   }
 
-  // If user is not logged in, redirect to login
-  if (!user) {
+  // If user is not logged in and we've already checked auth, redirect to login
+  if (!user && authChecked) {
     navigate("/login");
     return null;
   }
 
   // If role is specified, check if user has the required role
-  if (role && user.role !== role) {
+  if (user && role && user.role !== role) {
     return <UnauthorizedPage />;
   }
 
