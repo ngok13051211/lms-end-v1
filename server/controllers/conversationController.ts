@@ -49,8 +49,8 @@ export const startConversation = async (req: Request, res: Response) => {
       .values({
         student_id: studentId,
         tutor_id: tutorProfile.user.id,
-        lastMessageAt: new Date(),
-        createdAt: new Date()
+        last_message_at: new Date(),
+        created_at: new Date()
       })
       .returning();
     
@@ -84,17 +84,17 @@ export const getConversations = async (req: Request, res: Response) => {
           tutor: {
             columns: {
               id: true,
-              firstName: true,
-              lastName: true,
+              first_name: true,
+              last_name: true,
               avatar: true
             }
           },
           messages: {
-            orderBy: desc(schema.messages.createdAt),
+            orderBy: desc(schema.messages.created_at),
             limit: 1
           }
         },
-        orderBy: desc(schema.conversations.lastMessageAt)
+        orderBy: desc(schema.conversations.last_message_at)
       });
     } else if (userRole === "tutor") {
       // Get tutor's conversations
@@ -104,17 +104,17 @@ export const getConversations = async (req: Request, res: Response) => {
           student: {
             columns: {
               id: true,
-              firstName: true,
-              lastName: true,
+              first_name: true,
+              last_name: true,
               avatar: true
             }
           },
           messages: {
-            orderBy: desc(schema.messages.createdAt),
+            orderBy: desc(schema.messages.created_at),
             limit: 1
           }
         },
-        orderBy: desc(schema.conversations.lastMessageAt)
+        orderBy: desc(schema.conversations.last_message_at)
       });
     } else {
       return res.status(403).json({ message: "Forbidden" });
@@ -123,7 +123,7 @@ export const getConversations = async (req: Request, res: Response) => {
     // Add last message to each conversation
     const conversationsWithLastMessage = conversations.map(conv => ({
       ...conv,
-      lastMessage: conv.messages[0] || null
+      last_message: conv.messages[0] || null
     }));
     
     return res.status(200).json(conversationsWithLastMessage);
@@ -161,8 +161,8 @@ export const getConversation = async (req: Request, res: Response) => {
         student: {
           columns: {
             id: true,
-            firstName: true,
-            lastName: true,
+            first_name: true,
+            last_name: true,
             avatar: true,
             email: true
           }
@@ -170,14 +170,14 @@ export const getConversation = async (req: Request, res: Response) => {
         tutor: {
           columns: {
             id: true,
-            firstName: true,
-            lastName: true,
+            first_name: true,
+            last_name: true,
             avatar: true,
             email: true
           }
         },
         messages: {
-          orderBy: schema.messages.createdAt
+          orderBy: schema.messages.created_at
         }
       }
     });
@@ -252,13 +252,13 @@ export const sendMessage = async (req: Request, res: Response) => {
         sender_id: userId,
         content: req.body.content.trim(),
         read: false,
-        createdAt: new Date()
+        created_at: new Date()
       })
       .returning();
     
-    // Update conversation's lastMessageAt
+    // Update conversation's last_message_at
     await db.update(schema.conversations)
-      .set({ lastMessageAt: new Date() })
+      .set({ last_message_at: new Date() })
       .where(eq(schema.conversations.id, conversationId));
     
     return res.status(201).json({

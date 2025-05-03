@@ -130,47 +130,37 @@ export const testimonials = pgTable("testimonials", {
 // Define relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   tutorProfile: one(tutorProfiles, {
-    fields: [users.id],
-    references: [tutorProfiles.user_id],
+    relationName: "user_tutor_profile",
   }),
   sentMessages: many(messages, {
-    fields: [users.id],
-    references: [messages.sender_id],
+    relationName: "user_sent_messages",
   }),
   studentConversations: many(conversations, {
-    fields: [users.id],
-    references: [conversations.student_id],
+    relationName: "user_student_conversations",
   }),
   tutorConversations: many(conversations, {
-    fields: [users.id],
-    references: [conversations.tutor_id],
+    relationName: "user_tutor_conversations",
   }),
   reviews: many(reviews, {
-    fields: [users.id],
-    references: [reviews.student_id],
+    relationName: "user_reviews",
   }),
 }));
 
 export const tutorProfilesRelations = relations(tutorProfiles, ({ one, many }) => ({
   user: one(users, {
-    fields: [tutorProfiles.user_id],
-    references: [users.id],
+    relationName: "tutor_profile_user",
   }),
   subjects: many(tutorSubjects, {
-    fields: [tutorProfiles.id],
-    references: [tutorSubjects.tutor_id],
+    relationName: "tutor_profile_subjects",
   }),
   educationLevels: many(tutorEducationLevels, {
-    fields: [tutorProfiles.id],
-    references: [tutorEducationLevels.tutor_id],
+    relationName: "tutor_profile_education_levels",
   }),
   ads: many(ads, {
-    fields: [tutorProfiles.id],
-    references: [ads.tutor_id],
+    relationName: "tutor_profile_ads",
   }),
   reviews: many(reviews, {
-    fields: [tutorProfiles.id],
-    references: [reviews.tutor_id],
+    relationName: "tutor_profile_reviews",
   }),
 }));
 
