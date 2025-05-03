@@ -57,10 +57,8 @@ export default function FAQ() {
         </div>
 
         <div className="text-center mt-8">
-          <Link href="/faq">
-            <a className="text-primary font-medium hover:text-primary-dark">
-              Xem thêm câu hỏi thường gặp
-            </a>
+          <Link href="/faq" className="text-primary font-medium hover:text-primary-dark">
+            Xem thêm câu hỏi thường gặp
           </Link>
         </div>
       </div>
