@@ -97,14 +97,18 @@ export default function TutorDashboardProfile() {
       const method = tutorProfile ? "PATCH" : "POST";
       
       // Combine form data with selected subjects and levels
+      // Convert camelCase form fields to snake_case for API
       const completeData = {
-        ...data,
-        subject_ids: selectedSubjects,
-        level_ids: selectedLevels,
-        // Convert camelCase form fields to snake_case for API
+        bio: data.bio,
+        education: data.education,
+        experience: data.experience,
         hourly_rate: data.hourlyRate,
-        teaching_mode: data.teachingMode
+        teaching_mode: data.teachingMode,
+        subject_ids: selectedSubjects,
+        level_ids: selectedLevels
       };
+      
+      console.log("Sending data to API:", completeData);
       
       const res = await apiRequest(method, `/api/v1/tutors/profile`, completeData);
       return res.json();
