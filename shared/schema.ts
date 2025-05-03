@@ -140,96 +140,42 @@ export const usersRelations = relations(users, ({ one, many }) => ({
 }));
 
 export const tutorProfilesRelations = relations(tutorProfiles, ({ one, many }) => ({
-  user: one(users, {
-    fields: [tutorProfiles.user_id],
-    references: [users.id],
-  }),
-  subjects: many(tutorSubjects, {
-    fields: [tutorProfiles.id],
-    references: [tutorSubjects.tutor_id],
-  }),
-  educationLevels: many(tutorEducationLevels, {
-    fields: [tutorProfiles.id],
-    references: [tutorEducationLevels.tutor_id],
-  }),
-  ads: many(ads, {
-    fields: [tutorProfiles.id],
-    references: [ads.tutor_id],
-  }),
-  reviews: many(reviews, {
-    fields: [tutorProfiles.id],
-    references: [reviews.tutor_id],
-  }),
+  user: one(users),
+  subjects: many(tutorSubjects),
+  educationLevels: many(tutorEducationLevels),
+  ads: many(ads),
+  reviews: many(reviews),
 }));
 
 export const tutorSubjectsRelations = relations(tutorSubjects, ({ one }) => ({
-  tutor: one(tutorProfiles, {
-    fields: [tutorSubjects.tutor_id],
-    references: [tutorProfiles.id],
-  }),
-  subject: one(subjects, {
-    fields: [tutorSubjects.subject_id],
-    references: [subjects.id],
-  }),
+  tutor: one(tutorProfiles),
+  subject: one(subjects),
 }));
 
 export const subjectsRelations = relations(subjects, ({ many }) => ({
-  tutors: many(tutorSubjects, {
-    fields: [subjects.id],
-    references: [tutorSubjects.subject_id],
-  }),
-  ads: many(ads, {
-    fields: [subjects.id],
-    references: [ads.subject_id],
-  }),
+  tutors: many(tutorSubjects),
+  ads: many(ads),
 }));
 
 export const tutorEducationLevelsRelations = relations(tutorEducationLevels, ({ one }) => ({
-  tutor: one(tutorProfiles, {
-    fields: [tutorEducationLevels.tutor_id],
-    references: [tutorProfiles.id],
-  }),
-  level: one(educationLevels, {
-    fields: [tutorEducationLevels.level_id],
-    references: [educationLevels.id],
-  }),
+  tutor: one(tutorProfiles),
+  level: one(educationLevels),
 }));
 
 export const educationLevelsRelations = relations(educationLevels, ({ many }) => ({
-  tutors: many(tutorEducationLevels, {
-    fields: [educationLevels.id],
-    references: [tutorEducationLevels.level_id],
-  }),
-  ads: many(ads, {
-    fields: [educationLevels.id],
-    references: [ads.level_id],
-  }),
+  tutors: many(tutorEducationLevels),
+  ads: many(ads),
 }));
 
 export const conversationsRelations = relations(conversations, ({ one, many }) => ({
-  student: one(users, {
-    fields: [conversations.student_id],
-    references: [users.id],
-  }),
-  tutor: one(users, {
-    fields: [conversations.tutor_id],
-    references: [users.id],
-  }),
-  messages: many(messages, {
-    fields: [conversations.id],
-    references: [messages.conversation_id],
-  }),
+  student: one(users),
+  tutor: one(users),
+  messages: many(messages),
 }));
 
 export const messagesRelations = relations(messages, ({ one }) => ({
-  conversation: one(conversations, {
-    fields: [messages.conversation_id],
-    references: [conversations.id],
-  }),
-  sender: one(users, {
-    fields: [messages.sender_id],
-    references: [users.id],
-  }),
+  conversation: one(conversations),
+  sender: one(users),
 }));
 
 // Create Schemas for validation

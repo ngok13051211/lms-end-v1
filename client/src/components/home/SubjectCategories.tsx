@@ -21,10 +21,8 @@ export default function SubjectCategories({ subjects }: SubjectCategoriesProps) 
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
           {subjects.map((subject) => (
-            <Link key={subject.id} href={`/tutors?subject=${subject.id}`}>
-              <a>
-                <SubjectCard subject={subject} />
-              </a>
+            <Link key={subject.id} href={`/tutors?subject=${subject.id}`} className="block">
+              <SubjectCard subject={subject} />
             </Link>
           ))}
         </div>
