@@ -102,9 +102,9 @@ export default function Navbar() {
                   className="relative h-8 w-8 rounded-full"
                 >
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.avatar} alt={user.firstName} />
+                    <AvatarImage src={user.avatar || undefined} alt={user.first_name} />
                     <AvatarFallback>
-                      {user.firstName?.[0]}{user.lastName?.[0]}
+                      {user.first_name?.[0]}{user.last_name?.[0]}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
@@ -112,14 +112,14 @@ export default function Navbar() {
               <DropdownMenuContent align="end" className="w-56">
                 <div className="flex items-center justify-start gap-2 p-2">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.avatar} alt={user.firstName} />
+                    <AvatarImage src={user.avatar || undefined} alt={user.first_name} />
                     <AvatarFallback>
-                      {user.firstName?.[0]}{user.lastName?.[0]}
+                      {user.first_name?.[0]}{user.last_name?.[0]}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col space-y-1 leading-none">
                     <p className="font-medium text-sm">
-                      {user.firstName} {user.lastName}
+                      {user.first_name} {user.last_name}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {user.email}
@@ -235,14 +235,14 @@ export default function Navbar() {
                     <div className="border-t pt-4 mt-4">
                       <div className="flex items-center px-3 py-2">
                         <Avatar className="h-10 w-10">
-                          <AvatarImage src={user.avatar} alt={user.firstName} />
+                          <AvatarImage src={user.avatar || undefined} alt={user.first_name} />
                           <AvatarFallback>
-                            {user.firstName?.[0]}{user.lastName?.[0]}
+                            {user.first_name?.[0]}{user.last_name?.[0]}
                           </AvatarFallback>
                         </Avatar>
                         <div className="ml-3">
                           <p className="font-medium">
-                            {user.firstName} {user.lastName}
+                            {user.first_name} {user.last_name}
                           </p>
                           <p className="text-sm text-muted-foreground">
                             {user.email}

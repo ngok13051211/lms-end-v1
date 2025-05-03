@@ -92,12 +92,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
       <div className="flex items-center p-6 border-b">
         <Avatar className="h-10 w-10">
-          <AvatarImage src={user.avatar} alt={user.firstName} />
-          <AvatarFallback>{user.firstName?.[0]}{user.lastName?.[0]}</AvatarFallback>
+          <AvatarImage src={user.avatar || undefined} alt={user.first_name} />
+          <AvatarFallback>{user.first_name?.[0]}{user.last_name?.[0]}</AvatarFallback>
         </Avatar>
         <div className="ml-3">
           <p className="font-medium">
-            {user.firstName} {user.lastName}
+            {user.first_name} {user.last_name}
           </p>
           <p className="text-sm text-muted-foreground capitalize">
             {user.role}
