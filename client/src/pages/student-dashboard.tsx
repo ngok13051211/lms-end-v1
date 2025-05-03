@@ -131,10 +131,37 @@ export default function StudentDashboard() {
   // Update profile
   const updateProfile = async (data: z.infer<typeof profileSchema>) => {
     try {
-      await apiRequest("PATCH", "/api/v1/users/profile", data);
-      queryClient.invalidateQueries({ queryKey: ['/api/v1/auth/me'] });
+      // Chuyển đổi từ camelCase sang snake_case cho API
+      const apiData = {
+        first_name: data.firstName,
+        last_name: data.lastName
+      };
+      
+      const response = await apiRequest("PATCH", "/api/v1/users/profile", apiData);
+      
+      if (response.ok) {
+        // Cập nhật Redux store
+        const responseData = await response.json();
+        dispatch(updateUserProfile(apiData));
+        
+        // Cập nhật React Query cache
+        queryClient.invalidateQueries({ queryKey: ['/api/v1/auth/me'] });
+        
+        // Hiển thị thông báo thành công
+        toast({
+          title: "Thành công",
+          description: "Hồ sơ của bạn đã được cập nhật",
+          variant: "default",
+        });
+      }
     } catch (error) {
       console.error("Error updating profile:", error);
+      // Hiển thị thông báo lỗi
+      toast({
+        title: "Lỗi",
+        description: "Không thể cập nhật hồ sơ. Vui lòng thử lại sau.",
+        variant: "destructive",
+      });
     }
   };
   

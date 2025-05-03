@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "@/store";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -16,6 +16,8 @@ import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
 import { Loader2, Upload } from "lucide-react";
 import { Link } from "wouter";
+import { updateUserProfile, updateAvatar } from "@/features/auth/authSlice";
+import { useToast } from "@/hooks/use-toast";
 
 // Form schema for student profile
 const profileSchema = z.object({
@@ -26,6 +28,8 @@ const profileSchema = z.object({
 
 export default function StudentDashboardProfile() {
   const { user } = useSelector((state: RootState) => state.auth);
+  const dispatch = useDispatch();
+  const { toast } = useToast();
   const [avatar, setAvatar] = useState<File | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   
@@ -38,6 +42,17 @@ export default function StudentDashboardProfile() {
       email: user?.email || "",
     },
   });
+  
+  // Cập nhật form khi user thay đổi
+  useEffect(() => {
+    if (user) {
+      form.reset({
+        firstName: user.first_name || "",
+        lastName: user.last_name || "",
+        email: user.email || "",
+      });
+    }
+  }, [user, form]);
   
   // Upload avatar
   const uploadAvatar = async () => {
@@ -56,10 +71,31 @@ export default function StudentDashboardProfile() {
       });
       
       if (response.ok) {
+        const data = await response.json();
+        
+        // Cập nhật Redux store với avatar URL mới
+        if (data.user?.avatar) {
+          dispatch(updateAvatar(data.user.avatar));
+        }
+        
+        // Cập nhật React Query cache
         queryClient.invalidateQueries({ queryKey: ['/api/v1/auth/me'] });
+        
+        // Hiển thị thông báo thành công
+        toast({
+          title: "Thành công",
+          description: "Ảnh đại diện đã được cập nhật",
+          variant: "default",
+        });
       }
     } catch (error) {
       console.error("Error uploading avatar:", error);
+      // Hiển thị thông báo lỗi
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải lên ảnh đại diện. Vui lòng thử lại sau.",
+        variant: "destructive",
+      });
     } finally {
       setUploadingAvatar(false);
       setAvatar(null);
@@ -75,10 +111,37 @@ export default function StudentDashboardProfile() {
   // Update profile
   const updateProfile = async (data: z.infer<typeof profileSchema>) => {
     try {
-      await apiRequest("PATCH", "/api/v1/users/profile", data);
-      queryClient.invalidateQueries({ queryKey: ['/api/v1/auth/me'] });
+      // Chuyển đổi từ camelCase sang snake_case cho API
+      const apiData = {
+        first_name: data.firstName,
+        last_name: data.lastName
+      };
+      
+      const response = await apiRequest("PATCH", "/api/v1/users/profile", apiData);
+      
+      if (response.ok) {
+        // Cập nhật Redux store
+        const responseData = await response.json();
+        dispatch(updateUserProfile(apiData));
+        
+        // Cập nhật React Query cache
+        queryClient.invalidateQueries({ queryKey: ['/api/v1/auth/me'] });
+        
+        // Hiển thị thông báo thành công
+        toast({
+          title: "Thành công",
+          description: "Hồ sơ của bạn đã được cập nhật",
+          variant: "default",
+        });
+      }
     } catch (error) {
       console.error("Error updating profile:", error);
+      // Hiển thị thông báo lỗi
+      toast({
+        title: "Lỗi",
+        description: "Không thể cập nhật hồ sơ. Vui lòng thử lại sau.",
+        variant: "destructive",
+      });
     }
   };
   
