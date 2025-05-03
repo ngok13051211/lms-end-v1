@@ -46,7 +46,9 @@ export default function StudentDashboardTutors() {
   // Filter by search query
   const filteredTutors = Array.isArray(favoriteTutors) 
     ? favoriteTutors.filter((tutor: any) => {
-        const fullName = `${tutor.first_name || ''} ${tutor.last_name || ''}`.toLowerCase();
+        const fullName = tutor.user 
+          ? `${tutor.user.first_name || ''} ${tutor.user.last_name || ''}`.toLowerCase()
+          : '';
         const searchLower = searchQuery.toLowerCase();
         return fullName.includes(searchLower) || 
                (tutor.bio && tutor.bio.toLowerCase().includes(searchLower)) ||
