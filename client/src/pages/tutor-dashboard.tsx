@@ -16,7 +16,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
-import { Loader2, PlusCircle, Edit, Trash2, Upload, AlertCircle, ChevronRight, UserCircle, BookOpen, MessageSquare, BadgeCheck, DollarSign, Star, FileText, Check } from "lucide-react";
+import { Loader2, PlusCircle, Edit, Trash2, Upload, AlertCircle, ChevronRight, UserCircle, BookOpen, MessageSquare, BadgeCheck, DollarSign, Star, FileText, Check, Users } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { CheckboxGroup, CheckboxItem } from "@/components/ui/checkbox-group";
