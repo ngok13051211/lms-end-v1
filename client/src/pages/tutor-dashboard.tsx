@@ -52,7 +52,7 @@ export default function TutorDashboard() {
   const [adDialogOpen, setAdDialogOpen] = useState(false);
   
   // Get tutor profile
-  const { data: tutorProfile, isLoading: profileLoading, error: profileError } = useQuery({
+  const { data: tutorProfile, isLoading: profileLoading, error: profileError, refetch: refetchTutorProfile } = useQuery({
     queryKey: [`/api/v1/tutors/profile`],
     retry: false, // Don't retry on error
   });
@@ -209,40 +209,43 @@ export default function TutorDashboard() {
   const handleOpenProfileDialog = () => {
     console.log("Opening profile dialog");
     
-    // Reset form to default values
-    if (tutorProfile) {
-      profileForm.reset({
-        bio: tutorProfile.bio || "",
-        education: tutorProfile.education || "",
-        experience: tutorProfile.experience || "",
-        hourlyRate: Number(tutorProfile.hourlyRate) || 0,
-        teachingMode: tutorProfile.teachingMode || "online",
-      });
+    // Force refresh tutor profile before opening the dialog
+    refetchTutorProfile().then(() => {
+      // Reset form to default values
+      if (tutorProfile && !profileError) {
+        profileForm.reset({
+          bio: tutorProfile.bio || "",
+          education: tutorProfile.education || "",
+          experience: tutorProfile.experience || "",
+          hourlyRate: Number(tutorProfile.hourlyRate) || 0,
+          teachingMode: tutorProfile.teachingMode || "online",
+        });
+        
+        // Set selected subjects and levels
+        setSelectedSubjects(
+          tutorProfile.subjects?.map(subject => subject.id.toString()) || []
+        );
+        
+        setSelectedLevels(
+          tutorProfile.educationLevels?.map(level => level.id.toString()) || []
+        );
+      } else {
+        // Reset form for new profile with empty values
+        profileForm.reset({
+          bio: "",
+          education: "",
+          experience: "",
+          hourlyRate: 50000, // Default hourly rate (50.000 VND)
+          teachingMode: "online",
+        });
+        
+        setSelectedSubjects([]);
+        setSelectedLevels([]);
+      }
       
-      // Set selected subjects and levels
-      setSelectedSubjects(
-        tutorProfile.subjects?.map(subject => subject.id.toString()) || []
-      );
-      
-      setSelectedLevels(
-        tutorProfile.educationLevels?.map(level => level.id.toString()) || []
-      );
-    } else {
-      // Reset form for new profile
-      profileForm.reset({
-        bio: "",
-        education: "",
-        experience: "",
-        hourlyRate: 50000, // Default hourly rate (50.000 VND)
-        teachingMode: "online",
-      });
-      
-      setSelectedSubjects([]);
-      setSelectedLevels([]);
-    }
-    
-    // Open dialog after form reset
-    setProfileDialogOpen(true);
+      // Open dialog after form reset
+      setProfileDialogOpen(true);
+    });
   };
   
   const handleOnAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
