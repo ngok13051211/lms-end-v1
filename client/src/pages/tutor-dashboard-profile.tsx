@@ -46,6 +46,7 @@ export default function TutorDashboardProfile() {
   const { data: tutorProfile, isLoading: profileLoading, error: profileError, refetch: refetchTutorProfile } = useQuery<any>({
     queryKey: [`/api/v1/tutors/profile`],
     retry: false, // Don't retry on error
+    staleTime: 0, // Always revalidate to ensure fresh data
   });
 
   // Get subjects and education levels for profile editing
@@ -74,13 +75,20 @@ export default function TutorDashboardProfile() {
   // Update form values when profile data changes
   useEffect(() => {
     if (tutorProfile) {
-      profileForm.reset({
+      console.log("Received tutorProfile data:", JSON.stringify(tutorProfile));
+      
+      // Manually extract and convert values with appropriate defaults
+      const formData = {
         bio: tutorProfile.bio || "",
         education: tutorProfile.education || "",
         experience: tutorProfile.experience || "",
         hourlyRate: tutorProfile.hourly_rate ? Number(tutorProfile.hourly_rate) : 10000,
-        teachingMode: (tutorProfile.teaching_mode as "online" | "offline" | "both") || "online",
-      });
+        teachingMode: tutorProfile.teaching_mode ? 
+          (tutorProfile.teaching_mode as "online" | "offline" | "both") : "online",
+      };
+      
+      console.log("Setting form values:", JSON.stringify(formData));
+      profileForm.reset(formData);
     } else {
       profileForm.reset({
         bio: "",
@@ -140,13 +148,13 @@ export default function TutorDashboardProfile() {
         variant: "default",
       });
       
-      queryClient.invalidateQueries({ queryKey: [`/api/v1/tutors/profile`] });
-      setProfileDialogOpen(false);
+      // Trực tiếp refetch profile thay vì chỉ invalidate cache
+      refetchTutorProfile().then(() => {
+        console.log("Profile refetched successfully");
+        setProfileDialogOpen(false);
+      });
       
-      // Thêm timeout trước khi reload để đảm bảo invalidateQueries hoàn tất
-      setTimeout(() => {
-        window.location.reload();
-      }, 800);
+      // Không reload trang để tránh gián đoạn UX
     },
     onError: (error) => {
       console.error("Profile update error:", error);
