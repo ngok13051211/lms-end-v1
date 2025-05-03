@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import multer from "multer";
-import { storage } from "../storage";
+import { storage, uploadToCloudinary } from "../storage";
 import path from "path";
 
 // Set up multer with storage configuration
@@ -29,7 +29,7 @@ const upload = multer({
 const uploadAvatar = (req: Request, res: Response, next: NextFunction) => {
   const avatarUpload = upload.single("avatar");
 
-  avatarUpload(req, res, (err) => {
+  avatarUpload(req, res, async (err) => {
     if (err instanceof multer.MulterError) {
       // A Multer error occurred when uploading
       return res.status(400).json({
@@ -45,9 +45,32 @@ const uploadAvatar = (req: Request, res: Response, next: NextFunction) => {
     // If no file is uploaded, just continue
     if (!req.file) {
       console.log("No file uploaded");
+      return next();
     }
     
-    next();
+    try {
+      // Upload to Cloudinary
+      const cloudinaryResult = await uploadToCloudinary(req.file.path, 'homitutor/avatars');
+      
+      if (!cloudinaryResult.success) {
+        return res.status(500).json({
+          message: "Error uploading to Cloudinary",
+          error: cloudinaryResult.error
+        });
+      }
+      
+      // Add the Cloudinary URL to the request body
+      req.body.avatarUrl = cloudinaryResult.url;
+      req.body.avatarPublicId = cloudinaryResult.public_id;
+      
+      next();
+    } catch (error) {
+      console.error("Avatar upload error:", error);
+      return res.status(500).json({
+        message: "Error uploading avatar",
+        error
+      });
+    }
   });
 };
 
@@ -55,7 +78,7 @@ const uploadAvatar = (req: Request, res: Response, next: NextFunction) => {
 const uploadDocuments = (req: Request, res: Response, next: NextFunction) => {
   const documentUpload = upload.array("documents", 5); // Allow up to 5 documents
 
-  documentUpload(req, res, (err) => {
+  documentUpload(req, res, async (err) => {
     if (err instanceof multer.MulterError) {
       return res.status(400).json({
         message: `Upload error: ${err.message}`,
@@ -66,7 +89,40 @@ const uploadDocuments = (req: Request, res: Response, next: NextFunction) => {
       });
     }
     
-    next();
+    // If no files uploaded, just continue
+    if (!req.files || (Array.isArray(req.files) && req.files.length === 0)) {
+      console.log("No documents uploaded");
+      return next();
+    }
+    
+    try {
+      // Upload each file to Cloudinary
+      const files = req.files as Express.Multer.File[];
+      const cloudinaryResults = await Promise.all(
+        files.map(file => uploadToCloudinary(file.path, 'homitutor/documents'))
+      );
+      
+      // Check if any upload failed
+      const failedUploads = cloudinaryResults.filter(result => !result.success);
+      if (failedUploads.length > 0) {
+        return res.status(500).json({
+          message: "Some documents failed to upload to Cloudinary",
+          errors: failedUploads
+        });
+      }
+      
+      // Add Cloudinary URLs to the request body
+      req.body.documentUrls = cloudinaryResults.map(result => result.url);
+      req.body.documentPublicIds = cloudinaryResults.map(result => result.public_id);
+      
+      next();
+    } catch (error) {
+      console.error("Document upload error:", error);
+      return res.status(500).json({
+        message: "Error uploading documents",
+        error
+      });
+    }
   });
 };
 
