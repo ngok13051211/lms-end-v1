@@ -14,7 +14,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
-import { Loader2, Edit, Upload, AlertCircle, UserCircle, BadgeCheck, DollarSign } from "lucide-react";
+import { Loader2, Edit, Upload, AlertCircle, UserCircle, BadgeCheck, DollarSign, Clock, CalendarDays, FileText, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";

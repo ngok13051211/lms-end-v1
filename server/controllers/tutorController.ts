@@ -725,6 +725,8 @@ export const updateTutorProfile = async (req: Request, res: Response) => {
         ? (typeof req.body.hourly_rate === 'string' ? parseFloat(req.body.hourly_rate) : req.body.hourly_rate) 
         : existingProfile.hourly_rate,
       teaching_mode: req.body.teaching_mode || existingProfile.teaching_mode || 'online',
+      // Update availability if provided
+      availability: req.body.availability !== undefined ? req.body.availability : existingProfile.availability,
       user_id: userId
     };
     
