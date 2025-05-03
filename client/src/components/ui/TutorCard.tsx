@@ -3,7 +3,8 @@ import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Star } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Star, Calendar, Clock } from "lucide-react";
 import { TutorProfile } from "@shared/schema";
 
 interface FeaturedTutorUser {
@@ -168,6 +169,38 @@ export default function TutorCard({ tutor, compact = false }: TutorCardProps) {
             </Badge>
           )}
         </div>
+        
+        {tutor.availability && (
+          <div className="mb-4">
+            <p className="text-sm font-medium mb-2 flex items-center">
+              <Calendar className="h-4 w-4 mr-1 text-muted-foreground" /> 
+              Lịch trống:
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {Object.entries(JSON.parse(typeof tutor.availability === 'string' ? tutor.availability : '{}')).slice(0, 4).map(([day, slots]: [string, any]) => (
+                <TooltipProvider key={day}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="text-xs bg-secondary/10 rounded p-2 flex items-center">
+                        <Clock className="h-3 w-3 mr-1" />
+                        <span className="font-medium">{day}</span>
+                        <span className="text-muted-foreground ml-1">({slots.length} ca)</span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="font-medium text-xs">{day}:</p>
+                      <div className="text-xs">
+                        {slots.map((slot: string, index: number) => (
+                          <div key={index}>{slot}</div>
+                        ))}
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="mt-auto flex items-center justify-between">
           <div>
             <span className="text-secondary font-medium">
