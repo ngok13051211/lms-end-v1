@@ -28,7 +28,9 @@ const tutorProfileSchema = z.object({
   bio: z.string().min(50, "Bio must be at least 50 characters"),
   education: z.string().min(20, "Education must be at least 20 characters"),
   experience: z.string().min(20, "Experience must be at least 20 characters"),
-  hourlyRate: z.coerce.number().min(10000, "Hourly rate must be at least 10,000 VND"),
+  hourlyRate: z.coerce.number()
+    .min(10000, "Hourly rate must be at least 10,000 VND")
+    .max(99999999, "Hourly rate must be less than 100,000,000 VND"),
   teachingMode: z.enum(["online", "offline", "both"]),
 });
 

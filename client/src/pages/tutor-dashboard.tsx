@@ -200,11 +200,29 @@ export default function TutorDashboard() {
         credentials: "include",
       });
       
-      if (response.ok) {
-        queryClient.invalidateQueries({ queryKey: [`/api/v1/tutors/profile`] });
+      if (!response.ok) {
+        throw new Error(`Upload failed with status: ${response.status}`);
       }
+      
+      // Update both user data and tutor profile data
+      queryClient.invalidateQueries({ queryKey: [`/api/v1/auth/me`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/v1/tutors/profile`] });
+      
+      // Show success notification
+      toast({
+        title: "Avatar updated",
+        description: "Your profile photo has been updated successfully.",
+        variant: "default",
+      });
     } catch (error) {
       console.error("Error uploading avatar:", error);
+      
+      // Show error notification
+      toast({
+        title: "Upload failed",
+        description: error instanceof Error ? error.message : "Failed to upload profile photo. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setUploadingAvatar(false);
       setAvatar(null);
