@@ -118,21 +118,22 @@ export default function TutorDashboard() {
   const profileMutation = useMutation({
     mutationFn: async (data: z.infer<typeof tutorProfileSchema>) => {
       const method = tutorProfile ? "PATCH" : "POST";
-      console.log("Sending data to create/update profile:", {
-        ...data,
+      const formattedData = {
+        bio: data.bio,
+        education: data.education,
+        experience: data.experience,
         subject_ids: selectedSubjects,
         level_ids: selectedLevels,
-        hourly_rate: data.hourlyRate.toString()
-      });
+        hourly_rate: data.hourlyRate.toString(), // Convert to string as backend expects string
+        teaching_mode: data.teachingMode
+      };
+      
+      console.log("Sending data to create/update profile:", formattedData);
+      
       const response = await apiRequest(
         method,
         "/api/v1/tutors/profile",
-        {
-          ...data,
-          subject_ids: selectedSubjects,
-          level_ids: selectedLevels,
-          hourly_rate: data.hourlyRate.toString() // Convert to string as backend expects string
-        }
+        formattedData
       );
       return response.json();
     },
