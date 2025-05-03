@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import cloudinary from './config/cloudinary';
 
 // Import controllers
 import * as authController from "./controllers/authController";
@@ -18,6 +19,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // API prefix
   const apiPrefix = "/api/v1";
+  
+  // Test Cloudinary upload route - DEBUG ONLY
+  app.get(`${apiPrefix}/test-cloudinary`, async (req, res) => {
+    console.log("Testing Cloudinary connection...");
+    
+    try {
+      // Test Cloudinary credentials by making a simple API call
+      const result = await cloudinary.api.ping();
+      console.log("Cloudinary ping result:", result);
+      
+      // Get upload folder details
+      const folderResult = await cloudinary.api.root_folders();
+      console.log("Cloudinary folders:", folderResult);
+      
+      return res.status(200).json({ 
+        message: "Cloudinary connection test successful", 
+        status: "OK",
+        result,
+        folders: folderResult
+      });
+    } catch (error: any) {
+      console.error("Cloudinary test error:", error);
+      return res.status(500).json({
+        message: "Cloudinary connection test failed",
+        error: error.message || String(error)
+      });
+    }
+  });
 
   // Auth routes
   app.post(`${apiPrefix}/auth/register`, authController.register);
