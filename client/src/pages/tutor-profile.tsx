@@ -97,22 +97,26 @@ export default function TutorProfile() {
               <CardContent className="p-6">
                 <div className="flex flex-col md:flex-row md:items-center">
                   <Avatar className="h-24 w-24 border-2 border-primary">
-                    <AvatarImage src={tutor.user?.avatar} alt={tutor.user?.firstName} />
+                    <AvatarImage 
+                      src={tutor.user?.avatar} 
+                      alt={tutor.user?.name || (tutor.user?.first_name ? `${tutor.user.first_name} ${tutor.user.last_name}` : "Tutor")} 
+                    />
                     <AvatarFallback className="text-2xl">
-                      {tutor.user?.firstName?.[0]}{tutor.user?.lastName?.[0]}
+                      {tutor.user?.name ? tutor.user.name[0] : 
+                       (tutor.user?.first_name ? `${tutor.user.first_name[0]}${tutor.user.last_name?.[0] || ''}` : "T")}
                     </AvatarFallback>
                   </Avatar>
                   
                   <div className="ml-0 md:ml-6 mt-4 md:mt-0 flex-1">
                     <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-2">
                       <h1 className="text-2xl md:text-3xl font-medium">
-                        {tutor.user?.firstName} {tutor.user?.lastName}
+                        {tutor.user?.name || (tutor.user?.first_name ? `${tutor.user.first_name} ${tutor.user.last_name}` : "Tutor")}
                       </h1>
                       
                       <div className="flex items-center mt-2 md:mt-0">
                         <Star className="h-5 w-5 text-warning" fill="currentColor" />
                         <span className="ml-1 text-lg font-medium">{tutor.rating}</span>
-                        <span className="text-gray-500 ml-1">({tutor.totalReviews} reviews)</span>
+                        <span className="text-gray-500 ml-1">({tutor.total_reviews || 0} reviews)</span>
                       </div>
                     </div>
                     
@@ -125,19 +129,19 @@ export default function TutorProfile() {
                         </Badge>
                       ))}
                       
-                      {tutor.teachingMode === "online" && (
+                      {tutor.teaching_mode === "online" && (
                         <Badge className="bg-success-light/20 text-success-dark hover:bg-success-light/30">
                           <MapPin className="h-3 w-3 mr-1" /> Online
                         </Badge>
                       )}
                       
-                      {tutor.teachingMode === "offline" && (
+                      {tutor.teaching_mode === "offline" && (
                         <Badge className="bg-warning-light/20 text-warning-dark hover:bg-warning-light/30">
                           <MapPin className="h-3 w-3 mr-1" /> In-person
                         </Badge>
                       )}
                       
-                      {tutor.teachingMode === "both" && (
+                      {tutor.teaching_mode === "both" && (
                         <Badge className="bg-info-light/20 text-info-dark hover:bg-info-light/30">
                           <MapPin className="h-3 w-3 mr-1" /> Online & In-person
                         </Badge>
@@ -154,10 +158,10 @@ export default function TutorProfile() {
                   
                   <div className="flex items-center text-muted-foreground">
                     <Users className="h-4 w-4 mr-1" />
-                    <span>{tutor.educationLevels?.map(level => level.name).join(", ")}</span>
+                    <span>{tutor.levels?.map(level => level.name).join(", ")}</span>
                   </div>
                   
-                  {tutor.isVerified && (
+                  {tutor.is_verified && (
                     <div className="flex items-center text-success">
                       <Award className="h-4 w-4 mr-1" />
                       <span>Verified</span>
@@ -172,7 +176,7 @@ export default function TutorProfile() {
               <TabsList className="grid grid-cols-3 w-full">
                 <TabsTrigger value="about">About</TabsTrigger>
                 <TabsTrigger value="ads">Class Ads ({tutorAds?.length || 0})</TabsTrigger>
-                <TabsTrigger value="reviews">Reviews ({tutor.totalReviews})</TabsTrigger>
+                <TabsTrigger value="reviews">Reviews ({tutor.total_reviews || 0})</TabsTrigger>
               </TabsList>
               
               {/* About Tab */}
@@ -220,8 +224,8 @@ export default function TutorProfile() {
                               )}
                               
                               <Badge className="bg-secondary-light/20 text-secondary-dark hover:bg-secondary-light/30">
-                                {ad.teachingMode === "online" ? "Online" : 
-                                 ad.teachingMode === "offline" ? "In-person" : 
+                                {ad.teaching_mode === "online" ? "Online" : 
+                                 ad.teaching_mode === "offline" ? "In-person" : 
                                  "Online & In-person"}
                               </Badge>
                             </div>
@@ -231,7 +235,7 @@ export default function TutorProfile() {
                                 {new Intl.NumberFormat('vi-VN', { 
                                   style: 'currency', 
                                   currency: 'VND' 
-                                }).format(Number(ad.hourlyRate))}<span className="text-sm text-muted-foreground">/hour</span>
+                                }).format(Number(ad.hourly_rate))}<span className="text-sm text-muted-foreground">/hour</span>
                               </span>
                               
                               <Button onClick={startConversation} className="bg-primary hover:bg-primary-dark">
@@ -263,17 +267,23 @@ export default function TutorProfile() {
                           <div key={review.id} className="border-b pb-6 last:border-b-0">
                             <div className="flex items-start mb-4">
                               <Avatar className="h-10 w-10">
-                                <AvatarImage src={review.student?.avatar} alt={review.student?.firstName} />
+                                <AvatarImage 
+                                  src={review.student?.avatar} 
+                                  alt={review.student?.name || (review.student?.first_name ? `${review.student.first_name} ${review.student.last_name}` : "Student")} 
+                                />
                                 <AvatarFallback>
-                                  {review.student?.firstName?.[0]}{review.student?.lastName?.[0]}
+                                  {review.student?.name ? review.student.name[0] : 
+                                   (review.student?.first_name ? `${review.student.first_name[0]}${review.student.last_name?.[0] || ''}` : "S")}
                                 </AvatarFallback>
                               </Avatar>
                               
                               <div className="ml-3">
                                 <div className="flex items-center">
-                                  <h4 className="font-medium">{review.student?.firstName} {review.student?.lastName}</h4>
+                                  <h4 className="font-medium">
+                                    {review.student?.name || (review.student?.first_name ? `${review.student.first_name} ${review.student.last_name}` : "Student")}
+                                  </h4>
                                   <span className="ml-2 text-sm text-muted-foreground">
-                                    {new Date(review.createdAt).toLocaleDateString()}
+                                    {new Date(review.created_at).toLocaleDateString()}
                                   </span>
                                 </div>
                                 
@@ -312,7 +322,9 @@ export default function TutorProfile() {
             {/* Contact Card */}
             <Card className="mb-8">
               <CardContent className="p-6">
-                <h3 className="text-xl font-medium mb-4">Contact {tutor.user?.firstName}</h3>
+                <h3 className="text-xl font-medium mb-4">
+                  Contact {tutor.user?.name || (tutor.user?.first_name ? `${tutor.user.first_name}` : "Tutor")}
+                </h3>
                 
                 <div className="mb-6">
                   <p className="text-muted-foreground mb-2">Hourly Rate:</p>
@@ -320,7 +332,7 @@ export default function TutorProfile() {
                     {new Intl.NumberFormat('vi-VN', { 
                       style: 'currency', 
                       currency: 'VND' 
-                    }).format(Number(tutor.hourlyRate))}
+                    }).format(Number(tutor.hourly_rate))}
                     <span className="text-sm text-muted-foreground font-normal">/hour</span>
                   </p>
                 </div>
