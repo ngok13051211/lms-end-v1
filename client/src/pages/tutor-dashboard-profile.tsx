@@ -23,6 +23,16 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import TutorDashboardLayout from "@/components/layout/TutorDashboardLayout";
 
+// Định nghĩa cấu trúc cho một khung giờ trống
+const availabilityItemSchema = z.object({
+  day: z.enum(["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]),
+  startTime: z.string(), // Format: "HH:MM" in 24h
+  endTime: z.string(),   // Format: "HH:MM" in 24h
+});
+
+// Định nghĩa kiểu dữ liệu cho một khung giờ trống
+export type AvailabilityItem = z.infer<typeof availabilityItemSchema>;
+
 // Form schema for tutor profile
 const tutorProfileSchema = z.object({
   bio: z.string().min(50, "Bio must be at least 50 characters"),
@@ -32,6 +42,7 @@ const tutorProfileSchema = z.object({
     .min(10000, "Hourly rate must be at least 10,000 VND")
     .max(99999999, "Hourly rate must be less than 100,000,000 VND"),
   teachingMode: z.enum(["online", "offline", "both"]),
+  // Trường availability là tùy chọn, sẽ được xử lý riêng
 });
 
 export default function TutorDashboardProfile() {
@@ -43,6 +54,17 @@ export default function TutorDashboardProfile() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingCertifications, setUploadingCertifications] = useState(false);
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  
+  // Khung giờ trống
+  const [availabilityItems, setAvailabilityItems] = useState<AvailabilityItem[]>([]);
+  const [availabilityDialogOpen, setAvailabilityDialogOpen] = useState(false);
+  
+  // State để quản lý một khung giờ mới
+  const [newAvailabilityItem, setNewAvailabilityItem] = useState<AvailabilityItem>({
+    day: "monday",
+    startTime: "08:00",
+    endTime: "17:00"
+  });
   
   // Get tutor profile
   const { data: tutorProfile, isLoading: profileLoading, error: profileError, refetch: refetchTutorProfile } = useQuery<any>({
