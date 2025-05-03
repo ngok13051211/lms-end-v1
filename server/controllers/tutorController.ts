@@ -589,8 +589,8 @@ export const createTutorProfile = async (req: Request, res: Response) => {
       .returning();
     
     // Associate subjects
-    if (req.body.subjects && Array.isArray(req.body.subjects)) {
-      const subjectValues = req.body.subjects.map((subjectId: string) => ({
+    if (req.body.subject_ids && Array.isArray(req.body.subject_ids)) {
+      const subjectValues = req.body.subject_ids.map((subjectId: string) => ({
         tutor_id: tutorProfile.id,
         subject_id: parseInt(subjectId)
       }));
@@ -600,8 +600,8 @@ export const createTutorProfile = async (req: Request, res: Response) => {
     }
     
     // Associate education levels
-    if (req.body.levels && Array.isArray(req.body.levels)) {
-      const levelValues = req.body.levels.map((levelId: string) => ({
+    if (req.body.level_ids && Array.isArray(req.body.level_ids)) {
+      const levelValues = req.body.level_ids.map((levelId: string) => ({
         tutor_id: tutorProfile.id,
         level_id: parseInt(levelId)
       }));
@@ -664,13 +664,13 @@ export const updateTutorProfile = async (req: Request, res: Response) => {
       .returning();
     
     // Update subjects if provided
-    if (req.body.subjects && Array.isArray(req.body.subjects)) {
+    if (req.body.subject_ids && Array.isArray(req.body.subject_ids)) {
       // Delete existing subject associations
       await db.delete(schema.tutorSubjects)
         .where(eq(schema.tutorSubjects.tutor_id, existingProfile.id));
       
       // Create new subject associations
-      const subjectValues = req.body.subjects.map((subjectId: string) => ({
+      const subjectValues = req.body.subject_ids.map((subjectId: string) => ({
         tutor_id: existingProfile.id,
         subject_id: parseInt(subjectId)
       }));
@@ -680,13 +680,13 @@ export const updateTutorProfile = async (req: Request, res: Response) => {
     }
     
     // Update education levels if provided
-    if (req.body.levels && Array.isArray(req.body.levels)) {
+    if (req.body.level_ids && Array.isArray(req.body.level_ids)) {
       // Delete existing level associations
       await db.delete(schema.tutorEducationLevels)
         .where(eq(schema.tutorEducationLevels.tutor_id, existingProfile.id));
       
       // Create new level associations
-      const levelValues = req.body.levels.map((levelId: string) => ({
+      const levelValues = req.body.level_ids.map((levelId: string) => ({
         tutor_id: existingProfile.id,
         level_id: parseInt(levelId)
       }));
@@ -736,7 +736,8 @@ export const getOwnTutorProfile = async (req: Request, res: Response) => {
     });
     
     if (!tutorProfile) {
-      return res.status(404).json({ message: "Tutor profile not found" });
+      // Return empty object instead of error to allow frontend to show profile creation form
+      return res.status(400).json({ message: "Profile not found" });
     }
     
     // Format response
