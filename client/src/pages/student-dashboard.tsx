@@ -198,7 +198,7 @@ export default function StudentDashboard() {
                       
                       <div className="w-full">
                         <label className="block mb-2 text-sm font-medium">
-                          Update Profile Photo
+                          Cập nhật ảnh đại diện
                         </label>
                         <div className="flex items-center gap-2">
                           <Input
@@ -213,7 +213,7 @@ export default function StudentDashboard() {
                             className="flex items-center px-3 py-2 text-sm border rounded cursor-pointer bg-background hover:bg-muted transition-colors"
                           >
                             <Upload className="mr-2 h-4 w-4" />
-                            Choose File
+                            Chọn ảnh
                           </label>
                           
                           {avatar && (
@@ -225,10 +225,10 @@ export default function StudentDashboard() {
                               {uploadingAvatar ? (
                                 <>
                                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                  Uploading...
+                                  Đang tải lên...
                                 </>
                               ) : (
-                                "Upload"
+                                "Tải lên"
                               )}
                             </Button>
                           )}
@@ -251,9 +251,9 @@ export default function StudentDashboard() {
                             name="firstName"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>First Name</FormLabel>
+                                <FormLabel>Họ</FormLabel>
                                 <FormControl>
-                                  <Input {...field} />
+                                  <Input {...field} placeholder="Nhập họ của bạn" />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -265,9 +265,9 @@ export default function StudentDashboard() {
                             name="lastName"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Last Name</FormLabel>
+                                <FormLabel>Tên</FormLabel>
                                 <FormControl>
-                                  <Input {...field} />
+                                  <Input {...field} placeholder="Nhập tên của bạn" />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -291,15 +291,15 @@ export default function StudentDashboard() {
                         
                         <div>
                           <Badge variant="outline" className="mr-2">
-                            Student
+                            Học viên
                           </Badge>
                           <Badge variant="outline">
-                            Joined {new Date(user?.createdAt || "").toLocaleDateString()}
+                            Tham gia {new Date(user?.created_at || "").toLocaleDateString()}
                           </Badge>
                         </div>
                         
-                        <Button type="submit">
-                          Update Profile
+                        <Button type="submit" className="bg-primary hover:bg-primary/90">
+                          Cập nhật hồ sơ
                         </Button>
                       </form>
                     </Form>
@@ -313,9 +313,9 @@ export default function StudentDashboard() {
           <TabsContent value="favorites">
             <Card>
               <CardHeader>
-                <CardTitle>Favorite Tutors</CardTitle>
+                <CardTitle>Gia sư yêu thích</CardTitle>
                 <CardDescription>
-                  Tutors you've added to your favorites
+                  Các gia sư bạn đã thêm vào danh sách yêu thích
                 </CardDescription>
               </CardHeader>
               
@@ -329,12 +329,12 @@ export default function StudentDashboard() {
                 ) : (
                   <div className="text-center py-12">
                     <Star className="h-12 w-12 mx-auto text-muted-foreground" />
-                    <h2 className="mt-4 text-xl font-medium">No favorite tutors yet</h2>
+                    <h2 className="mt-4 text-xl font-medium">Chưa có gia sư yêu thích</h2>
                     <p className="mt-2 text-muted-foreground max-w-md mx-auto">
-                      You haven't added any tutors to your favorites yet. Browse tutors and click the star icon to add them to your favorites.
+                      Bạn chưa thêm gia sư nào vào danh sách yêu thích. Tìm kiếm gia sư và nhấp vào biểu tượng ngôi sao để thêm họ vào danh sách yêu thích.
                     </p>
-                    <Button className="mt-6" onClick={() => navigate("/tutors")}>
-                      Browse Tutors
+                    <Button className="mt-6 bg-primary hover:bg-primary/90" onClick={() => navigate("/tutors")}>
+                      Tìm gia sư
                     </Button>
                   </div>
                 )}
@@ -346,9 +346,9 @@ export default function StudentDashboard() {
           <TabsContent value="messages">
             <Card>
               <CardHeader>
-                <CardTitle>Messages</CardTitle>
+                <CardTitle>Tin nhắn</CardTitle>
                 <CardDescription>
-                  Your conversations with tutors
+                  Các cuộc trò chuyện của bạn với gia sư
                 </CardDescription>
               </CardHeader>
               
@@ -388,12 +388,12 @@ export default function StudentDashboard() {
                 ) : (
                   <div className="text-center py-12">
                     <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground" />
-                    <h2 className="mt-4 text-xl font-medium">No messages yet</h2>
+                    <h2 className="mt-4 text-xl font-medium">Chưa có tin nhắn</h2>
                     <p className="mt-2 text-muted-foreground max-w-md mx-auto">
-                      You haven't started any conversations with tutors yet. Browse tutors and message them to get started.
+                      Bạn chưa bắt đầu cuộc trò chuyện nào với gia sư. Tìm kiếm gia sư và nhắn tin cho họ để bắt đầu.
                     </p>
-                    <Button className="mt-6" onClick={() => navigate("/tutors")}>
-                      Find Tutors
+                    <Button className="mt-6 bg-primary hover:bg-primary/90" onClick={() => navigate("/tutors")}>
+                      Tìm gia sư
                     </Button>
                   </div>
                 )}
