@@ -145,20 +145,16 @@ export const tutorProfilesRelations = relations(tutorProfiles, ({ one, many }) =
     references: [users.id],
   }),
   subjects: many(tutorSubjects, {
-    fields: [tutorProfiles.id],
-    references: [tutorSubjects.tutor_id],
+    relationName: 'subjects',
   }),
   educationLevels: many(tutorEducationLevels, {
-    fields: [tutorProfiles.id],
-    references: [tutorEducationLevels.tutor_id],
+    relationName: 'educationLevels',
   }),
   ads: many(ads, {
-    fields: [tutorProfiles.id],
-    references: [ads.tutor_id],
+    relationName: 'ads',
   }),
   reviews: many(reviews, {
-    fields: [tutorProfiles.id],
-    references: [reviews.tutor_id],
+    relationName: 'reviews',
   }),
 }));
 
@@ -175,12 +171,10 @@ export const tutorSubjectsRelations = relations(tutorSubjects, ({ one }) => ({
 
 export const subjectsRelations = relations(subjects, ({ many }) => ({
   tutors: many(tutorSubjects, {
-    fields: [subjects.id],
-    references: [tutorSubjects.subject_id],
+    relationName: 'tutors',
   }),
   ads: many(ads, {
-    fields: [subjects.id],
-    references: [ads.subject_id],
+    relationName: 'ads',
   }),
 }));
 
@@ -197,12 +191,10 @@ export const tutorEducationLevelsRelations = relations(tutorEducationLevels, ({ 
 
 export const educationLevelsRelations = relations(educationLevels, ({ many }) => ({
   tutors: many(tutorEducationLevels, {
-    fields: [educationLevels.id],
-    references: [tutorEducationLevels.level_id],
+    relationName: 'tutors',
   }),
   ads: many(ads, {
-    fields: [educationLevels.id],
-    references: [ads.level_id],
+    relationName: 'ads',
   }),
 }));
 
