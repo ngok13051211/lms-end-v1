@@ -196,6 +196,9 @@ export default function TutorDashboard() {
 
   // When opening the profile dialog, set the default values
   const handleOpenProfileDialog = () => {
+    console.log("Opening profile dialog");
+    
+    // Reset form to default values
     if (tutorProfile) {
       profileForm.reset({
         bio: tutorProfile.bio || "",
@@ -213,8 +216,21 @@ export default function TutorDashboard() {
       setSelectedLevels(
         tutorProfile.educationLevels?.map(level => level.id.toString()) || []
       );
+    } else {
+      // Reset form for new profile
+      profileForm.reset({
+        bio: "",
+        education: "",
+        experience: "",
+        hourlyRate: 50000, // Default hourly rate (50.000 VND)
+        teachingMode: "online",
+      });
+      
+      setSelectedSubjects([]);
+      setSelectedLevels([]);
     }
     
+    // Open dialog after form reset
     setProfileDialogOpen(true);
   };
   
@@ -1136,14 +1152,20 @@ export default function TutorDashboard() {
                       >
                         <div className="grid grid-cols-2 gap-2">
                           {subjects?.map((subject) => (
-                            <div key={subject.id} className="flex items-center space-x-2">
-                              <CheckboxItem id={`subject-${subject.id}`} value={subject.id.toString()} />
-                              <label
-                                htmlFor={`subject-${subject.id}`}
-                                className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                              >
-                                {subject.name}
-                              </label>
+                            <div key={subject.id}>
+                              <CheckboxItem 
+                                id={`subject-${subject.id}`}
+                                value={subject.id.toString()}
+                                checked={selectedSubjects.includes(subject.id.toString())}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    setSelectedSubjects(prev => [...prev, subject.id.toString()]);
+                                  } else {
+                                    setSelectedSubjects(prev => prev.filter(id => id !== subject.id.toString()));
+                                  }
+                                }}
+                                label={subject.name}
+                              />
                             </div>
                           ))}
                         </div>
@@ -1172,14 +1194,20 @@ export default function TutorDashboard() {
                       >
                         <div className="grid grid-cols-2 gap-2">
                           {educationLevels?.map((level) => (
-                            <div key={level.id} className="flex items-center space-x-2">
-                              <CheckboxItem id={`level-${level.id}`} value={level.id.toString()} />
-                              <label
-                                htmlFor={`level-${level.id}`}
-                                className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                              >
-                                {level.name}
-                              </label>
+                            <div key={level.id}>
+                              <CheckboxItem 
+                                id={`level-${level.id}`}
+                                value={level.id.toString()}
+                                checked={selectedLevels.includes(level.id.toString())}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    setSelectedLevels(prev => [...prev, level.id.toString()]);
+                                  } else {
+                                    setSelectedLevels(prev => prev.filter(id => id !== level.id.toString()));
+                                  }
+                                }}
+                                label={level.name}
+                              />
                             </div>
                           ))}
                         </div>

@@ -5,10 +5,12 @@ import { Label } from "@/components/ui/label";
 interface CheckboxGroupProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   className?: string;
+  value?: string[];
+  onValueChange?: (value: string[]) => void;
 }
 
 const CheckboxGroup = React.forwardRef<HTMLDivElement, CheckboxGroupProps>(
-  ({ children, className, ...props }, ref) => {
+  ({ children, className, value, onValueChange, ...props }, ref) => {
     return (
       <div ref={ref} className={className} {...props}>
         {children}
@@ -20,14 +22,16 @@ CheckboxGroup.displayName = "CheckboxGroup";
 
 interface CheckboxItemProps {
   id: string;
+  value?: string;
   checked?: boolean;
   onCheckedChange?: (checked: boolean) => void;
   disabled?: boolean;
-  label: React.ReactNode;
+  label?: React.ReactNode;
 }
 
 const CheckboxItem = ({
   id,
+  value,
   checked,
   onCheckedChange,
   disabled,
@@ -40,13 +44,16 @@ const CheckboxItem = ({
         checked={checked}
         onCheckedChange={onCheckedChange}
         disabled={disabled}
+        value={value}
       />
-      <Label
-        htmlFor={id}
-        className={`font-normal ${disabled ? "opacity-50" : ""}`}
-      >
-        {label}
-      </Label>
+      {label && (
+        <Label
+          htmlFor={id}
+          className={`font-normal ${disabled ? "opacity-50" : ""}`}
+        >
+          {label}
+        </Label>
+      )}
     </div>
   );
 };
