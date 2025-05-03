@@ -197,18 +197,18 @@ async function seed() {
         const [tutorProfile] = await db
           .insert(schema.tutorProfiles)
           .values({
-            userId: user.id,
+            user_id: user.id,
             bio: profile.bio,
             education: profile.education,
             experience: profile.experience,
-            hourlyRate: profile.hourlyRate,
-            teachingMode: profile.teachingMode,
-            isVerified: profile.isVerified,
-            isFeatured: profile.isFeatured,
-            rating: profile.rating,
-            totalReviews: profile.totalReviews,
-            createdAt: new Date(),
-            updatedAt: new Date(),
+            hourly_rate: profile.hourlyRate,
+            teaching_mode: profile.teachingMode,
+            is_verified: profile.isVerified,
+            is_featured: profile.isFeatured,
+            rating: profile.rating.toString(),
+            total_reviews: profile.totalReviews,
+            created_at: new Date(),
+            updated_at: new Date(),
           })
           .returning();
 
@@ -218,9 +218,9 @@ async function seed() {
             await db
               .insert(schema.tutorSubjects)
               .values({
-                tutorId: tutorProfile.id,
-                subjectId: subjects[subjectIndex].id,
-                createdAt: new Date(),
+                tutor_id: tutorProfile.id,
+                subject_id: subjects[subjectIndex].id,
+                created_at: new Date(),
               })
               .onConflictDoNothing();
           }
@@ -232,9 +232,9 @@ async function seed() {
             await db
               .insert(schema.tutorEducationLevels)
               .values({
-                tutorId: tutorProfile.id,
-                levelId: educationLevels[levelIndex].id,
-                createdAt: new Date(),
+                tutor_id: tutorProfile.id,
+                level_id: educationLevels[levelIndex].id,
+                created_at: new Date(),
               })
               .onConflictDoNothing();
           }
