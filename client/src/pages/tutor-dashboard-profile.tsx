@@ -517,12 +517,83 @@ export default function TutorDashboardProfile() {
       } else {
         setSelectedLevels([]);
       }
+      
+      // Cập nhật lịch trống từ dữ liệu tutorProfile
+      if (tutorProfile.availability) {
+        try {
+          const parsedAvailability = JSON.parse(tutorProfile.availability);
+          if (Array.isArray(parsedAvailability)) {
+            setAvailabilityItems(parsedAvailability);
+          }
+        } catch (error) {
+          console.error("Lỗi khi parse availability:", error);
+          setAvailabilityItems([]);
+        }
+      } else {
+        setAvailabilityItems([]);
+      }
     } else {
       // Clear selections when no profile exists
       setSelectedSubjects([]);
       setSelectedLevels([]);
+      setAvailabilityItems([]);
     }
   }, [tutorProfile]);
+  
+  // Hàm xử lý cập nhật lịch trống
+  const updateAvailabilityMutation = useMutation({
+    mutationFn: async (availabilityData: AvailabilityItem[]) => {
+      // Chuyển danh sách availability thành chuỗi JSON
+      const availabilityJson = JSON.stringify(availabilityData);
+      
+      console.log("Cập nhật lịch trống:", availabilityJson);
+      
+      const res = await apiRequest("PATCH", `/api/v1/tutors/profile`, {
+        availability: availabilityJson
+      });
+      
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/v1/tutors/profile`] });
+      setAvailabilityDialogOpen(false);
+      
+      toast({
+        title: "Cập nhật thành công",
+        description: "Lịch trống của bạn đã được cập nhật.",
+        variant: "default",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Cập nhật thất bại",
+        description: error instanceof Error ? error.message : "Có lỗi xảy ra khi cập nhật lịch trống.",
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Thêm mới một khung giờ trống
+  const handleAddAvailability = () => {
+    setAvailabilityItems([...availabilityItems, newAvailabilityItem]);
+    setNewAvailabilityItem({
+      day: "monday",
+      startTime: "08:00",
+      endTime: "17:00"
+    });
+  };
+  
+  // Xóa một khung giờ trống
+  const handleRemoveAvailability = (index: number) => {
+    const newItems = [...availabilityItems];
+    newItems.splice(index, 1);
+    setAvailabilityItems(newItems);
+  };
+  
+  // Cập nhật thông tin lịch trống
+  const handleSubmitAvailability = () => {
+    updateAvailabilityMutation.mutate(availabilityItems);
+  };
 
   if (profileLoading) {
     return (
@@ -728,6 +799,67 @@ export default function TutorDashboardProfile() {
               </div>
             </div>
             
+            {/* Lịch trống Section */}
+            <Card className="mt-6">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Lịch trống</CardTitle>
+                  <CardDescription>
+                    Thiết lập thời gian bạn có thể dạy trong tuần
+                  </CardDescription>
+                </div>
+                <Button 
+                  onClick={() => setAvailabilityDialogOpen(true)}
+                  variant="outline"
+                >
+                  <Edit className="mr-2 h-4 w-4" />
+                  Cập nhật lịch trống
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {availabilityItems.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {availabilityItems.map((item, index) => (
+                      <div key={index} className="border rounded-md p-4 flex flex-col">
+                        <div className="font-medium mb-2">
+                          {(() => {
+                            switch(item.day) {
+                              case 'monday': return 'Thứ Hai';
+                              case 'tuesday': return 'Thứ Ba';
+                              case 'wednesday': return 'Thứ Tư';
+                              case 'thursday': return 'Thứ Năm';
+                              case 'friday': return 'Thứ Sáu';
+                              case 'saturday': return 'Thứ Bảy';
+                              case 'sunday': return 'Chủ Nhật';
+                              default: return item.day;
+                            }
+                          })()}
+                        </div>
+                        <div className="flex items-center">
+                          <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
+                          <span className="text-sm">{item.startTime} - {item.endTime}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center p-6 border border-dashed rounded-md">
+                    <CalendarDays className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
+                    <p className="text-muted-foreground">
+                      Bạn chưa thiết lập lịch trống. Học viên sẽ không biết khi nào bạn có thể dạy.
+                    </p>
+                    <Button 
+                      onClick={() => setAvailabilityDialogOpen(true)}
+                      className="mt-4"
+                      variant="outline"
+                    >
+                      Thiết lập lịch trống
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            
             {/* Certification Upload Section */}
             <Card className="mt-6">
               <CardHeader>
@@ -858,6 +990,171 @@ export default function TutorDashboardProfile() {
           </>
         )}
       </div>
+      
+      {/* Lịch trống Dialog */}
+      <Dialog open={availabilityDialogOpen} onOpenChange={setAvailabilityDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Quản lý lịch trống</DialogTitle>
+            <DialogDescription>
+              Thiết lập thời gian bạn có thể dạy để học viên có thể đặt lịch với bạn
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            <div className="space-y-4">
+              {availabilityItems.map((item, index) => (
+                <div key={index} className="flex items-center space-x-4 p-4 border rounded-md">
+                  <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Select
+                      value={item.day}
+                      onValueChange={(value) => {
+                        const newItems = [...availabilityItems];
+                        newItems[index].day = value as any;
+                        setAvailabilityItems(newItems);
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn ngày" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="monday">Thứ Hai</SelectItem>
+                        <SelectItem value="tuesday">Thứ Ba</SelectItem>
+                        <SelectItem value="wednesday">Thứ Tư</SelectItem>
+                        <SelectItem value="thursday">Thứ Năm</SelectItem>
+                        <SelectItem value="friday">Thứ Sáu</SelectItem>
+                        <SelectItem value="saturday">Thứ Bảy</SelectItem>
+                        <SelectItem value="sunday">Chủ Nhật</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm text-muted-foreground whitespace-nowrap">Từ:</span>
+                      <Input
+                        type="time"
+                        value={item.startTime}
+                        onChange={(e) => {
+                          const newItems = [...availabilityItems];
+                          newItems[index].startTime = e.target.value;
+                          setAvailabilityItems(newItems);
+                        }}
+                      />
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm text-muted-foreground whitespace-nowrap">Đến:</span>
+                      <Input
+                        type="time"
+                        value={item.endTime}
+                        onChange={(e) => {
+                          const newItems = [...availabilityItems];
+                          newItems[index].endTime = e.target.value;
+                          setAvailabilityItems(newItems);
+                        }}
+                      />
+                    </div>
+                  </div>
+                  
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleRemoveAvailability(index)}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="w-4 h-4 text-destructive"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg>
+                  </Button>
+                </div>
+              ))}
+            </div>
+            
+            <div className="flex items-center p-4 border border-dashed rounded-md">
+              <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Select
+                  value={newAvailabilityItem.day}
+                  onValueChange={(value) => {
+                    setNewAvailabilityItem({
+                      ...newAvailabilityItem,
+                      day: value as any
+                    });
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Chọn ngày" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="monday">Thứ Hai</SelectItem>
+                    <SelectItem value="tuesday">Thứ Ba</SelectItem>
+                    <SelectItem value="wednesday">Thứ Tư</SelectItem>
+                    <SelectItem value="thursday">Thứ Năm</SelectItem>
+                    <SelectItem value="friday">Thứ Sáu</SelectItem>
+                    <SelectItem value="saturday">Thứ Bảy</SelectItem>
+                    <SelectItem value="sunday">Chủ Nhật</SelectItem>
+                  </SelectContent>
+                </Select>
+                
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-muted-foreground whitespace-nowrap">Từ:</span>
+                  <Input
+                    type="time"
+                    value={newAvailabilityItem.startTime}
+                    onChange={(e) => {
+                      setNewAvailabilityItem({
+                        ...newAvailabilityItem,
+                        startTime: e.target.value
+                      });
+                    }}
+                  />
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-muted-foreground whitespace-nowrap">Đến:</span>
+                  <Input
+                    type="time"
+                    value={newAvailabilityItem.endTime}
+                    onChange={(e) => {
+                      setNewAvailabilityItem({
+                        ...newAvailabilityItem,
+                        endTime: e.target.value
+                      });
+                    }}
+                  />
+                </div>
+              </div>
+              
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleAddAvailability}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="w-4 h-4"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>
+              </Button>
+            </div>
+            
+            {availabilityItems.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center mt-4">
+                Thêm khung giờ trống bằng cách nhập thông tin ở trên và nhấn nút +
+              </p>
+            )}
+            
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => setAvailabilityDialogOpen(false)}
+              >
+                Huỷ
+              </Button>
+              <Button 
+                onClick={handleSubmitAvailability}
+                disabled={updateAvailabilityMutation.isPending}
+              >
+                {updateAvailabilityMutation.isPending && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                Lưu lịch trống
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
       
       {/* Profile Edit Dialog */}
       <Dialog open={profileDialogOpen} onOpenChange={setProfileDialogOpen}>
