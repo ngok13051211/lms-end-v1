@@ -127,14 +127,14 @@ async function seed() {
         bio: "Tôi là giáo viên Toán tại trường THPT có hơn 5 năm kinh nghiệm giảng dạy. Tôi đã giúp nhiều học sinh cải thiện điểm số và đạt kết quả cao trong các kỳ thi quan trọng. Phương pháp giảng dạy của tôi tập trung vào việc xây dựng nền tảng vững chắc và phát triển tư duy logic.",
         education: "Tốt nghiệp Đại học Sư phạm Hà Nội, chuyên ngành Toán",
         experience: "5 năm kinh nghiệm giảng dạy tại trường THPT và dạy kèm",
-        hourlyRate: 150000,
-        teachingMode: "online",
+        hourly_rate: 150000,
+        teaching_mode: "online",
         rating: 4.9,
-        totalReviews: 24,
-        isFeatured: true,
-        isVerified: true,
-        firstName: "Nguyễn Thị",
-        lastName: "Minh",
+        total_reviews: 24,
+        is_featured: true,
+        is_verified: true,
+        first_name: "Nguyễn Thị",
+        last_name: "Minh",
         avatar: tutorImages[0],
         subjectIndices: [0], // Toán học
         levelIndices: [1, 2] // THCS, THPT
@@ -143,14 +143,14 @@ async function seed() {
         bio: "Tôi là sinh viên năm cuối Đại học Khoa học Tự nhiên, có niềm đam mê với vật lý và khoa học. Tôi đã có 3 năm kinh nghiệm dạy kèm và giúp học sinh hiểu sâu các khái niệm vật lý thông qua các ví dụ thực tế và thí nghiệm đơn giản.",
         education: "Sinh viên năm cuối Đại học Khoa học Tự nhiên, chuyên ngành Vật lý",
         experience: "3 năm kinh nghiệm dạy kèm vật lý cho học sinh THCS và THPT",
-        hourlyRate: 120000,
-        teachingMode: "offline",
+        hourly_rate: 120000,
+        teaching_mode: "offline",
         rating: 4.7,
-        totalReviews: 18,
-        isFeatured: false,
-        isVerified: true,
-        firstName: "Trần Văn",
-        lastName: "Hoàng",
+        total_reviews: 18,
+        is_featured: false,
+        is_verified: true,
+        first_name: "Trần Văn",
+        last_name: "Hoàng",
         avatar: tutorImages[1],
         subjectIndices: [1], // Vật lý
         levelIndices: [1] // THCS
@@ -159,14 +159,14 @@ async function seed() {
         bio: "Tôi là giáo viên tiếng Anh với chứng chỉ IELTS 8.5 và 7 năm kinh nghiệm giảng dạy. Tôi đã giúp nhiều học sinh và người đi làm nâng cao khả năng tiếng Anh, đặc biệt là kỹ năng giao tiếp và luyện thi quốc tế như IELTS, TOEFL.",
         education: "Tốt nghiệp Đại học Hà Nội, chuyên ngành Ngôn ngữ Anh, IELTS 8.5",
         experience: "7 năm kinh nghiệm giảng dạy tiếng Anh cho mọi lứa tuổi",
-        hourlyRate: 180000,
-        teachingMode: "both",
+        hourly_rate: 180000,
+        teaching_mode: "both",
         rating: 4.8,
-        totalReviews: 32,
-        isFeatured: true,
-        isVerified: true,
-        firstName: "Lê Thu",
-        lastName: "Hà",
+        total_reviews: 32,
+        is_featured: true,
+        is_verified: true,
+        first_name: "Lê Thu",
+        last_name: "Hà",
         avatar: tutorImages[2],
         subjectIndices: [3], // Tiếng Anh
         levelIndices: [0, 1, 2, 3, 4] // Tất cả các cấp
@@ -179,11 +179,11 @@ async function seed() {
       const [user] = await db
         .insert(schema.users)
         .values({
-          username: faker.internet.userName({ firstName: profile.firstName, lastName: profile.lastName }).toLowerCase(),
-          email: faker.internet.email({ firstName: profile.firstName, lastName: profile.lastName }).toLowerCase(),
+          username: faker.internet.userName({ firstName: profile.first_name, lastName: profile.last_name }).toLowerCase(),
+          email: faker.internet.email({ firstName: profile.first_name, lastName: profile.last_name }).toLowerCase(),
           password: password,
-          first_name: profile.firstName,
-          last_name: profile.lastName,
+          first_name: profile.first_name,
+          last_name: profile.last_name,
           role: "tutor",
           avatar: profile.avatar,
           created_at: new Date(),
@@ -201,12 +201,12 @@ async function seed() {
             bio: profile.bio,
             education: profile.education,
             experience: profile.experience,
-            hourly_rate: profile.hourlyRate,
-            teaching_mode: profile.teachingMode,
-            is_verified: profile.isVerified,
-            is_featured: profile.isFeatured,
+            hourly_rate: profile.hourly_rate,
+            teaching_mode: profile.teaching_mode,
+            is_verified: profile.is_verified,
+            is_featured: profile.is_featured,
             rating: profile.rating.toString(),
-            total_reviews: profile.totalReviews,
+            total_reviews: profile.total_reviews,
             created_at: new Date(),
             updated_at: new Date(),
           })
@@ -250,8 +250,8 @@ async function seed() {
               description: `Tôi cung cấp các buổi học ${subjects[profile.subjectIndices[0]].name} chất lượng cao dành cho học sinh ${educationLevels[profile.levelIndices[0]].name}. Phương pháp giảng dạy tập trung vào xây dựng nền tảng vững chắc và giải quyết bài tập thực tế.`,
               subject_id: subjects[profile.subjectIndices[0]].id,
               level_id: educationLevels[profile.levelIndices[0]].id,
-              hourly_rate: profile.hourlyRate.toString(),
-              teaching_mode: profile.teachingMode,
+              hourly_rate: profile.hourly_rate.toString(),
+              teaching_mode: profile.teaching_mode,
               status: "active",
               created_at: new Date(),
               updated_at: new Date(),
@@ -263,18 +263,18 @@ async function seed() {
 
     // Create sample student users
     for (let i = 0; i < 5; i++) {
-      const firstName = faker.person.firstName();
-      const lastName = faker.person.lastName();
+      const first_name = faker.person.firstName();
+      const last_name = faker.person.lastName();
       const password = await bcrypt.hash("password123", 10);
       
       await db
         .insert(schema.users)
         .values({
-          username: faker.internet.userName({ firstName, lastName }).toLowerCase(),
-          email: faker.internet.email({ firstName, lastName }).toLowerCase(),
+          username: faker.internet.userName({ firstName: first_name, lastName: last_name }).toLowerCase(),
+          email: faker.internet.email({ firstName: first_name, lastName: last_name }).toLowerCase(),
           password: password,
-          first_name: firstName,
-          last_name: lastName,
+          first_name: first_name,
+          last_name: last_name,
           role: "student",
           avatar: faker.image.avatar(),
           created_at: new Date(),
