@@ -569,7 +569,7 @@ export default function TutorDashboard() {
                             </h3>
                             <div className="flex items-center">
                               <Star className="h-4 w-4 text-warning fill-warning mr-1" />
-                              <span>{tutorProfile.rating} ({tutorProfile.totalReviews} reviews)</span>
+                              <span>{tutorProfile.rating} ({tutorProfile.total_reviews} reviews)</span>
                             </div>
                           </div>
                         </div>
