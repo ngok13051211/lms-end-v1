@@ -47,6 +47,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post(`${apiPrefix}/tutors/profile`, authMiddleware, roleMiddleware(["tutor"]), tutorController.createTutorProfile);
   app.patch(`${apiPrefix}/tutors/profile`, authMiddleware, roleMiddleware(["tutor"]), tutorController.updateTutorProfile);
   app.get(`${apiPrefix}/tutors/profile`, authMiddleware, roleMiddleware(["tutor"]), tutorController.getOwnTutorProfile); 
+  app.post(`${apiPrefix}/tutors/certifications`, authMiddleware, roleMiddleware(["tutor"]), uploadService.uploadDocuments, tutorController.uploadCertifications);
   app.get(`${apiPrefix}/tutors/stats`, authMiddleware, roleMiddleware(["tutor"]), tutorController.getTutorStats);
   app.get(`${apiPrefix}/tutors/ads`, authMiddleware, roleMiddleware(["tutor"]), adController.getOwnAds);
   
