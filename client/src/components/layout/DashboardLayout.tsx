@@ -39,6 +39,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   }
 
   const handleLogout = () => {
+    // Clear React Query cache before logout to prevent stale data issues
+    queryClient.clear();
+    
     dispatch(logout() as any);
     navigate("/");
   };

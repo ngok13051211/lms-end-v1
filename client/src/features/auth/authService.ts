@@ -96,6 +96,8 @@ const logout = async (): Promise<void> => {
     method: "POST",
     credentials: "include",
   });
+  
+  // We'll handle the QueryClient cache clear in the components
 };
 
 const authService = {

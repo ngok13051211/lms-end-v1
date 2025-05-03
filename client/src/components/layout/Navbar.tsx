@@ -18,6 +18,7 @@ import {
   SheetContent,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { queryClient } from "@/lib/queryClient";
 
 export default function Navbar() {
   const { user } = useSelector((state: RootState) => state.auth);
@@ -40,6 +41,9 @@ export default function Navbar() {
   }, []);
 
   const handleLogout = () => {
+    // Clear React Query cache before logout to prevent stale data issues
+    queryClient.clear();
+    
     dispatch(logout() as any);
     navigate("/");
   };
