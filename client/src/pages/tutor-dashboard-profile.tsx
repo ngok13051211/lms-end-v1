@@ -369,10 +369,16 @@ export default function TutorDashboardProfile() {
                       <h3 className="font-medium mb-2">Mức phí tham khảo</h3>
                       <p className="flex items-center">
                         <DollarSign className="h-4 w-4 text-muted-foreground mr-1" />
-                        {new Intl.NumberFormat('vi-VN', { 
-                          style: 'currency', 
-                          currency: 'VND' 
-                        }).format(Number(tutorProfile.hourly_rate))}
+                        {typeof tutorProfile.hourly_rate === 'number' 
+                          ? new Intl.NumberFormat('vi-VN', { 
+                              style: 'currency', 
+                              currency: 'VND' 
+                            }).format(tutorProfile.hourly_rate)
+                          : new Intl.NumberFormat('vi-VN', { 
+                              style: 'currency', 
+                              currency: 'VND' 
+                            }).format(Number(tutorProfile.hourly_rate))
+                        }
                         <span className="text-sm text-muted-foreground ml-1">/giờ</span>
                       </p>
                     </div>
@@ -380,11 +386,14 @@ export default function TutorDashboardProfile() {
                     <div className="mt-6">
                       <h3 className="font-medium mb-2">Hình thức dạy</h3>
                       <Badge>
-                        {tutorProfile.teaching_mode && {
-                          online: "Trực tuyến",
-                          offline: "Tại chỗ",
-                          both: "Cả hai"
-                        }[tutorProfile.teaching_mode as 'online' | 'offline' | 'both'] || "Không xác định"}
+                        {tutorProfile.teaching_mode 
+                          ? {
+                              online: "Trực tuyến",
+                              offline: "Tại chỗ",
+                              both: "Cả hai"
+                            }[tutorProfile.teaching_mode as 'online' | 'offline' | 'both'] || "Không xác định"
+                          : "Không xác định"
+                        }
                       </Badge>
                     </div>
                   </>
@@ -627,7 +636,11 @@ export default function TutorDashboardProfile() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Teaching Mode</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        value={field.value || "online"}
+                        defaultValue={field.value || "online"}
+                      >
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select teaching mode" />
