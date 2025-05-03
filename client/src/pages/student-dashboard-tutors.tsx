@@ -75,12 +75,18 @@ export default function StudentDashboardTutors() {
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-medium">Gia sư yêu thích</h1>
           <div className="flex gap-2">
-            <Link href="/dashboard/student/profile">
-              <Button variant="outline">Hồ sơ</Button>
-            </Link>
-            <Link href="/dashboard/student/messages">
-              <Button variant="outline">Tin nhắn</Button>
-            </Link>
+            <Button 
+              variant="outline"
+              onClick={() => window.location.href = "/dashboard/student/profile"}
+            >
+              Hồ sơ
+            </Button>
+            <Button 
+              variant="outline"
+              onClick={() => window.location.href = "/dashboard/student/messages"}
+            >
+              Tin nhắn
+            </Button>
           </div>
         </div>
         
@@ -134,11 +140,12 @@ export default function StudentDashboardTutors() {
                 <p className="mt-2 text-muted-foreground max-w-md mx-auto">
                   Bạn chưa thêm gia sư nào vào danh sách yêu thích. Tìm kiếm gia sư và nhấp vào biểu tượng ngôi sao để thêm họ vào danh sách yêu thích.
                 </p>
-                <Link href="/tutors">
-                  <Button className="mt-6">
-                    Tìm gia sư
-                  </Button>
-                </Link>
+                <Button 
+                  className="mt-6"
+                  onClick={() => window.location.href = "/tutors"}
+                >
+                  Tìm gia sư
+                </Button>
               </div>
             )}
           </CardContent>
