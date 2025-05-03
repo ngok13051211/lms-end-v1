@@ -109,7 +109,7 @@ async function seed() {
           rating: testimonial.rating,
           comment: testimonial.comment,
           avatar: testimonial.avatar,
-          isFeatured: true,
+          is_featured: true,
           createdAt: new Date()
         })
         .onConflictDoNothing();

@@ -123,7 +123,7 @@ export const testimonials = pgTable("testimonials", {
   rating: integer("rating").notNull(),
   comment: text("comment").notNull(),
   avatar: text("avatar"),
-  isFeatured: boolean("is_featured").default(true),
+  is_featured: boolean("is_featured").default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
