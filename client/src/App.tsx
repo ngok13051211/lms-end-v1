@@ -45,9 +45,29 @@ function Router() {
       <Route path="/tutors/:id" component={TutorProfile} />
       <Route path="/become-tutor" component={BecomeTutor} />
       
-      {/* Legacy route - keeping for backward compatibility */}
+      {/* Legacy routes - keeping for backward compatibility */}
       <Route path="/tutor-dashboard">
         <PrivateRoute role="tutor" component={TutorDashboard} />
+      </Route>
+      
+      <Route path="/tutor-dashboard/profile">
+        <PrivateRoute role="tutor" component={TutorDashboardProfile} />
+      </Route>
+      
+      <Route path="/tutor-dashboard/ads">
+        <PrivateRoute role="tutor" component={TutorDashboardAds} />
+      </Route>
+      
+      <Route path="/tutor-dashboard/messages">
+        <PrivateRoute role="tutor" component={TutorDashboardMessages} />
+      </Route>
+      
+      <Route path="/tutor-dashboard/messages/:id">
+        <PrivateRoute role="tutor" component={TutorDashboardMessages} />
+      </Route>
+      
+      <Route path="/tutor-dashboard/stats">
+        <PrivateRoute role="tutor" component={TutorDashboardStats} />
       </Route>
       
       {/* Main tutor dashboard route */}

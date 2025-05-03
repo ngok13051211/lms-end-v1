@@ -98,11 +98,14 @@ export default function TutorDashboardProfile() {
       
       // Combine form data with selected subjects and levels
       // Convert camelCase form fields to snake_case for API
+      // Ensure hourly_rate is below 100 million to avoid numeric overflow
+      const hourlyRate = data.hourlyRate > 99999999 ? 99999999 : data.hourlyRate;
+      
       const completeData = {
         bio: data.bio,
         education: data.education,
         experience: data.experience,
-        hourly_rate: data.hourlyRate,
+        hourly_rate: hourlyRate,
         teaching_mode: data.teachingMode,
         subject_ids: selectedSubjects,
         level_ids: selectedLevels
