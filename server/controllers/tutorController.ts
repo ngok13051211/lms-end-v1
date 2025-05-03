@@ -57,6 +57,9 @@ export const getTutors = async (req: Request, res: Response) => {
     const mode = req.query.mode as string || 'all';
     const minRate = parseFloat(req.query.minRate as string || '0');
     const maxRate = parseFloat(req.query.maxRate as string || '1000000');
+    const minExperience = parseInt(req.query.minExperience as string || '0');
+    const hasCertifications = req.query.hasCertifications === 'true';
+    const availability = req.query.availability as string || 'all';
     const page = parseInt(req.query.page as string || '1');
     const limit = parseInt(req.query.limit as string || '12');
     const offset = (page - 1) * limit;
@@ -73,7 +76,9 @@ export const getTutors = async (req: Request, res: Response) => {
         .where(
           or(
             like(schema.users.first_name, `%${search}%`),
-            like(schema.users.last_name, `%${search}%`)
+            like(schema.users.last_name, `%${search}%`),
+            like(schema.tutorProfiles.bio, `%${search}%`),
+            like(schema.tutorProfiles.certifications, `%${search}%`)
           )
         );
       
@@ -84,8 +89,8 @@ export const getTutors = async (req: Request, res: Response) => {
         return res.status(200).json({
           tutors: [],
           total: 0,
-          totalPages: 0,
-          currentPage: page
+          total_pages: 0,
+          current_page: page
         });
       }
     }
@@ -103,8 +108,8 @@ export const getTutors = async (req: Request, res: Response) => {
         return res.status(200).json({
           tutors: [],
           total: 0,
-          totalPages: 0,
-          currentPage: page
+          total_pages: 0,
+          current_page: page
         });
       }
     }
@@ -122,8 +127,8 @@ export const getTutors = async (req: Request, res: Response) => {
         return res.status(200).json({
           tutors: [],
           total: 0,
-          totalPages: 0,
-          currentPage: page
+          total_pages: 0,
+          current_page: page
         });
       }
     }
@@ -144,8 +149,8 @@ export const getTutors = async (req: Request, res: Response) => {
         return res.status(200).json({
           tutors: [],
           total: 0,
-          totalPages: 0,
-          currentPage: page
+          total_pages: 0,
+          current_page: page
         });
       }
     }
@@ -157,6 +162,30 @@ export const getTutors = async (req: Request, res: Response) => {
           sql`${schema.tutorProfiles.hourly_rate} >= ${minRate}`,
           sql`${schema.tutorProfiles.hourly_rate} <= ${maxRate}`
         )
+      );
+    }
+    
+    // Add experience filter
+    if (minExperience > 0) {
+      conditions.push(
+        sql`${schema.tutorProfiles.experience_years} >= ${minExperience}`
+      );
+    }
+    
+    // Add certifications filter
+    if (hasCertifications) {
+      conditions.push(
+        and(
+          not(isNull(schema.tutorProfiles.certifications)),
+          sql`length(${schema.tutorProfiles.certifications}) > 0`
+        )
+      );
+    }
+    
+    // Add availability filter
+    if (availability !== 'all') {
+      conditions.push(
+        like(schema.tutorProfiles.availability, `%${availability}%`)
       );
     }
     
@@ -178,7 +207,8 @@ export const getTutors = async (req: Request, res: Response) => {
             first_name: true,
             last_name: true,
             email: true,
-            avatar: true
+            avatar: true,
+            phone: true
           }
         },
         subjects: {

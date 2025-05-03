@@ -171,6 +171,21 @@ export const subjectsRelations = relations(subjects, ({ many }) => ({
   ads: many(ads),
 }));
 
+export const adsRelations = relations(ads, ({ one }) => ({
+  tutor: one(tutorProfiles, {
+    fields: [ads.tutor_id],
+    references: [tutorProfiles.id],
+  }),
+  subject: one(subjects, {
+    fields: [ads.subject_id],
+    references: [subjects.id],
+  }),
+  level: one(educationLevels, {
+    fields: [ads.level_id],
+    references: [educationLevels.id],
+  }),
+}));
+
 export const tutorEducationLevelsRelations = relations(tutorEducationLevels, ({ one }) => ({
   tutor: one(tutorProfiles, {
     fields: [tutorEducationLevels.tutor_id],
