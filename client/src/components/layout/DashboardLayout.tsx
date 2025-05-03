@@ -81,13 +81,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const renderSidebarContent = () => (
     <div className="flex flex-col h-full">
       <div className="p-6 border-b">
-        <Link href="/">
-          <a className="flex items-center">
-            <span className="text-primary text-2xl font-medium">
-              Homi<span className="text-secondary">Tutor</span>
-            </span>
-          </a>
-        </Link>
+        <div 
+          className="flex items-center cursor-pointer" 
+          onClick={() => window.location.href = '/'}
+        >
+          <span className="text-primary text-2xl font-medium">
+            Homi<span className="text-secondary">Tutor</span>
+          </span>
+        </div>
       </div>
 
       <div className="flex items-center p-6 border-b">
@@ -110,20 +111,22 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           {sidebarItems.map((item) => {
             const isActive = location === item.href;
             return (
-              <Link key={item.href} href={item.href}>
-                <a
-                  className={`flex items-center px-4 py-3 text-sm rounded-md transition-colors ${
-                    isActive
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  }`}
-                  onClick={() => isMobile && setSidebarOpen(false)}
-                >
-                  {item.icon}
-                  <span className="ml-3">{item.label}</span>
-                  {isActive && <ChevronRight className="ml-auto h-4 w-4" />}
-                </a>
-              </Link>
+              <div
+                key={item.href}
+                className={`flex items-center px-4 py-3 text-sm rounded-md transition-colors cursor-pointer ${
+                  isActive
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+                onClick={() => {
+                  if (isMobile) setSidebarOpen(false);
+                  window.location.href = item.href;
+                }}
+              >
+                {item.icon}
+                <span className="ml-3">{item.label}</span>
+                {isActive && <ChevronRight className="ml-auto h-4 w-4" />}
+              </div>
             );
           })}
         </nav>
@@ -151,13 +154,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Mobile navigation */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-background border-b p-4 flex items-center justify-between">
-        <Link href="/">
-          <a className="flex items-center">
-            <span className="text-primary text-xl font-medium">
-              Homi<span className="text-secondary">Tutor</span>
-            </span>
-          </a>
-        </Link>
+        <div 
+          className="flex items-center cursor-pointer" 
+          onClick={() => window.location.href = '/'}
+        >
+          <span className="text-primary text-xl font-medium">
+            Homi<span className="text-secondary">Tutor</span>
+          </span>
+        </div>
 
         <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
           <SheetTrigger asChild>
