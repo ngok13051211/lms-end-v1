@@ -26,7 +26,7 @@ const adSchema = z.object({
   level_id: z.string().min(1, "Education level is required"),
   hourly_rate: z.coerce.number().min(10000, "Hourly rate must be at least 10,000 VND"),
   teaching_mode: z.enum(["online", "offline", "both"]),
-  is_active: z.boolean().default(true),
+  status: z.enum(["active", "inactive"]).default("active"),
 });
 
 export default function TutorDashboardAds() {
@@ -67,7 +67,7 @@ export default function TutorDashboardAds() {
       level_id: "",
       hourly_rate: tutorProfile?.hourly_rate ? Number(tutorProfile.hourly_rate) : 0,
       teaching_mode: tutorProfile?.teaching_mode || "online",
-      is_active: true,
+      status: "active",
     },
   });
 
@@ -164,7 +164,7 @@ export default function TutorDashboardAds() {
       level_id: ad.level.id.toString(),
       hourly_rate: Number(ad.hourly_rate),
       teaching_mode: ad.teaching_mode,
-      is_active: ad.is_active || true,
+      status: ad.status || "active",
     });
     
     setAdDialogOpen(true);
@@ -185,7 +185,7 @@ export default function TutorDashboardAds() {
       level_id: "",
       hourly_rate: tutorProfile?.hourly_rate ? Number(tutorProfile.hourly_rate) : 0,
       teaching_mode: tutorProfile?.teaching_mode || "online",
-      is_active: true,
+      status: "active",
     });
     setAdDialogOpen(true);
   };
