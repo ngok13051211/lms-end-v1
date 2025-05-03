@@ -10,6 +10,8 @@ import { Slider } from "@/components/ui/slider";
 import { Loader2, Search, Filter, SlidersHorizontal } from "lucide-react";
 import { Subject, EducationLevel } from "@shared/schema";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 export default function TutorListing() {
   const [, navigate] = useLocation();
@@ -19,6 +21,9 @@ export default function TutorListing() {
   const [levelFilter, setLevelFilter] = useState(searchParams.get("level") || "all");
   const [modeFilter, setModeFilter] = useState(searchParams.get("mode") || "all");
   const [rateRange, setRateRange] = useState([0, 500000]);
+  const [minExperienceFilter, setMinExperienceFilter] = useState("0");
+  const [availabilityFilter, setAvailabilityFilter] = useState("all");
+  const [hasCertifications, setHasCertifications] = useState(false);
   const [page, setPage] = useState(1);
   
   // Get filter options
@@ -40,6 +45,12 @@ export default function TutorListing() {
     if (modeFilter !== 'all') url.searchParams.append('mode', modeFilter);
     url.searchParams.append('minRate', rateRange[0].toString());
     url.searchParams.append('maxRate', rateRange[1].toString());
+    
+    // Advanced filters
+    if (minExperienceFilter !== '0') url.searchParams.append('minExperience', minExperienceFilter);
+    if (availabilityFilter !== 'all') url.searchParams.append('availability', availabilityFilter);
+    if (hasCertifications) url.searchParams.append('hasCertifications', 'true');
+    
     url.searchParams.append('page', page.toString());
     url.searchParams.append('limit', '12');
     
@@ -52,7 +63,7 @@ export default function TutorListing() {
   });
   
   const tutors = tutorData?.tutors || [];
-  const totalPages = tutorData?.totalPages || 1;
+  const totalPages = tutorData?.total_pages || 1;
   
   // Update URL when filters change
   useEffect(() => {
@@ -256,32 +267,78 @@ export default function TutorListing() {
                     </SheetDescription>
                   </SheetHeader>
                   
-                  <div className="mt-6">
-                    <h4 className="text-sm font-medium mb-2">Hourly Rate</h4>
-                    <div className="px-2">
-                      <Slider
-                        defaultValue={rateRange}
-                        max={1000000}
-                        step={10000}
-                        onValueChange={setRateRange}
-                      />
-                      <div className="flex justify-between mt-2 text-sm text-muted-foreground">
-                        <span>
-                          {new Intl.NumberFormat('vi-VN', { 
-                            style: 'currency', 
-                            currency: 'VND'
-                          }).format(rateRange[0])}
-                        </span>
-                        <span>
-                          {new Intl.NumberFormat('vi-VN', { 
-                            style: 'currency', 
-                            currency: 'VND'
-                          }).format(rateRange[1])}
-                        </span>
+                  <div className="mt-6 space-y-6">
+                    <div>
+                      <h4 className="text-sm font-medium mb-2">Hourly Rate</h4>
+                      <div className="px-2">
+                        <Slider
+                          defaultValue={rateRange}
+                          max={1000000}
+                          step={10000}
+                          onValueChange={setRateRange}
+                        />
+                        <div className="flex justify-between mt-2 text-sm text-muted-foreground">
+                          <span>
+                            {new Intl.NumberFormat('vi-VN', { 
+                              style: 'currency', 
+                              currency: 'VND'
+                            }).format(rateRange[0])}
+                          </span>
+                          <span>
+                            {new Intl.NumberFormat('vi-VN', { 
+                              style: 'currency', 
+                              currency: 'VND'
+                            }).format(rateRange[1])}
+                          </span>
+                        </div>
                       </div>
                     </div>
+
+                    <div>
+                      <h4 className="text-sm font-medium mb-2">Minimum Years of Experience</h4>
+                      <Select value={minExperienceFilter} onValueChange={setMinExperienceFilter}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select experience" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="0">Any Experience</SelectItem>
+                          <SelectItem value="1">At least 1 year</SelectItem>
+                          <SelectItem value="2">At least 2 years</SelectItem>
+                          <SelectItem value="3">At least 3 years</SelectItem>
+                          <SelectItem value="5">At least 5 years</SelectItem>
+                          <SelectItem value="10">At least 10 years</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <h4 className="text-sm font-medium mb-2">Availability</h4>
+                      <Select value={availabilityFilter} onValueChange={setAvailabilityFilter}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select availability" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Any Time</SelectItem>
+                          <SelectItem value="weekday_morning">Weekday Mornings</SelectItem>
+                          <SelectItem value="weekday_afternoon">Weekday Afternoons</SelectItem>
+                          <SelectItem value="weekday_evening">Weekday Evenings</SelectItem>
+                          <SelectItem value="weekend_morning">Weekend Mornings</SelectItem>
+                          <SelectItem value="weekend_afternoon">Weekend Afternoons</SelectItem>
+                          <SelectItem value="weekend_evening">Weekend Evenings</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Switch 
+                        id="certified" 
+                        checked={hasCertifications}
+                        onCheckedChange={setHasCertifications}
+                      />
+                      <Label htmlFor="certified">Chỉ giáo viên có chứng chỉ</Label>
+                    </div>
                     
-                    <Button className="w-full mt-8" onClick={applyFilters}>
+                    <Button className="w-full mt-4" onClick={applyFilters}>
                       Apply Filters
                     </Button>
                   </div>
@@ -306,7 +363,7 @@ export default function TutorListing() {
           <>
             <div className="mb-6">
               <h1 className="text-2xl md:text-3xl font-light">
-                Found <span className="font-medium text-primary">{tutorData?.total || 0} tutors</span> for your search
+                Found <span className="font-medium text-primary">{tutorData?.total_count || 0} tutors</span> for your search
               </h1>
               {(searchTerm || subjectFilter !== "all" || levelFilter !== "all" || modeFilter !== "all") && (
                 <p className="text-muted-foreground mt-1">
@@ -367,6 +424,9 @@ export default function TutorListing() {
                   setLevelFilter("all");
                   setModeFilter("all");
                   setRateRange([0, 500000]);
+                  setMinExperienceFilter("0");
+                  setAvailabilityFilter("all");
+                  setHasCertifications(false);
                   navigate("/tutors");
                 }}>
                   Clear all filters
