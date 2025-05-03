@@ -1,7 +1,9 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import cloudinary from './config/cloudinary';
+import path from 'path';
+import fs from 'fs';
 
 // Import controllers
 import * as authController from "./controllers/authController";
