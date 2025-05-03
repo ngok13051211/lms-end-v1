@@ -4,7 +4,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Star, Calendar, Clock } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Star, Calendar, Clock, HeartOff } from "lucide-react";
 import { TutorProfile } from "@shared/schema";
 
 interface FeaturedTutorUser {
@@ -68,6 +69,8 @@ export interface FavoriteDashboardTutor {
 interface TutorCardProps {
   tutor: ExtendedTutorProfile | FeaturedTutor | FavoriteDashboardTutor;
   compact?: boolean;
+  isFavorite?: boolean;
+  onRemoveFromFavorites?: (tutorId: number) => void;
 }
 
 export default function TutorCard({ tutor, compact = false }: TutorCardProps) {
