@@ -42,21 +42,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get(`${apiPrefix}/tutors`, tutorController.getTutors);
   app.get(`${apiPrefix}/tutors/featured`, tutorController.getFeaturedTutors);
   app.get(`${apiPrefix}/tutors/similar/:id`, tutorController.getSimilarTutors);
-  app.get(`${apiPrefix}/tutors/:id/reviews`, tutorController.getTutorReviews);
-  app.get(`${apiPrefix}/tutors/:id/ads`, adController.getTutorAds);
   
-  // Special routes for tutors
+  // Special routes for tutors - these must be defined before routes with :id to avoid conflicts
   app.post(`${apiPrefix}/tutors/profile`, authMiddleware, roleMiddleware(["tutor"]), tutorController.createTutorProfile);
   app.patch(`${apiPrefix}/tutors/profile`, authMiddleware, roleMiddleware(["tutor"]), tutorController.updateTutorProfile);
   app.get(`${apiPrefix}/tutors/profile`, authMiddleware, roleMiddleware(["tutor"]), tutorController.getOwnTutorProfile); 
   app.get(`${apiPrefix}/tutors/stats`, authMiddleware, roleMiddleware(["tutor"]), tutorController.getTutorStats);
+  app.get(`${apiPrefix}/tutors/ads`, authMiddleware, roleMiddleware(["tutor"]), adController.getOwnAds);
   
-  // This route must be last to avoid conflicts with the /tutors/profile route
+  // Routes with :id parameters must come after specific routes
+  app.get(`${apiPrefix}/tutors/:id/reviews`, tutorController.getTutorReviews);
+  app.get(`${apiPrefix}/tutors/:id/ads`, adController.getTutorAds);
+  
+  // This route must be last to avoid conflicts with other routes
   app.get(`${apiPrefix}/tutors/:id`, tutorController.getTutorById);
 
   // Ad routes
   app.post(`${apiPrefix}/tutors/ads`, authMiddleware, roleMiddleware(["tutor"]), adController.createAd);
-  app.get(`${apiPrefix}/tutors/ads`, authMiddleware, roleMiddleware(["tutor"]), adController.getOwnAds);
   app.patch(`${apiPrefix}/tutors/ads/:id`, authMiddleware, roleMiddleware(["tutor"]), adController.updateAd);
   app.delete(`${apiPrefix}/tutors/ads/:id`, authMiddleware, roleMiddleware(["tutor"]), adController.deleteAd);
 
