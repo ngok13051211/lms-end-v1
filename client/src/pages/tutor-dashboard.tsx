@@ -434,9 +434,9 @@ export default function TutorDashboard() {
                       <div className="flex-shrink-0">
                         <div className="relative">
                           <Avatar className="h-32 w-32 border-2 border-primary">
-                            <AvatarImage src={user?.avatar} alt={user?.firstName} />
+                            <AvatarImage src={user?.avatar} alt={user?.first_name} />
                             <AvatarFallback className="text-3xl">
-                              {user?.firstName?.[0]}{user?.lastName?.[0]}
+                              {user?.first_name?.[0]}{user?.last_name?.[0]}
                             </AvatarFallback>
                           </Avatar>
                           
@@ -493,7 +493,7 @@ export default function TutorDashboard() {
                               Full Name
                             </h3>
                             <p className="text-base">
-                              {user?.firstName} {user?.lastName}
+                              {user?.first_name} {user?.last_name}
                             </p>
                           </div>
                           
