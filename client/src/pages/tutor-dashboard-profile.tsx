@@ -15,6 +15,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
 import { Loader2, Edit, Upload, AlertCircle, UserCircle, BadgeCheck, DollarSign } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { CheckboxGroup, CheckboxItem } from "@/components/ui/checkbox-group";
@@ -99,6 +100,9 @@ export default function TutorDashboardProfile() {
       // Limit hourly_rate to avoid numeric overflow (PostgreSQL decimal precision limit)
       const hourlyRate = data.hourlyRate > 99999999 ? 99999999 : data.hourlyRate;
       
+      // Ensure teachingMode has a value, defaulting to "online" if it's null or undefined
+      const teachingMode = data.teachingMode || "online";
+      
       // Build request data with snake_case field names for the API
       // Make sure experience_years is included as numeric value or undefined
       const completeData = {
@@ -107,25 +111,39 @@ export default function TutorDashboardProfile() {
         experience: data.experience,
         experience_years: tutorProfile?.experience_years || undefined,
         hourly_rate: hourlyRate,
-        teaching_mode: data.teachingMode,
+        teaching_mode: teachingMode,
         subject_ids: selectedSubjects,
         level_ids: selectedLevels
       };
       
-      console.log("Sending data to API:", completeData);
+      console.log("Sending data to API:", JSON.stringify(completeData));
+      
+      // Add extra logging for debugging
+      console.log("Request method:", method);
+      console.log("Request URL:", `/api/v1/tutors/profile`);
       
       const res = await apiRequest(method, `/api/v1/tutors/profile`, completeData);
-      return res.json();
+      const responseData = await res.json();
+      console.log("API response:", JSON.stringify(responseData));
+      return responseData;
     },
     onSuccess: (data) => {
       console.log("Profile updated successfully:", data);
       queryClient.invalidateQueries({ queryKey: [`/api/v1/tutors/profile`] });
       setProfileDialogOpen(false);
-      // Force reload to ensure all data is properly refreshed
-      window.location.reload();
+      
+      // Thêm timeout trước khi reload để đảm bảo invalidateQueries hoàn tất
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
     },
     onError: (error) => {
       console.error("Profile update error:", error);
+      toast({
+        title: "Update failed",
+        description: error instanceof Error ? error.message : "Unknown error occurred",
+        variant: "destructive",
+      });
     }
   });
 
@@ -217,6 +235,8 @@ export default function TutorDashboardProfile() {
       }
     }
   };
+
+  const { toast } = useToast();
 
   const onSubmitProfile = async (data: z.infer<typeof tutorProfileSchema>) => {
     try {

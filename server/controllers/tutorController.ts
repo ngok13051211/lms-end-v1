@@ -711,14 +711,22 @@ export const updateTutorProfile = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Tutor profile not found" });
     }
     
-    // Validate update data
-    const updateData = schema.tutorProfileInsertSchema.partial().parse({
-      ...req.body,
+    // Log original request data
+    console.log("Original request body:", JSON.stringify(req.body));
+    
+    // Prepare update data manually to ensure correct field preservation
+    const updateData = {
+      bio: req.body.bio || existingProfile.bio,
+      education: req.body.education || existingProfile.education,
+      experience: req.body.experience || existingProfile.experience,
+      experience_years: req.body.experience_years || existingProfile.experience_years,
+      hourly_rate: req.body.hourly_rate !== undefined ? req.body.hourly_rate : existingProfile.hourly_rate,
+      teaching_mode: req.body.teaching_mode || existingProfile.teaching_mode || 'online',
       user_id: userId
-    });
+    };
     
     // Log the data being sent to the update operation
-    console.log("Updating tutor profile with data:", updateData);
+    console.log("Updating tutor profile with data:", JSON.stringify(updateData));
     
     // Update tutor profile
     const [updatedProfile] = await db.update(schema.tutorProfiles)
@@ -726,7 +734,7 @@ export const updateTutorProfile = async (req: Request, res: Response) => {
       .where(eq(schema.tutorProfiles.id, existingProfile.id))
       .returning();
       
-    console.log("Updated profile:", updatedProfile);
+    console.log("Updated profile:", JSON.stringify(updatedProfile));
     
     // Update subjects if provided
     if (req.body.subject_ids && Array.isArray(req.body.subject_ids)) {
