@@ -260,7 +260,40 @@ export default function TutorDashboardProfile() {
 
   const onSubmitProfile = async (data: z.infer<typeof tutorProfileSchema>) => {
     try {
-      await profileMutation.mutateAsync(data);
+      console.log("Submitting profile data:", data);
+      const response = await profileMutation.mutateAsync(data);
+      console.log("Profile update response:", response);
+      
+      // Manually add a slight delay before refetching to ensure DB has updated
+      setTimeout(() => {
+        refetchTutorProfile().then(result => {
+          console.log("Manual refetch result:", result);
+          
+          // Update form with the latest data after db changes
+          if (result.data) {
+            const formData = {
+              bio: result.data.bio || "",
+              education: result.data.education || "",
+              experience: result.data.experience || "",
+              hourlyRate: result.data.hourly_rate ? Number(result.data.hourly_rate) : 10000,
+              teachingMode: result.data.teaching_mode ? 
+                (result.data.teaching_mode as "online" | "offline" | "both") : "online",
+            };
+            
+            console.log("Forcing form update with data:", formData);
+            profileForm.reset(formData);
+            
+            // Also force update the selected subjects and levels
+            if (result.data.subjects) {
+              setSelectedSubjects(result.data.subjects.map((s: any) => s.id.toString()));
+            }
+            
+            if (result.data.levels) {
+              setSelectedLevels(result.data.levels.map((l: any) => l.id.toString()));
+            }
+          }
+        });
+      }, 500);
     } catch (error) {
       console.error("Profile update error:", error);
     }
