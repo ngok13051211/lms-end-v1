@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import multer from "multer";
 import { storage, uploadToCloudinary } from "../storage";
 import path from "path";
+import fs from "fs";
 import { Express } from "express";
 
 // Set up multer with storage configuration
