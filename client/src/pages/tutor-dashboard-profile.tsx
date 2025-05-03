@@ -254,11 +254,27 @@ export default function TutorDashboardProfile() {
         formData.append("documents", file);
       });
       
+      // Add console logging for debugging
+      console.log("Uploading certifications, files count:", files.length);
+      
+      // Lấy token từ localStorage nếu có
+      const token = localStorage.getItem('token');
+      
       const res = await fetch("/api/v1/tutors/certifications", {
         method: "POST",
         credentials: "include",
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
         body: formData,
       });
+      
+      // Log response status for debugging
+      console.log("Certification upload response status:", res.status);
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Certification upload error response:", errorText);
+        throw new Error(`Upload failed with status: ${res.status}. ${errorText}`);
+      }
       
       if (!res.ok) {
         throw new Error(`Upload failed with status: ${res.status}`);
