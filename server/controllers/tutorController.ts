@@ -4,6 +4,7 @@ import * as schema from "@shared/schema";
 import { eq, and, like, or, desc, inArray, not, sql, isNull } from "drizzle-orm";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
+import { uploadToCloudinary } from "../storage";
 
 // Get all subjects
 export const getSubjects = async (req: Request, res: Response) => {
@@ -551,6 +552,65 @@ export const getTutorReviews = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Get tutor reviews error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// Upload tutor certifications
+export const uploadCertifications = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    // Check if tutor profile exists
+    const tutorProfile = await db.query.tutorProfiles.findFirst({
+      where: eq(schema.tutorProfiles.user_id, userId)
+    });
+    
+    if (!tutorProfile) {
+      return res.status(404).json({ message: "Tutor profile not found" });
+    }
+    
+    // Get document URLs from middleware
+    const documentUrls = req.body.documentUrls || [];
+    
+    if (documentUrls.length === 0) {
+      return res.status(400).json({ message: "No certification documents uploaded" });
+    }
+    
+    // Save certification URLs as JSON string in the database
+    // We'll store the previous certifications if they exist, plus the new ones
+    let existingCerts: string[] = [];
+    if (tutorProfile.certifications) {
+      try {
+        existingCerts = JSON.parse(tutorProfile.certifications);
+        if (!Array.isArray(existingCerts)) {
+          existingCerts = [tutorProfile.certifications];
+        }
+      } catch (e) {
+        existingCerts = [tutorProfile.certifications];
+      }
+    }
+    
+    const updatedCerts = [...existingCerts, ...documentUrls];
+    
+    // Update tutor profile with new certifications
+    await db.update(schema.tutorProfiles)
+      .set({ 
+        certifications: JSON.stringify(updatedCerts),
+        updated_at: new Date()
+      })
+      .where(eq(schema.tutorProfiles.id, tutorProfile.id));
+    
+    return res.status(200).json({ 
+      message: "Certifications uploaded successfully",
+      certifications: updatedCerts
+    });
+  } catch (error) {
+    console.error("Upload certifications error:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 };
