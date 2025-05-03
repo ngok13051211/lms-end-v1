@@ -993,7 +993,7 @@ export default function TutorDashboard() {
       </div>
       
       {/* Profile Dialog */}
-      <Dialog open={profileDialogOpen} onOpenChange={setProfileDialogOpen}>
+      <Dialog modal={true} open={profileDialogOpen} onOpenChange={setProfileDialogOpen}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>
