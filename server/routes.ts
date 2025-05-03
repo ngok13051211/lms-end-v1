@@ -52,7 +52,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Serve test avatar upload HTML page - DEBUG ONLY
   app.get('/test-avatar-upload', (req, res) => {
-    const path = require('path');
     res.sendFile(path.join(process.cwd(), 'test-avatar-upload.html'));
   });
 
