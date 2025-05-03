@@ -27,14 +27,43 @@ const storage = multer.diskStorage({
 // Function to upload a file to Cloudinary
 const uploadToCloudinary = async (filePath: string, folder: string = 'homitutor') => {
   try {
+    // Check if file exists before uploading
+    if (!fs.existsSync(filePath)) {
+      console.error(`File ${filePath} does not exist!`);
+      return {
+        url: null,
+        public_id: null,
+        success: false,
+        error: `File ${filePath} not found on server`
+      };
+    }
+    
+    // Log file stats before upload
+    const stats = fs.statSync(filePath);
+    console.log(`Uploading file to Cloudinary: ${filePath}`, {
+      size: stats.size,
+      permissions: stats.mode.toString(8).slice(-3), // Get octal representation of permissions
+      isFile: stats.isFile(),
+      created: stats.birthtime
+    });
+    
     // Upload to Cloudinary
+    console.log(`Cloudinary upload starting for ${filePath} to folder ${folder}`);
     const result = await cloudinary.uploader.upload(filePath, {
       folder: folder,
       resource_type: 'auto', // auto-detect resource type (image, video, etc.)
     });
 
-    // Remove the local file
-    fs.unlinkSync(filePath);
+    console.log(`Cloudinary upload successful: ${result.secure_url}`);
+
+    try {
+      // Remove the local file
+      fs.unlinkSync(filePath);
+      console.log(`Temporary file ${filePath} removed successfully`);
+    } catch (unlinkError) {
+      console.error(`Warning: Could not remove temp file ${filePath}:`, unlinkError);
+      // Continue despite error deleting file
+    }
 
     // Return the Cloudinary URL
     return {
@@ -42,13 +71,22 @@ const uploadToCloudinary = async (filePath: string, folder: string = 'homitutor'
       public_id: result.public_id,
       success: true
     };
-  } catch (error) {
-    console.error('Error uploading to Cloudinary:', error);
+  } catch (error: any) {
+    // Capture and log detailed error information
+    console.error('Error uploading to Cloudinary:', {
+      error: error.message || String(error),
+      filePath,
+      folder,
+      stack: error.stack,
+      httpCode: error.http_code,
+      errorMessage: error.error?.message
+    });
+    
     return {
       url: null,
       public_id: null,
       success: false,
-      error
+      error: error.message || String(error)
     };
   }
 };

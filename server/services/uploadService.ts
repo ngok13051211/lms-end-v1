@@ -28,25 +28,62 @@ const upload = multer({
 
 // Upload avatar middleware
 const uploadAvatar = (req: Request, res: Response, next: NextFunction) => {
-  console.log("Avatar upload middleware started");
+  console.log("✅ Avatar upload middleware started");
   
   // Log request information
-  console.log("Request headers:", req.headers);
+  console.log("Request headers:", {
+    contentType: req.headers['content-type'],
+    contentLength: req.headers['content-length'],
+    host: req.headers.host,
+    userAgent: req.headers['user-agent']
+  });
   console.log("Request method:", req.method);
-  console.log("Content-Type:", req.headers['content-type']);
+  console.log("Request body keys:", Object.keys(req.body));
+  
+  // Verify if uploads directory exists and is writable
+  try {
+    const uploadDir = path.join(process.cwd(), 'uploads');
+    if (!fs.existsSync(uploadDir)) {
+      console.log(`Creating uploads directory at ${uploadDir}`);
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    
+    // Test write permissions
+    const testPath = path.join(uploadDir, '.test-write-' + Date.now());
+    fs.writeFileSync(testPath, 'test');
+    fs.unlinkSync(testPath);
+    console.log(`✅ Uploads directory is writable: ${uploadDir}`);
+  } catch (error) {
+    console.error(`❌ Error with uploads directory:`, error);
+    return res.status(500).json({
+      message: "Server configuration error: Upload directory issues",
+      error: String(error)
+    });
+  }
   
   const avatarUpload = upload.single("avatar");
 
   avatarUpload(req, res, async (err) => {
     if (err instanceof multer.MulterError) {
       // A Multer error occurred when uploading
-      console.error("Multer error:", err);
+      console.error("❌ Multer error:", {
+        name: err.name,
+        message: err.message,
+        code: err.code,
+        field: err.field,
+        stack: err.stack
+      });
       return res.status(400).json({
         message: `Upload error: ${err.message}`,
+        code: err.code,
+        field: err.field
       });
     } else if (err) {
       // An unknown error occurred
-      console.error("Unknown upload error:", err);
+      console.error("❌ Unknown upload error:", {
+        message: err.message || String(err),
+        stack: err.stack
+      });
       return res.status(400).json({
         message: err.message || "Error uploading file",
       });
@@ -54,33 +91,40 @@ const uploadAvatar = (req: Request, res: Response, next: NextFunction) => {
     
     // If no file is uploaded, just continue
     if (!req.file) {
-      console.log("No file uploaded in request");
+      console.log("❌ No file uploaded in request");
       return res.status(400).json({
-        message: "No file uploaded in request"
+        message: "No file uploaded in request. Make sure form uses 'avatar' as the field name and 'multipart/form-data' encoding."
       });
     }
     
     // Log file information
-    console.log("File received:", {
+    console.log("✅ File received:", {
       fieldname: req.file.fieldname,
       originalname: req.file.originalname,
       mimetype: req.file.mimetype,
       size: req.file.size,
-      path: req.file.path
+      destination: req.file.destination,
+      path: req.file.path,
+      filename: req.file.filename
     });
     
     try {
-      console.log("Uploading to Cloudinary...");
+      console.log("⏳ Uploading to Cloudinary...");
       // Upload to Cloudinary
       const cloudinaryResult = await uploadToCloudinary(req.file.path, 'homitutor/avatars');
       
-      console.log("Cloudinary result:", cloudinaryResult);
+      console.log("Cloudinary result:", {
+        success: cloudinaryResult.success,
+        url: cloudinaryResult.url,
+        public_id: cloudinaryResult.public_id,
+        error: cloudinaryResult.error ? String(cloudinaryResult.error) : null
+      });
       
       if (!cloudinaryResult.success) {
-        console.error("Cloudinary upload failed:", cloudinaryResult.error);
+        console.error("❌ Cloudinary upload failed:", cloudinaryResult.error);
         return res.status(500).json({
-          message: "Error uploading to Cloudinary",
-          error: cloudinaryResult.error
+          message: "Error uploading to Cloudinary. Please try again later.",
+          error: String(cloudinaryResult.error)
         });
       }
       
@@ -88,13 +132,16 @@ const uploadAvatar = (req: Request, res: Response, next: NextFunction) => {
       req.body.avatarUrl = cloudinaryResult.url;
       req.body.avatarPublicId = cloudinaryResult.public_id;
       
-      console.log("Avatar upload successful. URL:", cloudinaryResult.url);
+      console.log("✅ Avatar upload successful. URL:", cloudinaryResult.url);
       next();
-    } catch (error) {
-      console.error("Avatar upload error:", error);
+    } catch (error: any) {
+      console.error("❌ Avatar upload error:", {
+        message: error.message || String(error),
+        stack: error.stack
+      });
       return res.status(500).json({
-        message: "Error uploading avatar",
-        error
+        message: "Error processing avatar upload. Please try again.",
+        error: error.message || String(error)
       });
     }
   });

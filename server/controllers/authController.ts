@@ -210,23 +210,26 @@ export const updateProfile = async (req: Request, res: Response) => {
 // Update user avatar
 export const updateAvatar = async (req: Request, res: Response) => {
   try {
-    console.log("updateAvatar controller called");
+    console.log("✅ updateAvatar controller called");
     
     const userId = req.user?.id;
     
     if (!userId) {
-      console.log("Unauthorized - no user ID in request");
-      return res.status(401).json({ message: "Unauthorized" });
+      console.log("❌ Unauthorized - no user ID in request");
+      return res.status(401).json({ message: "Unauthorized - please log in and try again" });
     }
     
     // Get uploaded avatar URL from Cloudinary (set by the upload middleware)
     const avatarUrl = req.body.avatarUrl;
+    const avatarPublicId = req.body.avatarPublicId;
     
-    console.log("Avatar URL from middleware:", avatarUrl);
+    console.log("Avatar data from middleware:", { avatarUrl, avatarPublicId });
     
     if (!avatarUrl) {
-      console.log("No avatar URL provided in request body");
-      return res.status(400).json({ message: "No avatar provided" });
+      console.log("❌ No avatar URL provided in request body");
+      return res.status(400).json({ 
+        message: "No avatar provided. The upload may have failed in an earlier step."
+      });
     }
     
     // Get the user's current avatar to delete it from Cloudinary if it exists
@@ -237,11 +240,31 @@ export const updateAvatar = async (req: Request, res: Response) => {
     
     console.log("Current user avatar:", currentUser?.avatar);
     
-    // Here we could add code to delete the previous avatar from Cloudinary
-    // if it exists and was uploaded to Cloudinary (starts with cloudinary URL)
-    // using deleteFromCloudinary function
+    // Delete previous avatar from Cloudinary if it exists
+    // and was uploaded to Cloudinary (has a Cloudinary URL)
+    const previousAvatar = currentUser?.avatar;
+    if (previousAvatar && previousAvatar.includes('cloudinary.com')) {
+      try {
+        // Extract public ID from URL
+        // Example URL: https://res.cloudinary.com/homitutor/image/upload/v1234567890/homitutor/avatars/abc123def456
+        const urlParts = previousAvatar.split('/');
+        const publicIdStart = urlParts.findIndex(part => part === 'upload') + 2; // +2 to skip 'upload' and version
+        if (publicIdStart > 1 && publicIdStart < urlParts.length) {
+          const previousPublicId = urlParts.slice(publicIdStart).join('/');
+          console.log(`Attempting to delete previous avatar with public ID: ${previousPublicId}`);
+          
+          // Import deleteFromCloudinary from storage.ts
+          const { deleteFromCloudinary } = await import('../storage');
+          const deleteResult = await deleteFromCloudinary(previousPublicId);
+          console.log("Previous avatar deletion result:", deleteResult);
+        }
+      } catch (deleteError) {
+        // Just log, don't prevent update if deletion fails
+        console.error("Error deleting previous avatar:", deleteError);
+      }
+    }
     
-    console.log("Updating user avatar in database");
+    console.log("⏳ Updating user avatar in database");
     // Update user's avatar
     const [updatedUser] = await db.update(schema.users)
       .set({
@@ -251,18 +274,32 @@ export const updateAvatar = async (req: Request, res: Response) => {
       .where(eq(schema.users.id, userId))
       .returning({
         id: schema.users.id,
+        username: schema.users.username,
+        email: schema.users.email,
+        first_name: schema.users.first_name,
+        last_name: schema.users.last_name,
+        role: schema.users.role,
         avatar: schema.users.avatar
       });
     
-    console.log("User avatar updated successfully:", updatedUser);
+    console.log("✅ User avatar updated successfully:", {
+      id: updatedUser.id,
+      avatar: updatedUser.avatar
+    });
     
     return res.status(200).json({
       message: "Avatar updated successfully",
-      avatar: updatedUser.avatar
+      user: updatedUser
     });
-  } catch (error) {
-    console.error("Update avatar error:", error);
-    return res.status(500).json({ message: "Internal server error", error });
+  } catch (error: any) {
+    console.error("❌ Update avatar error:", {
+      message: error.message || String(error),
+      stack: error.stack
+    });
+    return res.status(500).json({ 
+      message: "Failed to update avatar. Please try again.", 
+      error: error.message || String(error)
+    });
   }
 };
 
