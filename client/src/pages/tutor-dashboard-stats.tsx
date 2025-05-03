@@ -107,7 +107,11 @@ export default function TutorDashboardStats() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {stats?.rating ? `${stats.rating.toFixed(1)}/5.0` : "Chưa có"}
+                {stats?.rating 
+                  ? `${typeof stats.rating === 'number' 
+                      ? stats.rating.toFixed(1) 
+                      : stats.rating}/5.0` 
+                  : "Chưa có"}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 Dựa trên {stats?.reviews || 0} đánh giá
@@ -215,7 +219,9 @@ export default function TutorDashboardStats() {
                   <tr className="border-b">
                     <td className="py-3">Ngày tham gia</td>
                     <td className="text-right">
-                      {new Date(tutorProfile.created_at).toLocaleDateString('vi-VN')}
+                      {tutorProfile?.created_at 
+                        ? new Date(tutorProfile.created_at).toLocaleDateString('vi-VN')
+                        : new Date().toLocaleDateString('vi-VN')}
                     </td>
                   </tr>
                   <tr className="border-b">
@@ -237,10 +243,12 @@ export default function TutorDashboardStats() {
                   <tr>
                     <td className="py-3">Học phí tham khảo</td>
                     <td className="text-right">
-                      {new Intl.NumberFormat('vi-VN', { 
-                        style: 'currency', 
-                        currency: 'VND' 
-                      }).format(Number(tutorProfile.hourlyRate))}/giờ
+                      {tutorProfile?.hourlyRate 
+                        ? new Intl.NumberFormat('vi-VN', { 
+                            style: 'currency', 
+                            currency: 'VND' 
+                          }).format(Number(tutorProfile.hourlyRate)) + '/giờ'
+                        : 'Chưa đặt'}
                     </td>
                   </tr>
                 </tbody>
@@ -259,7 +267,7 @@ export default function TutorDashboardStats() {
           </CardHeader>
           <CardContent>
             <ul className="space-y-3">
-              {!tutorProfile.isVerified && (
+              {tutorProfile?.isVerified === false && (
                 <li className="flex items-start">
                   <UserCheck className="h-5 w-5 text-primary mr-2 mt-0.5" />
                   <div>
