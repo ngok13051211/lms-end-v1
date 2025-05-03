@@ -205,14 +205,22 @@ export default function TutorDashboardProfile() {
       const formData = new FormData();
       formData.append("avatar", file);
       
+      console.log("Uploading avatar file:", file.name, "size:", file.size);
+      
       const res = await fetch("/api/v1/users/avatar", {
         method: "POST",
         credentials: "include",
         body: formData,
+        // Do not set Content-Type header, browser will automatically set it with the boundary
       });
       
+      // Log response for debugging
+      console.log("Avatar upload response status:", res.status);
+      
       if (!res.ok) {
-        throw new Error(`Upload failed with status: ${res.status}`);
+        const errorText = await res.text();
+        console.error("Error response body:", errorText);
+        throw new Error(`Upload failed with status: ${res.status}. ${errorText}`);
       }
       
       return res.json();
