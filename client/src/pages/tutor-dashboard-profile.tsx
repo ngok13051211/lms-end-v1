@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { useSelector } from "react-redux";
@@ -62,13 +62,34 @@ export default function TutorDashboardProfile() {
   const profileForm = useForm<z.infer<typeof tutorProfileSchema>>({
     resolver: zodResolver(tutorProfileSchema),
     defaultValues: {
-      bio: tutorProfile?.bio || "",
-      education: tutorProfile?.education || "",
-      experience: tutorProfile?.experience || "",
-      hourlyRate: tutorProfile?.hourlyRate ? Number(tutorProfile.hourlyRate) : 0,
-      teachingMode: (tutorProfile?.teachingMode as "online" | "offline" | "both") || "online",
+      bio: "",
+      education: "",
+      experience: "",
+      hourlyRate: 10000,
+      teachingMode: "online",
     },
   });
+  
+  // Update form values when profile data changes
+  useEffect(() => {
+    if (tutorProfile) {
+      profileForm.reset({
+        bio: tutorProfile.bio || "",
+        education: tutorProfile.education || "",
+        experience: tutorProfile.experience || "",
+        hourlyRate: tutorProfile.hourlyRate ? Number(tutorProfile.hourlyRate) : 10000,
+        teachingMode: (tutorProfile.teachingMode as "online" | "offline" | "both") || "online",
+      });
+    } else {
+      profileForm.reset({
+        bio: "",
+        education: "",
+        experience: "",
+        hourlyRate: 10000,
+        teachingMode: "online",
+      });
+    }
+  }, [tutorProfile, profileForm.reset]);
 
   // Create/Update tutor profile
   const profileMutation = useMutation({
@@ -189,16 +210,25 @@ export default function TutorDashboardProfile() {
   };
 
   // Initialize the selected subjects and levels when profile is loaded
-  useState(() => {
+  useEffect(() => {
     if (tutorProfile) {
       if (tutorProfile.subjects) {
         setSelectedSubjects(tutorProfile.subjects.map((s: any) => s.id.toString()));
+      } else {
+        setSelectedSubjects([]);
       }
+      
       if (tutorProfile.levels) {
         setSelectedLevels(tutorProfile.levels.map((l: any) => l.id.toString()));
+      } else {
+        setSelectedLevels([]);
       }
+    } else {
+      // Clear selections when no profile exists
+      setSelectedSubjects([]);
+      setSelectedLevels([]);
     }
-  });
+  }, [tutorProfile]);
 
   if (profileLoading) {
     return (

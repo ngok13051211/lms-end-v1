@@ -796,8 +796,8 @@ export const getOwnTutorProfile = async (req: Request, res: Response) => {
     });
     
     if (!tutorProfile) {
-      // Return empty object instead of error to allow frontend to show profile creation form
-      return res.status(400).json({ message: "Profile not found" });
+      // Return null instead of error to allow frontend to show profile creation form
+      return res.status(200).json(null);
     }
     
     // Format response
