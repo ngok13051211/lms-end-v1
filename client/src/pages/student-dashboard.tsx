@@ -112,7 +112,7 @@ export default function StudentDashboard() {
   return (
     <DashboardLayout>
       <div className="p-6 max-w-7xl mx-auto">
-        <h1 className="text-2xl font-medium mb-6">Student Dashboard</h1>
+        <h1 className="text-2xl font-medium mb-6">Bảng điều khiển học viên</h1>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card>
@@ -120,9 +120,9 @@ export default function StudentDashboard() {
               <div className="flex items-center">
                 <User className="h-8 w-8 text-primary" />
                 <div className="ml-4">
-                  <p className="text-sm text-muted-foreground">Welcome</p>
+                  <p className="text-sm text-muted-foreground">Xin chào</p>
                   <p className="text-lg font-medium">
-                    {user?.firstName} {user?.lastName}
+                    {user?.first_name} {user?.last_name}
                   </p>
                 </div>
               </div>
@@ -134,7 +134,7 @@ export default function StudentDashboard() {
               <div className="flex items-center">
                 <Star className="h-8 w-8 text-primary" />
                 <div className="ml-4">
-                  <p className="text-sm text-muted-foreground">Favorite Tutors</p>
+                  <p className="text-sm text-muted-foreground">Gia sư yêu thích</p>
                   <p className="text-lg font-medium">{favoriteTutors?.length || 0}</p>
                 </div>
               </div>
@@ -146,7 +146,7 @@ export default function StudentDashboard() {
               <div className="flex items-center">
                 <MessageSquare className="h-8 w-8 text-primary" />
                 <div className="ml-4">
-                  <p className="text-sm text-muted-foreground">Conversations</p>
+                  <p className="text-sm text-muted-foreground">Cuộc trò chuyện</p>
                   <p className="text-lg font-medium">{conversations?.length || 0}</p>
                 </div>
               </div>
@@ -376,7 +376,7 @@ export default function StudentDashboard() {
                             </div>
                             
                             <p className="text-sm text-muted-foreground truncate">
-                              {conversation.lastMessage?.content || "Start a conversation"}
+                              {conversation.lastMessage?.content || "Bắt đầu cuộc trò chuyện"}
                             </p>
                           </div>
                           
