@@ -22,10 +22,11 @@ import { useToast } from "@/hooks/use-toast";
 const adSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters"),
   description: z.string().min(20, "Description must be at least 20 characters"),
-  subjectId: z.string().min(1, "Subject is required"),
-  levelId: z.string().min(1, "Education level is required"),
-  hourlyRate: z.coerce.number().min(10000, "Hourly rate must be at least 10,000 VND"),
-  teachingMode: z.enum(["online", "offline", "both"]),
+  subject_id: z.string().min(1, "Subject is required"),
+  level_id: z.string().min(1, "Education level is required"),
+  hourly_rate: z.coerce.number().min(10000, "Hourly rate must be at least 10,000 VND"),
+  teaching_mode: z.enum(["online", "offline", "both"]),
+  is_active: z.boolean().default(true),
 });
 
 export default function TutorDashboardAds() {
@@ -62,10 +63,11 @@ export default function TutorDashboardAds() {
     defaultValues: {
       title: "",
       description: "",
-      subjectId: "",
-      levelId: "",
-      hourlyRate: tutorProfile?.hourlyRate ? Number(tutorProfile.hourlyRate) : 0,
-      teachingMode: tutorProfile?.teachingMode || "online",
+      subject_id: "",
+      level_id: "",
+      hourly_rate: tutorProfile?.hourly_rate ? Number(tutorProfile.hourly_rate) : 0,
+      teaching_mode: tutorProfile?.teaching_mode || "online",
+      is_active: true,
     },
   });
 
@@ -158,17 +160,18 @@ export default function TutorDashboardAds() {
     adForm.reset({
       title: ad.title,
       description: ad.description,
-      subjectId: ad.subject.id.toString(),
-      levelId: ad.level.id.toString(),
-      hourlyRate: Number(ad.hourly_rate),
-      teachingMode: ad.teaching_mode,
+      subject_id: ad.subject.id.toString(),
+      level_id: ad.level.id.toString(),
+      hourly_rate: Number(ad.hourly_rate),
+      teaching_mode: ad.teaching_mode,
+      is_active: ad.is_active || true,
     });
     
     setAdDialogOpen(true);
   };
 
   const handleDeleteAd = async (id: number) => {
-    if (window.confirm("Are you sure you want to delete this ad?")) {
+    if (window.confirm("Bạn có chắc chắn muốn xóa thông báo này?")) {
       await deleteAdMutation.mutateAsync(id);
     }
   };
@@ -178,10 +181,11 @@ export default function TutorDashboardAds() {
     adForm.reset({
       title: "",
       description: "",
-      subjectId: "",
-      levelId: "",
-      hourlyRate: tutorProfile?.hourlyRate ? Number(tutorProfile.hourlyRate) : 0,
-      teachingMode: tutorProfile?.teachingMode || "online",
+      subject_id: "",
+      level_id: "",
+      hourly_rate: tutorProfile?.hourly_rate ? Number(tutorProfile.hourly_rate) : 0,
+      teaching_mode: tutorProfile?.teaching_mode || "online",
+      is_active: true,
     });
     setAdDialogOpen(true);
   };
@@ -390,7 +394,7 @@ export default function TutorDashboardAds() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={adForm.control}
-                  name="subjectId"
+                  name="subject_id"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Môn học</FormLabel>
@@ -415,7 +419,7 @@ export default function TutorDashboardAds() {
                 
                 <FormField
                   control={adForm.control}
-                  name="levelId"
+                  name="level_id"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Cấp độ</FormLabel>
@@ -442,7 +446,7 @@ export default function TutorDashboardAds() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={adForm.control}
-                  name="hourlyRate"
+                  name="hourly_rate"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Học phí (VND/giờ)</FormLabel>
@@ -462,7 +466,7 @@ export default function TutorDashboardAds() {
                 
                 <FormField
                   control={adForm.control}
-                  name="teachingMode"
+                  name="teaching_mode"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Hình thức dạy</FormLabel>
