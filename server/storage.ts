@@ -3,7 +3,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import cloudinary from './config/cloudinary';
-import { Request } from 'express';
+import { Request, Express } from 'express';
 
 // Create uploads directory if it doesn't exist (for temporary storage)
 const uploadDir = path.join(process.cwd(), 'uploads');
@@ -13,10 +13,10 @@ if (!fs.existsSync(uploadDir)) {
 
 // Configure local storage for multer (temporary storage before uploading to Cloudinary)
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
+  destination: (req: Express.Request, file: Express.Multer.File, cb: (error: Error | null, destination: string) => void) => {
     cb(null, uploadDir);
   },
-  filename: (req, file, cb) => {
+  filename: (req: Express.Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
     // Generate unique filename
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
     const ext = path.extname(file.originalname);

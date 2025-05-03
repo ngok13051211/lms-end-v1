@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import multer from "multer";
 import { storage, uploadToCloudinary } from "../storage";
 import path from "path";
+import { Express } from "express";
 
 // Set up multer with storage configuration
 const upload = multer({
@@ -9,7 +10,7 @@ const upload = multer({
   limits: {
     fileSize: 5 * 1024 * 1024, // 5MB limit
   },
-  fileFilter: (req, file, cb) => {
+  fileFilter: (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
     // Accept only image files
     const filetypes = /jpeg|jpg|png|gif|webp/;
     const mimetype = filetypes.test(file.mimetype);

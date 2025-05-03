@@ -221,12 +221,22 @@ export const updateAvatar = async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
     
-    // Get uploaded avatar URL
-    const avatarUrl = req.file?.path || req.body.avatarUrl;
+    // Get uploaded avatar URL from Cloudinary (set by the upload middleware)
+    const avatarUrl = req.body.avatarUrl;
     
     if (!avatarUrl) {
       return res.status(400).json({ message: "No avatar provided" });
     }
+    
+    // Get the user's current avatar to delete it from Cloudinary if it exists
+    const currentUser = await db.query.users.findFirst({
+      where: eq(schema.users.id, userId),
+      columns: { avatar: true }
+    });
+    
+    // Here we could add code to delete the previous avatar from Cloudinary
+    // if it exists and was uploaded to Cloudinary (starts with cloudinary URL)
+    // using deleteFromCloudinary function
     
     // Update user's avatar
     const [updatedUser] = await db.update(schema.users)
