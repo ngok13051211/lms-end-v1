@@ -720,7 +720,10 @@ export const updateTutorProfile = async (req: Request, res: Response) => {
       education: req.body.education || existingProfile.education,
       experience: req.body.experience || existingProfile.experience,
       experience_years: req.body.experience_years || existingProfile.experience_years,
-      hourly_rate: req.body.hourly_rate !== undefined ? req.body.hourly_rate : existingProfile.hourly_rate,
+      // Ensure hourly_rate is always a number - explicitly parse if needed
+      hourly_rate: req.body.hourly_rate !== undefined 
+        ? (typeof req.body.hourly_rate === 'string' ? parseFloat(req.body.hourly_rate) : req.body.hourly_rate) 
+        : existingProfile.hourly_rate,
       teaching_mode: req.body.teaching_mode || existingProfile.teaching_mode || 'online',
       user_id: userId
     };

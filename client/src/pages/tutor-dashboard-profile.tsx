@@ -135,27 +135,57 @@ export default function TutorDashboardProfile() {
         const res = await apiRequest(method, `/api/v1/tutors/profile`, completeData);
         const responseData = await res.json();
         console.log("API response:", JSON.stringify(responseData));
-        return responseData;
+        
+        // Lưu dữ liệu cập nhật để sử dụng sau khi mutation thành công
+        const updatedData = {
+          bio: data.bio,
+          education: data.education,
+          experience: data.experience,
+          hourlyRate: hourlyRate,
+          teachingMode: teachingMode,
+          subjects: selectedSubjects,
+          levels: selectedLevels
+        };
+        
+        // Trả về cả responseData và updatedData
+        return {
+          responseData,
+          updatedData
+        };
       } catch (error) {
         console.error("API call error:", error);
         throw error;
       }
     },
-    onSuccess: (data) => {
-      console.log("Profile updated successfully:", data);
+    onSuccess: (result) => {
+      console.log("Profile updated successfully:", result.responseData);
       toast({
         title: "Profile updated successfully",
         description: "Your profile has been updated.",
         variant: "default",
       });
       
-      // Trực tiếp refetch profile thay vì chỉ invalidate cache
+      // Thay đổi: Trước tiên, cập nhật form với dữ liệu mới từ form đã submit
+      const updatedFormData = {
+        bio: result.updatedData.bio,
+        education: result.updatedData.education,
+        experience: result.updatedData.experience,
+        hourlyRate: result.updatedData.hourlyRate,
+        teachingMode: result.updatedData.teachingMode as "online" | "offline" | "both",
+      };
+      
+      console.log("Updating form with submitted data:", updatedFormData);
+      profileForm.reset(updatedFormData);
+      
+      // Cập nhật selected subjects và levels
+      setSelectedSubjects(result.updatedData.subjects);
+      setSelectedLevels(result.updatedData.levels);
+      
+      // Sau đó refetch profile để đảm bảo dữ liệu mới nhất từ server
       refetchTutorProfile().then(() => {
         console.log("Profile refetched successfully");
         setProfileDialogOpen(false);
       });
-      
-      // Không reload trang để tránh gián đoạn UX
     },
     onError: (error) => {
       console.error("Profile update error:", error);
