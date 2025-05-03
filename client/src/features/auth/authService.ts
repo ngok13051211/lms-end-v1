@@ -27,6 +27,13 @@ const register = async (userData: any): Promise<User> => {
   }
 
   const data = await response.json();
+  
+  // Store token in localStorage when registering
+  if (data.token) {
+    localStorage.setItem("token", data.token);
+    console.log("Token saved after registration:", data.token);
+  }
+  
   return data.user;
 };
 

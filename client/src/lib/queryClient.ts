@@ -21,12 +21,16 @@ export async function apiRequest(
     headers["Authorization"] = `Bearer ${token}`;
   }
   
+  console.log(`API Request: ${method} ${url} - Headers:`, headers);
+  
   const res = await fetch(url, {
     method,
     headers,
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
+  
+  console.log(`API Response: ${res.status} ${res.statusText}`);
 
   await throwIfResNotOk(res);
   return res;
@@ -47,10 +51,14 @@ export const getQueryFn: <T>(options: {
       headers["Authorization"] = `Bearer ${token}`;
     }
     
+    console.log(`Query Request: GET ${queryKey[0]} - Headers:`, headers);
+    
     const res = await fetch(queryKey[0] as string, {
       credentials: "include",
       headers
     });
+    
+    console.log(`Query Response: ${res.status} ${res.statusText}`);
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
       return null;
