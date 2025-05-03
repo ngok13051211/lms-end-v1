@@ -13,9 +13,9 @@ interface TutorCardProps {
 
 export default function TutorCard({ tutor, compact = false }: TutorCardProps) {
   const formatPrice = (price: number | string) => {
-    return new Intl.NumberFormat('vi-VN', { 
-      style: 'currency', 
-      currency: 'VND'
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
     }).format(Number(price));
   };
 
@@ -24,9 +24,13 @@ export default function TutorCard({ tutor, compact = false }: TutorCardProps) {
       <Card className="hover-rise">
         <div className="p-4 flex items-center gap-4">
           <Avatar className="h-12 w-12">
-            <AvatarImage src={tutor.user?.avatar} alt={tutor.user?.first_name} />
+            <AvatarImage
+              src={tutor.user?.avatar}
+              alt={tutor.user?.first_name}
+            />
             <AvatarFallback>
-              {tutor.user?.first_name?.[0]}{tutor.user?.last_name?.[0]}
+              {tutor.user?.first_name?.[0]}
+              {tutor.user?.last_name?.[0]}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
@@ -44,10 +48,15 @@ export default function TutorCard({ tutor, compact = false }: TutorCardProps) {
             </p>
             <div className="flex items-center justify-between mt-1">
               <p className="text-secondary font-medium text-sm">
-                {formatPrice(tutor.hourly_rate)}<span className="text-xs text-muted-foreground">/giờ</span>
+                {formatPrice(tutor.hourly_rate)}
+                <span className="text-xs text-muted-foreground">/giờ</span>
               </p>
               <Link href={`/tutors/${tutor.id}`}>
-                <Button variant="default" size="sm" className="bg-primary text-white hover:bg-primary-dark h-7 px-2">
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="bg-primary text-white hover:bg-primary-dark h-7 px-2"
+                >
                   Xem
                 </Button>
               </Link>
@@ -61,12 +70,15 @@ export default function TutorCard({ tutor, compact = false }: TutorCardProps) {
   return (
     <Card className="hover-rise flex flex-col h-full">
       <div className="relative h-48 rounded-t-lg overflow-hidden">
-        <img 
-          src={tutor.user?.avatar || `https://ui-avatars.com/api/?name=${tutor.user?.first_name}+${tutor.user?.last_name}&background=random`} 
-          alt={`${tutor.user?.first_name} ${tutor.user?.last_name}`} 
+        <img
+          src={
+            tutor.user?.avatar ||
+            `https://ui-avatars.com/api/?name=${tutor.user?.name || ''}&background=random`
+          }
+          alt={tutor.user?.name || "Tutor"}
           className="w-full h-full object-cover"
         />
-        {tutor.isFeatured && (
+        {tutor.is_featured && (
           <div className="absolute top-2 right-2 bg-secondary text-white text-xs px-2 py-1 rounded">
             Gia sư hàng đầu
           </div>
@@ -74,7 +86,9 @@ export default function TutorCard({ tutor, compact = false }: TutorCardProps) {
       </div>
       <div className="p-4 flex-1 flex flex-col">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-medium text-lg">{tutor.user?.first_name} {tutor.user?.last_name}</h3>
+          <h3 className="font-medium text-lg">
+            {tutor.user?.first_name} {tutor.user?.last_name}
+          </h3>
           <div className="flex items-center">
             <Star className="h-4 w-4 text-warning fill-warning" />
             <span className="text-sm ml-1">{tutor.rating}</span>
@@ -83,25 +97,35 @@ export default function TutorCard({ tutor, compact = false }: TutorCardProps) {
         <p className="text-muted-foreground text-sm mb-3">{tutor.education}</p>
         <div className="flex flex-wrap gap-2 mb-4">
           {tutor.subjects?.slice(0, 3).map((subject) => (
-            <Badge key={subject.id} className="bg-primary-light/20 text-primary-dark hover:bg-primary-light/30">
+            <Badge
+              key={subject.id}
+              className="bg-primary-light/20 text-primary-dark hover:bg-primary-light/30"
+            >
               {subject.name}
             </Badge>
           ))}
           {tutor.teaching_mode && (
             <Badge className="bg-primary-light/20 text-primary-dark hover:bg-primary-light/30">
-              {tutor.teaching_mode === "online" ? "Online" : 
-               tutor.teaching_mode === "offline" ? "Tại nhà" : 
-               "Online/Offline"}
+              {tutor.teaching_mode === "online"
+                ? "Online"
+                : tutor.teaching_mode === "offline"
+                  ? "Tại nhà"
+                  : "Online/Offline"}
             </Badge>
           )}
         </div>
         <div className="mt-auto flex items-center justify-between">
           <div>
-            <span className="text-secondary font-medium">{formatPrice(tutor.hourly_rate)}</span>
+            <span className="text-secondary font-medium">
+              {formatPrice(tutor.hourly_rate)}
+            </span>
             <span className="text-muted-foreground text-sm">/giờ</span>
           </div>
           <Link href={`/tutors/${tutor.id}`}>
-            <Button variant="default" className="bg-primary text-white hover:bg-primary-dark">
+            <Button
+              variant="default"
+              className="bg-primary text-white hover:bg-primary-dark"
+            >
               Xem chi tiết
             </Button>
           </Link>
