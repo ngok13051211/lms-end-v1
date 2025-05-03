@@ -64,14 +64,22 @@ export default function StudentDashboardProfile() {
       const formData = new FormData();
       formData.append("avatar", avatar);
       
+      // Sử dụng apiRequest thay vì fetch trực tiếp để đảm bảo xác thực được xử lý đúng
       const response = await fetch("/api/v1/users/avatar", {
         method: "POST",
         body: formData,
         credentials: "include",
+        headers: {
+          // Không đặt Content-Type với FormData, trình duyệt sẽ tự động thêm với boundary cần thiết
+          // Thêm Authorization header nếu có token
+          ...(localStorage.getItem('token') ? { 'Authorization': `Bearer ${localStorage.getItem('token')}` } : {})
+        }
       });
       
       if (response.ok) {
         const data = await response.json();
+        
+        console.log("Cập nhật avatar thành công:", data);
         
         // Cập nhật Redux store với avatar URL mới
         if (data.user?.avatar) {
@@ -86,6 +94,16 @@ export default function StudentDashboardProfile() {
           title: "Thành công",
           description: "Ảnh đại diện đã được cập nhật",
           variant: "default",
+        });
+      } else {
+        // Xử lý lỗi từ phản hồi
+        const errorData = await response.json().catch(() => ({ message: "Lỗi không xác định" }));
+        console.error("Upload avatar error:", errorData);
+        
+        toast({
+          title: "Lỗi",
+          description: errorData.message || "Không thể tải lên ảnh đại diện. Vui lòng thử lại sau.",
+          variant: "destructive",
         });
       }
     } catch (error) {
