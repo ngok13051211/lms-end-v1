@@ -199,8 +199,9 @@ export default function BookingForm() {
         
         console.log("Dữ liệu lịch trống nhận được:", JSON.stringify(availabilityData));
           
-        // Tạo object mới để lưu trữ thời gian trống theo ngày trong tuần
+        // Tạo object mới để lưu trữ thông tin về các khoảng thời gian theo ngày
         const slots: {[key: string]: string[]} = {};
+        const timeRanges: {[key: string]: Array<{startTime: string, endTime: string}>} = {};
         
         // Ánh xạ tên ngày sang số ngày trong tuần (JavaScript getDay trả về 0 = Sunday, 1 = Monday, ...)
         const dayMap: {[key: string]: string} = {
@@ -217,102 +218,70 @@ export default function BookingForm() {
         form.setValue("start_time", "");
         form.setValue("end_time", "");
         
-        // Xóa trùng lặp và hợp nhất các khung giờ cho mỗi ngày
-        // Sắp xếp lịch trống theo ngày và thời gian bắt đầu
-        const mergedSlots: {[key: string]: Array<{start: number, end: number}>} = {};
-        
-        // Bước 1: Nhóm lịch theo ngày và chuyển thành số phút
+        // Tổ chức lại các khoảng thời gian theo ngày trong tuần
         availabilityData.forEach((slot: any) => {
           const dayNumber = dayMap[slot.day.toLowerCase()];
           if (!dayNumber) return;
           
-          // Chuyển startTime và endTime sang số phút để dễ tính toán
+          // Lưu khoảng thời gian đầy đủ
+          if (!timeRanges[dayNumber]) {
+            timeRanges[dayNumber] = [];
+          }
+          
+          timeRanges[dayNumber].push({
+            startTime: slot.startTime,
+            endTime: slot.endTime
+          });
+          
+          // Kiểm tra thời gian hợp lệ
           const [startHour, startMin] = slot.startTime.split(':').map(Number);
           const [endHour, endMin] = slot.endTime.split(':').map(Number);
           
           const startMinutes = startHour * 60 + startMin;
           const endMinutes = endHour * 60 + endMin;
           
-          // Kiểm tra thời gian hợp lệ
           if (startMinutes >= endMinutes) return;
           
-          if (!mergedSlots[dayNumber]) {
-            mergedSlots[dayNumber] = [];
+          // Tạo danh sách các thời điểm có thể bắt đầu (30 phút một)
+          if (!slots[dayNumber]) {
+            slots[dayNumber] = [];
           }
           
-          mergedSlots[dayNumber].push({ start: startMinutes, end: endMinutes });
+          // Thêm thời gian bắt đầu chính xác từ dữ liệu gia sư
+          const startTimeStr = `${startHour.toString().padStart(2, '0')}:${startMin.toString().padStart(2, '0')}`;
+          if (startHour >= 6 && startHour < 22) {
+            slots[dayNumber].push(startTimeStr);
+          }
+          
+          // Thêm các thời điểm 30 phút từ lúc bắt đầu đến trước khi kết thúc
+          // Làm tròn lên để đảm bảo bắt đầu vào các khoảng 30 phút (00 hoặc 30)
+          const roundedStart = Math.ceil(startMinutes / 30) * 30;
+          for (let minute = roundedStart; minute < endMinutes - 30; minute += 30) {
+            const hour = Math.floor(minute / 60);
+            const min = minute % 60;
+            
+            // Bỏ qua nếu giờ nằm ngoài phạm vi 6h sáng đến 22h tối
+            if (hour < 6 || hour >= 22) continue;
+            
+            const timeStr = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
+            slots[dayNumber].push(timeStr);
+          }
         });
         
-        // Bước 2: Sắp xếp và hợp nhất các khoảng thời gian chồng lấp cho mỗi ngày
-        for (const dayNumber in mergedSlots) {
-          // Sắp xếp theo thời gian bắt đầu
-          mergedSlots[dayNumber].sort((a, b) => a.start - b.start);
-          
-          const mergedRanges: Array<{start: number, end: number}> = [];
-          
-          for (const range of mergedSlots[dayNumber]) {
-            if (mergedRanges.length === 0) {
-              mergedRanges.push(range);
-              continue;
-            }
-            
-            const lastRange = mergedRanges[mergedRanges.length - 1];
-            
-            // Kiểm tra nếu có sự chồng chéo
-            if (range.start <= lastRange.end) {
-              // Hợp nhất khoảng thời gian
-              lastRange.end = Math.max(lastRange.end, range.end);
-            } else {
-              // Thêm khoảng thời gian mới
-              mergedRanges.push(range);
-            }
-          }
-          
-          // Bước 3: Thêm cả thời gian bắt đầu và kết thúc từ gia sư vào danh sách
-          const timeSlots: string[] = [];
-          
-          mergedRanges.forEach(({ start, end }) => {
-            // Thêm cả thời gian bắt đầu và kết thúc chính xác từ dữ liệu gia sư
-            const startHour = Math.floor(start / 60);
-            const startMin = start % 60;
-            const startTimeStr = `${startHour.toString().padStart(2, '0')}:${startMin.toString().padStart(2, '0')}`;
-            
-            const endHour = Math.floor(end / 60);
-            const endMin = end % 60;
-            const endTimeStr = `${endHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}`;
-            
-            // Chỉ thêm khi giờ nằm trong phạm vi 6h sáng đến 22h tối
-            if (startHour >= 6 && startHour < 22) {
-              timeSlots.push(startTimeStr);
-            }
-            
-            if (endHour >= 6 && endHour < 22) {
-              timeSlots.push(endTimeStr);
-            }
-            
-            // Thêm các thời điểm 30 phút ở giữa nếu có
-            const roundedStart = Math.ceil(start / 30) * 30;
-            for (let minute = roundedStart + 30; minute < end; minute += 30) {
-              const hour = Math.floor(minute / 60);
-              const min = minute % 60;
-              
-              // Bỏ qua nếu giờ nằm ngoài phạm vi 6h sáng đến 22h tối
-              if (hour < 6 || hour >= 22) continue;
-              
-              const timeStr = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
-              timeSlots.push(timeStr);
-            }
-          });
-          
-          // Loại bỏ trùng lặp và sắp xếp
-          const uniqueTimeSlots = Array.from(new Set(timeSlots));
-          slots[dayNumber] = uniqueTimeSlots.sort();
+        // Loại bỏ trùng lặp và sắp xếp các thời điểm có thể bắt đầu cho mỗi ngày
+        for (const dayNumber in slots) {
+          slots[dayNumber] = Array.from(new Set(slots[dayNumber])).sort();
         }
         
         console.log("Slots đã xử lý:", slots);
+        console.log("TimeRanges đã xử lý:", timeRanges);
         
-        // Cập nhật state
-        setAvailableTimeSlots(slots);
+        // Lưu thông tin khoảng thời gian để sử dụng khi tính toán thời gian kết thúc
+        // @ts-ignore - Thêm thuộc tính tạm cho state
+        setAvailableTimeSlots((prev) => ({
+          ...slots,
+          _timeRanges: timeRanges
+        }));
       } catch (error) {
         console.error("Lỗi khi xử lý dữ liệu lịch trống:", error);
       }
@@ -349,62 +318,69 @@ export default function BookingForm() {
   
   // Cập nhật khoảng thời gian khi người dùng chọn giờ bắt đầu
   const updateEndTimeBasedOnStartTime = (startTime: string) => {
-    const availableTimes = getAvailableTimesForSelectedDate();
-    const startIndex = availableTimes.indexOf(startTime);
+    if (!startTime) return;
     
-    if (startIndex >= 0) {
-      // Chọn slot 30 phút làm mặc định
-      let endTime = "";
+    const dayOfWeek = form.watch("date")?.getDay()?.toString();
+    if (!dayOfWeek) return;
+    
+    // @ts-ignore - Truy cập thuộc tính động
+    const timeRanges = availableTimeSlots._timeRanges?.[dayOfWeek] || [];
+    if (timeRanges.length === 0) return;
+    
+    // Chuyển đổi startTime sang số phút từ nửa đêm
+    const [startHour, startMin] = startTime.split(':').map(Number);
+    const startMinutes = startHour * 60 + startMin;
+    
+    // Tìm khoảng thời gian phù hợp chứa thời gian bắt đầu được chọn
+    let matchedRange = null;
+    for (const range of timeRanges) {
+      const [rangeStartHour, rangeStartMin] = range.startTime.split(':').map(Number);
+      const [rangeEndHour, rangeEndMin] = range.endTime.split(':').map(Number);
       
-      // Kiểm tra xem có slot tiếp theo không
-      if (startIndex + 1 < availableTimes.length) {
-        // Nếu có, kiểm tra xem có liên tục không
-        const [startHour, startMin] = startTime.split(':').map(Number);
-        const nextTime = availableTimes[startIndex + 1];
-        const [nextHour, nextMin] = nextTime.split(':').map(Number);
-        
-        const startMinutes = startHour * 60 + startMin;
-        const nextMinutes = nextHour * 60 + nextMin;
-        
-        // Nếu thời gian tiếp theo sau 30 phút, nó là liên tục
-        if (nextMinutes - startMinutes === 30) {
-          // Tìm chuỗi các slots liên tục
-          let lastIndex = startIndex;
-          
-          for (let i = startIndex + 1; i < availableTimes.length; i++) {
-            const [currHour, currMin] = availableTimes[i].split(':').map(Number);
-            const prevTime = availableTimes[i - 1];
-            const [prevHour, prevMin] = prevTime.split(':').map(Number);
-            
-            const currMinutes = currHour * 60 + currMin;
-            const prevMinutes = prevHour * 60 + prevMin;
-            
-            if (currMinutes - prevMinutes === 30) {
-              lastIndex = i;
-            } else {
-              break;
-            }
-          }
-          
-          // Đặt thời gian kết thúc sau 60 phút nếu có đủ slot liên tục
-          if (lastIndex >= startIndex + 1) {
-            const [hour, min] = availableTimes[startIndex + 1].split(':').map(Number);
-            const endMinutes = hour * 60 + min + 30;
-            const endHour = Math.floor(endMinutes / 60);
-            const endMin = endMinutes % 60;
-            endTime = `${endHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}`;
-          }
-        }
+      const rangeStartMinutes = rangeStartHour * 60 + rangeStartMin;
+      const rangeEndMinutes = rangeEndHour * 60 + rangeEndMin;
+      
+      // Kiểm tra xem thời gian bắt đầu có nằm trong khoảng này không
+      if (startMinutes >= rangeStartMinutes && startMinutes < rangeEndMinutes) {
+        matchedRange = {
+          start: rangeStartMinutes,
+          end: rangeEndMinutes,
+          startStr: range.startTime,
+          endStr: range.endTime
+        };
+        break;
+      }
+    }
+    
+    if (matchedRange) {
+      // Tính thời gian kết thúc tối đa có thể (từ thời gian bắt đầu)
+      const maxEndMinutes = matchedRange.end;
+      
+      // Nếu có thể, đặt thời gian kết thúc là 60 phút sau giờ bắt đầu
+      const idealEndMinutes = startMinutes + 60;
+      const actualEndMinutes = Math.min(idealEndMinutes, maxEndMinutes);
+      
+      // Chuyển số phút thành định dạng giờ:phút
+      const endHour = Math.floor(actualEndMinutes / 60);
+      const endMin = actualEndMinutes % 60;
+      const endTime = `${endHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}`;
+      
+      // Chỉ cập nhật nếu có thay đổi hoặc chưa có giá trị
+      if (form.watch("end_time") !== endTime) {
+        form.setValue("end_time", endTime);
       }
       
-      // Nếu không tìm được slot liên tục, tạo thời gian kết thúc 60 phút sau giờ bắt đầu
-      if (!endTime) {
-        const [hour, min] = startTime.split(':').map(Number);
-        const endMinutes = hour * 60 + min + 60;
-        const endHour = Math.floor(endMinutes / 60);
-        const endMin = endMinutes % 60;
-        endTime = `${endHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}`;
-      }
+      // Console.log để debug
+      console.log(`Thời gian được chọn: ${startTime}, Khoảng thời gian phù hợp: ${matchedRange.startStr}-${matchedRange.endStr}`);
+      console.log(`Đặt thời gian kết thúc: ${endTime}`);
+    } else {
+      console.log(`Không tìm thấy khoảng thời gian phù hợp cho ${startTime}`);
+      
+      // Nếu không tìm thấy khoảng thời gian phù hợp, sử dụng thời gian kết thúc mặc định 1 giờ sau
+      const endMinutes = startMinutes + 60;
+      const endHour = Math.floor(endMinutes / 60);
+      const endMin = endMinutes % 60;
+      const endTime = `${endHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}`;
       
       form.setValue("end_time", endTime);
     }
@@ -749,50 +725,42 @@ export default function BookingForm() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Giờ kết thúc</FormLabel>
-                          {getAvailableTimesForSelectedDate().length > 0 ? (
+                          {form.watch("start_time") ? (
                             <div className="text-xs mb-2 text-muted-foreground">
-                              (Chỉ hiển thị giờ trong khung thời gian gia sư có lịch trống)
+                              (Thời gian kết thúc được tính từ giờ bắt đầu đến hết khung giờ trống của gia sư)
                             </div>
                           ) : (
                             <div className="text-xs mb-2 text-amber-600">
                               Vui lòng chọn ngày và giờ bắt đầu trước
                             </div>
                           )}
-                          <Select
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                            value={field.value}
-                            disabled={getAvailableTimesForSelectedDate().length === 0 || !form.watch("start_time")}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Chọn giờ kết thúc" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {getAvailableTimesForSelectedDate().length > 0 && form.watch("start_time") ? (
-                                getAvailableTimesForSelectedDate()
-                                  .filter((time) => time > form.watch("start_time"))
-                                  .length > 0 ? (
-                                    getAvailableTimesForSelectedDate()
-                                      .filter((time) => time > form.watch("start_time"))
-                                      .map((time) => (
-                                        <SelectItem key={time} value={time}>
-                                          {time}
-                                        </SelectItem>
-                                      ))
-                                  ) : (
-                                    <div className="px-2 py-1 text-sm text-muted-foreground">
-                                      Không có khung giờ kết thúc phù hợp
-                                    </div>
-                                  )
-                              ) : (
-                                <div className="px-2 py-1 text-sm text-muted-foreground">
-                                  Vui lòng chọn ngày và giờ bắt đầu trước
-                                </div>
-                              )}
-                            </SelectContent>
-                          </Select>
+                          <div className="relative">
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value}
+                              disabled={true} // Tự động tính giờ kết thúc, không cho chọn thủ công
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Chọn giờ kết thúc" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {field.value ? (
+                                  <SelectItem value={field.value}>{field.value}</SelectItem>
+                                ) : (
+                                  <div className="px-2 py-1 text-sm text-muted-foreground">
+                                    Tự động tính toán khi chọn giờ bắt đầu
+                                  </div>
+                                )}
+                              </SelectContent>
+                            </Select>
+                            {form.watch("start_time") && (
+                              <div className="absolute top-0 right-0 bottom-0 flex items-center pr-3 pointer-events-none">
+                                <span className="text-xs text-muted-foreground">(Tự động)</span>
+                              </div>
+                            )}
+                          </div>
                           <FormMessage />
                         </FormItem>
                       )}
