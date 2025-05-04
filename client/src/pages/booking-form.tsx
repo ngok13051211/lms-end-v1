@@ -557,124 +557,87 @@ export default function BookingForm() {
     }
   };
   
-  // Cập nhật khoảng thời gian khi người dùng chọn giờ bắt đầu
+  // Cập nhật giờ kết thúc tự động dựa trên giờ bắt đầu
   const updateEndTimeBasedOnStartTime = (startTime: string) => {
-    if (!startTime) return;
-    
-    const selectedDate = form.watch("date");
-    if (!selectedDate) return;
-    
-    // Kiểm tra nếu không có dữ liệu lịch trống hoặc đánh dấu là rỗng
-    // @ts-ignore - Truy cập thuộc tính động
-    if (availableTimeSlots._empty) {
-      console.log("availableTimeSlots đang rỗng, không thể cập nhật thời gian kết thúc");
+    if (!startTime || !form.watch("date")) {
       return;
     }
     
-    // @ts-ignore - Truy cập thuộc tính động
-    const hasSpecificDates = availableTimeSlots._hasSpecificDates;
-    
-    // Xác định khóa để tìm khoảng thời gian
-    let timeRangeKey: string;
-    
-    if (hasSpecificDates) {
-      // Format ngày YYYY-MM-DD để tìm ngày cụ thể
-      timeRangeKey = selectedDate.toISOString().split('T')[0];
-    } else {
-      // Dùng day_X để tìm theo ngày trong tuần
-      timeRangeKey = `day_${selectedDate.getDay()}`;
-    }
-    
-    // @ts-ignore - Truy cập thuộc tính động
-    const timeRanges = availableTimeSlots._timeRanges && 
-                      availableTimeSlots._timeRanges[timeRangeKey] ? 
-                      availableTimeSlots._timeRanges[timeRangeKey] : [];
-    
-    if (!timeRanges || timeRanges.length === 0) {
-      console.log(`Không tìm thấy khung giờ cho ngày ${timeRangeKey}`);
-      return;
-    }
-    
-    // Chuyển đổi startTime sang số phút từ nửa đêm
-    const [startHour, startMin] = startTime.split(':').map(Number);
-    const startMinutes = startHour * 60 + startMin;
-    
-    // Tìm khoảng thời gian phù hợp chứa thời gian bắt đầu được chọn
-    let matchedRange = null;
-    for (const range of timeRanges) {
-      const [rangeStartHour, rangeStartMin] = range.startTime.split(':').map(Number);
-      const [rangeEndHour, rangeEndMin] = range.endTime.split(':').map(Number);
-      
-      const rangeStartMinutes = rangeStartHour * 60 + rangeStartMin;
-      const rangeEndMinutes = rangeEndHour * 60 + rangeEndMin;
-      
-      // Kiểm tra xem thời gian bắt đầu có nằm trong khoảng này không
-      if (startMinutes >= rangeStartMinutes && startMinutes < rangeEndMinutes) {
-        matchedRange = {
-          start: rangeStartMinutes,
-          end: rangeEndMinutes,
-          startStr: range.startTime,
-          endStr: range.endTime
-        };
-        break;
+    try {
+      // Kiểm tra dữ liệu có hợp lệ không
+      // @ts-ignore - Truy cập thuộc tính động
+      if (availableTimeSlots._empty) {
+        console.log("Không có dữ liệu lịch trống");
+        return;
       }
-    }
-    
-    if (matchedRange) {
-      // Tính thời gian kết thúc tối đa có thể (từ thời gian bắt đầu)
-      const maxEndMinutes = matchedRange.end;
       
-      // Nếu có thể, đặt thời gian kết thúc là 60 phút sau giờ bắt đầu
-      const idealEndMinutes = startMinutes + 60;
-      const actualEndMinutes = Math.min(idealEndMinutes, maxEndMinutes);
+      // Lấy ngày đã chọn và chuyển về định dạng YYYY-MM-DD
+      const selectedDate = form.watch("date");
+      const dateStr = selectedDate.toISOString().split('T')[0];
       
-      // Chuyển số phút thành định dạng giờ:phút
-      const endHour = Math.floor(actualEndMinutes / 60);
-      const endMin = actualEndMinutes % 60;
-      const endTime = `${endHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}`;
+      // Lấy danh sách các khoảng thời gian cho ngày đã chọn
+      // @ts-ignore - Truy cập thuộc tính động
+      const timeRanges = availableTimeSlots._timeRanges?.[dateStr] || [];
       
-      // Chỉ cập nhật nếu có thay đổi hoặc chưa có giá trị
-      if (form.watch("end_time") !== endTime) {
+      if (timeRanges.length === 0) {
+        console.log(`Không tìm thấy khoảng thời gian nào cho ngày ${dateStr}`);
+        return;
+      }
+      
+      // Chuyển đổi giờ bắt đầu thành phút
+      const [startHour, startMin] = startTime.split(':').map(Number);
+      const startMinutes = startHour * 60 + startMin;
+      
+      // Tìm khoảng thời gian phù hợp chứa thời gian bắt đầu
+      const matchedRange = timeRanges.find(range => {
+        const [rangeStartHour, rangeStartMin] = range.startTime.split(':').map(Number);
+        const [rangeEndHour, rangeEndMin] = range.endTime.split(':').map(Number);
+        
+        const rangeStartMinutes = rangeStartHour * 60 + rangeStartMin;
+        const rangeEndMinutes = rangeEndHour * 60 + rangeEndMin;
+        
+        // Thời gian bắt đầu phải nằm trong khoảng thời gian
+        return startMinutes >= rangeStartMinutes && startMinutes < rangeEndMinutes;
+      });
+      
+      if (matchedRange) {
+        // Nếu tìm thấy khoảng thời gian phù hợp
+        const [endHour, endMin] = matchedRange.endTime.split(':').map(Number);
+        const endMinutes = endHour * 60 + endMin;
+        
+        // Tính thời gian kết thúc:
+        // 1. Lý tưởng: 60 phút sau thời gian bắt đầu
+        // 2. Không vượt quá thời gian kết thúc của khoảng thời gian
+        const idealEndMinutes = startMinutes + 60;
+        const actualEndMinutes = Math.min(idealEndMinutes, endMinutes);
+        
+        // Định dạng thời gian kết thúc
+        const finalEndHour = Math.floor(actualEndMinutes / 60);
+        const finalEndMin = actualEndMinutes % 60;
+        const endTime = `${finalEndHour.toString().padStart(2, '0')}:${finalEndMin.toString().padStart(2, '0')}`;
+        
+        // Cập nhật form
         form.setValue("end_time", endTime);
-      }
-      
-      // Console.log để debug
-      console.log(`Thời gian được chọn: ${startTime}, Khoảng thời gian phù hợp: ${matchedRange.startStr}-${matchedRange.endStr}`);
-      console.log(`Đặt thời gian kết thúc: ${endTime}`);
-    } else {
-      console.log(`Không tìm thấy khoảng thời gian phù hợp cho ${startTime} vào ngày ${timeRangeKey}`);
-      
-      // Tìm khoảng thời gian gần nhất (nếu có)
-      if (timeRanges.length > 0) {
-        // Kiểm tra khoảng thời gian khả dụng
-        const availableTimePoints = getAvailableTimesForSelectedDate();
-        if (availableTimePoints.includes(startTime)) {
-          // Nếu thời gian bắt đầu hợp lệ, tìm khoảng thời gian kết thúc phù hợp
-          
-          // Thêm 60 phút cho thời gian kết thúc - (nhưng giới hạn không quá 22h)
-          const endMinutes = Math.min(startMinutes + 60, 22 * 60);
-          const endHour = Math.floor(endMinutes / 60);
-          const endMin = endMinutes % 60;
-          const endTime = `${endHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}`;
-          
-          form.setValue("end_time", endTime);
-        } else {
-          // Nếu thời gian bắt đầu không nằm trong danh sách thời gian có sẵn
-          // đặt giờ bắt đầu về giá trị đầu tiên
-          if (availableTimePoints.length > 0) {
-            form.setValue("start_time", availableTimePoints[0]);
-            updateEndTimeBasedOnStartTime(availableTimePoints[0]);
-          }
-        }
+        
+        console.log(`Đã cập nhật giờ kết thúc: ${endTime} (dựa trên khoảng ${matchedRange.startTime}-${matchedRange.endTime})`);
       } else {
-        // Nếu không có khoảng thời gian nào, đặt mặc định 1 giờ sau
-        const endMinutes = startMinutes + 60;
-        const endHour = Math.floor(endMinutes / 60);
-        const endMin = endMinutes % 60;
+        // Nếu không tìm thấy khoảng thời gian phù hợp
+        console.log(`Không tìm được khoảng thời gian chứa ${startTime}`);
+        
+        // Đặt thời gian kết thúc là 60 phút sau (hoặc tối đa 22:00)
+        const idealEndMinutes = startMinutes + 60;
+        const maxEndMinutes = 22 * 60;
+        const actualEndMinutes = Math.min(idealEndMinutes, maxEndMinutes);
+        
+        const endHour = Math.floor(actualEndMinutes / 60);
+        const endMin = actualEndMinutes % 60;
         const endTime = `${endHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}`;
         
         form.setValue("end_time", endTime);
+        console.log(`Đặt giờ kết thúc mặc định: ${endTime} (60 phút sau giờ bắt đầu)`);
       }
+    } catch (error) {
+      console.error("Lỗi khi cập nhật giờ kết thúc:", error);
     }
   };
   
