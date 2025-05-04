@@ -310,6 +310,15 @@ export default function BookingForm() {
             Nhập thông tin lịch học của bạn với{" "}
             <span className="font-medium">{tutorName}</span>
           </CardDescription>
+          <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-md border border-blue-200 dark:border-blue-800">
+            <h3 className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-1">Quy trình đặt lịch</h3>
+            <ul className="text-xs text-blue-700 dark:text-blue-400 list-disc pl-5 space-y-1">
+              <li>Bạn đặt lịch và thanh toán qua cổng VNPAY</li>
+              <li>Hệ thống giữ tiền trong tài khoản escrow của HomiTutor</li>
+              <li>Sau khi buổi học hoàn thành, gia sư sẽ nhận được thanh toán</li>
+              <li>Nếu có vấn đề, bạn có thể yêu cầu hoàn tiền trong vòng 24 giờ</li>
+            </ul>
+          </div>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -485,6 +494,11 @@ export default function BookingForm() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Giờ bắt đầu</FormLabel>
+                          {getAvailableTimesForSelectedDate().length > 0 && (
+                            <div className="text-xs mb-2 text-muted-foreground">
+                              (Hiển thị các giờ gia sư có lịch trống trong ngày đã chọn)
+                            </div>
+                          )}
                           <Select
                             onValueChange={field.onChange}
                             defaultValue={field.value}
@@ -623,11 +637,38 @@ export default function BookingForm() {
                         </>
                       )}
                     </div>
+                    
+                    <div className="mt-4 border rounded-md p-4 bg-muted/30">
+                      <h4 className="text-sm font-medium mb-2">Phương thức thanh toán</h4>
+                      <div className="space-y-2">
+                        <div className="flex items-center">
+                          <input
+                            type="radio"
+                            id="payment-method-vnpay"
+                            name="payment-method"
+                            className="mr-2"
+                            defaultChecked
+                          />
+                          <label htmlFor="payment-method-vnpay" className="text-sm flex items-center">
+                            <img 
+                              src="https://cdn.haitrieu.com/wp-content/uploads/2022/10/Icon-VNPAY-QR.png" 
+                              alt="VNPAY" 
+                              className="h-6 w-auto mr-2" 
+                            />
+                            Thanh toán qua VNPAY
+                          </label>
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-2">
+                          Sau khi đặt lịch, bạn sẽ được chuyển đến cổng thanh toán VNPAY để hoàn tất giao dịch.
+                          Số tiền thanh toán sẽ được giữ lại cho đến khi buổi học kết thúc.
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="flex justify-end space-x-2">
+              <div className="flex justify-end space-x-2 mt-6">
                 <Button
                   type="button"
                   variant="outline"
@@ -635,14 +676,14 @@ export default function BookingForm() {
                 >
                   Hủy
                 </Button>
-                <Button type="submit" disabled={isSubmitting}>
+                <Button type="submit" disabled={isSubmitting} className="bg-primary hover:bg-primary/90">
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Đang xử lý...
                     </>
                   ) : (
-                    "Đặt lịch"
+                    "Xác nhận đặt lịch và thanh toán"
                   )}
                 </Button>
               </div>
