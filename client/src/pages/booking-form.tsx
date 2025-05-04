@@ -283,83 +283,146 @@ export default function BookingForm() {
         availabilityData.forEach((slot: any) => {
           console.log("Đang xử lý slot:", slot);
           
-          // Kiểm tra slot có đầy đủ thông tin về thời gian không
-          if (!slot.startTime || !slot.endTime || !slot.day) {
-            console.warn("Slot thiếu thông tin:", slot);
-            return;
-          }
-          
-          // Lấy và kiểm tra thời gian
-          const [startHour, startMin] = slot.startTime.split(':').map(Number);
-          const [endHour, endMin] = slot.endTime.split(':').map(Number);
-          
-          if (isNaN(startHour) || isNaN(startMin) || isNaN(endHour) || isNaN(endMin)) {
-            console.warn("Định dạng thời gian không hợp lệ:", slot);
-            return;
-          }
-          
-          // Xử lý trường hợp ngày trong tuần (monday, tuesday, etc.)
-          const dayOfWeek = getDayOfWeekNumber(slot.day);
-          if (dayOfWeek === undefined) {
-            console.warn(`Không nhận dạng được ngày trong tuần: ${slot.day}`);
-            return;
-          }
-          
-          // Tạo mảng các ngày từ hôm nay đến 4 tuần tới
-          const dates: Date[] = [];
-          for (let i = 0; i < 28; i++) {
-            const date = new Date(today);
-            date.setDate(today.getDate() + i);
-            if (date.getDay() === dayOfWeek) {
-              dates.push(date);
-            }
-          }
-          
-          // Xử lý mỗi ngày tìm được
-          dates.forEach(date => {
-            const dateStr = date.toISOString().split('T')[0];
+          // Kiểm tra nếu là loại "specific" (ngày cụ thể)
+          if (slot.type === "specific" && slot.date && slot.startTime && slot.endTime) {
+            // Xử lý lịch theo ngày cụ thể
+            console.log("Xử lý lịch ngày cụ thể:", slot.date);
             
-            // Thêm vào danh sách khoảng thời gian
-            if (!timeRanges[dateStr]) {
-              timeRanges[dateStr] = [];
+            // Chuyển đổi chuỗi ngày thành đối tượng Date
+            const specificDate = new Date(slot.date);
+            
+            // Kiểm tra ngày hợp lệ và không trong quá khứ
+            if (!isNaN(specificDate.getTime()) && specificDate >= today) {
+              // Lấy và kiểm tra thời gian
+              const [startHour, startMin] = slot.startTime.split(':').map(Number);
+              const [endHour, endMin] = slot.endTime.split(':').map(Number);
+              
+              if (isNaN(startHour) || isNaN(startMin) || isNaN(endHour) || isNaN(endMin)) {
+                console.warn("Định dạng thời gian không hợp lệ:", slot);
+                return;
+              }
+              
+              // Chuyển định dạng ngày thành YYYY-MM-DD
+              const dateStr = specificDate.toISOString().split('T')[0];
+              
+              // Thêm vào danh sách khoảng thời gian
+              if (!timeRanges[dateStr]) {
+                timeRanges[dateStr] = [];
+              }
+              timeRanges[dateStr].push({
+                startTime: slot.startTime,
+                endTime: slot.endTime
+              });
+              
+              // Thêm vào danh sách thời điểm có thể bắt đầu
+              if (!daySlots[dateStr]) {
+                daySlots[dateStr] = [];
+              }
+              
+              // Tạo các mốc thời gian 30 phút
+              const startMinutes = startHour * 60 + startMin;
+              const endMinutes = endHour * 60 + endMin;
+              
+              // Thêm thời gian bắt đầu chính xác
+              if (startHour >= 6 && startHour < 22) {
+                daySlots[dateStr].push(slot.startTime);
+              }
+              
+              // Thêm các mốc thời gian 30 phút
+              const roundedStart = Math.ceil(startMinutes / 30) * 30;
+              const maxStartMinutes = endMinutes - 60; // Đảm bảo buổi học có ít nhất 60 phút
+              
+              for (let minute = roundedStart; minute <= maxStartMinutes; minute += 30) {
+                const hour = Math.floor(minute / 60);
+                const min = minute % 60;
+                
+                // Chỉ xem xét các thời gian từ 6h sáng đến 22h tối
+                if (hour < 6 || hour >= 22) continue;
+                
+                const timeStr = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
+                daySlots[dateStr].push(timeStr);
+              }
+              
+              // Đánh dấu đây là ngày có lịch trống
+              specificDates[dateStr] = true;
             }
-            timeRanges[dateStr].push({
-              startTime: slot.startTime,
-              endTime: slot.endTime
+          }
+          // Kiểm tra slot có đầy đủ thông tin về thời gian cho trường hợp weekly hoặc legacy (không có type)
+          else if ((slot.type === "weekly" || !slot.type) && slot.startTime && slot.endTime && slot.day) {
+            // Lấy và kiểm tra thời gian
+            const [startHour, startMin] = slot.startTime.split(':').map(Number);
+            const [endHour, endMin] = slot.endTime.split(':').map(Number);
+            
+            if (isNaN(startHour) || isNaN(startMin) || isNaN(endHour) || isNaN(endMin)) {
+              console.warn("Định dạng thời gian không hợp lệ:", slot);
+              return;
+            }
+            
+            // Xử lý trường hợp ngày trong tuần (monday, tuesday, etc.)
+            const dayOfWeek = getDayOfWeekNumber(slot.day);
+            if (dayOfWeek === undefined) {
+              console.warn(`Không nhận dạng được ngày trong tuần: ${slot.day}`);
+              return;
+            }
+            
+            // Tạo mảng các ngày từ hôm nay đến 4 tuần tới
+            const dates: Date[] = [];
+            for (let i = 0; i < 28; i++) {
+              const date = new Date(today);
+              date.setDate(today.getDate() + i);
+              if (date.getDay() === dayOfWeek) {
+                dates.push(date);
+              }
+            }
+            
+            // Xử lý mỗi ngày tìm được
+            dates.forEach(date => {
+              const dateStr = date.toISOString().split('T')[0];
+              
+              // Thêm vào danh sách khoảng thời gian
+              if (!timeRanges[dateStr]) {
+                timeRanges[dateStr] = [];
+              }
+              timeRanges[dateStr].push({
+                startTime: slot.startTime,
+                endTime: slot.endTime
+              });
+              
+              // Thêm vào danh sách thời điểm có thể bắt đầu
+              if (!daySlots[dateStr]) {
+                daySlots[dateStr] = [];
+              }
+              
+              // Tạo các mốc thời gian 30 phút
+              const startMinutes = startHour * 60 + startMin;
+              const endMinutes = endHour * 60 + endMin;
+              
+              // Thêm thời gian bắt đầu chính xác
+              if (startHour >= 6 && startHour < 22) {
+                daySlots[dateStr].push(slot.startTime);
+              }
+              
+              // Thêm các mốc thời gian 30 phút
+              const roundedStart = Math.ceil(startMinutes / 30) * 30;
+              const maxStartMinutes = endMinutes - 60; // Đảm bảo buổi học có ít nhất 60 phút
+              
+              for (let minute = roundedStart; minute <= maxStartMinutes; minute += 30) {
+                const hour = Math.floor(minute / 60);
+                const min = minute % 60;
+                
+                // Chỉ xem xét các thời gian từ 6h sáng đến 22h tối
+                if (hour < 6 || hour >= 22) continue;
+                
+                const timeStr = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
+                daySlots[dateStr].push(timeStr);
+              }
+              
+              // Đánh dấu đây là ngày có lịch trống
+              specificDates[dateStr] = true;
             });
-            
-            // Thêm vào danh sách thời điểm có thể bắt đầu
-            if (!daySlots[dateStr]) {
-              daySlots[dateStr] = [];
-            }
-            
-            // Tạo các mốc thời gian 30 phút
-            const startMinutes = startHour * 60 + startMin;
-            const endMinutes = endHour * 60 + endMin;
-            
-            // Thêm thời gian bắt đầu chính xác
-            if (startHour >= 6 && startHour < 22) {
-              daySlots[dateStr].push(slot.startTime);
-            }
-            
-            // Thêm các mốc thời gian 30 phút
-            const roundedStart = Math.ceil(startMinutes / 30) * 30;
-            const maxStartMinutes = endMinutes - 60; // Đảm bảo buổi học có ít nhất 60 phút
-            
-            for (let minute = roundedStart; minute <= maxStartMinutes; minute += 30) {
-              const hour = Math.floor(minute / 60);
-              const min = minute % 60;
-              
-              // Chỉ xem xét các thời gian từ 6h sáng đến 22h tối
-              if (hour < 6 || hour >= 22) continue;
-              
-              const timeStr = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
-              daySlots[dateStr].push(timeStr);
-            }
-            
-            // Đánh dấu đây là ngày có lịch trống
-            specificDates[dateStr] = true;
-          });
+          } else {
+            console.warn("Slot không có đủ thông tin cần thiết:", slot);
+          }
         });
         
         // Loại bỏ trùng lặp và sắp xếp các thời điểm cho mỗi ngày
