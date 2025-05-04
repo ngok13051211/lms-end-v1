@@ -613,10 +613,11 @@ export default function BookingForm() {
                     render={({ field }) => (
                       <FormItem className="flex flex-col">
                         <FormLabel>Ngày học</FormLabel>
-                        <div className="text-xs mb-2 text-muted-foreground">
-                          (Chỉ hiển thị những ngày gia sư có lịch trống)
-                        </div>
-                        {Object.keys(availableTimeSlots).length === 0 && (
+                        {Object.keys(availableTimeSlots).length > 0 ? (
+                          <div className="text-xs mb-2 text-muted-foreground">
+                            (Lịch chỉ hiển thị những ngày gia sư có lịch trống)
+                          </div>
+                        ) : (
                           <div className="text-xs text-amber-600 mb-2">
                             Đang đồng bộ lịch với gia sư...
                           </div>
@@ -680,15 +681,20 @@ export default function BookingForm() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Giờ bắt đầu</FormLabel>
-                          {getAvailableTimesForSelectedDate().length > 0 && (
+                          {getAvailableTimesForSelectedDate().length > 0 ? (
                             <div className="text-xs mb-2 text-muted-foreground">
                               (Hiển thị các giờ gia sư có lịch trống trong ngày đã chọn)
+                            </div>
+                          ) : (
+                            <div className="text-xs mb-2 text-amber-600">
+                              Vui lòng chọn ngày có lịch trống để xem giờ trống
                             </div>
                           )}
                           <Select
                             onValueChange={field.onChange}
                             defaultValue={field.value}
                             value={field.value}
+                            disabled={getAvailableTimesForSelectedDate().length === 0}
                           >
                             <FormControl>
                               <SelectTrigger>
@@ -703,11 +709,9 @@ export default function BookingForm() {
                                   </SelectItem>
                                 ))
                               ) : (
-                                timeOptions.map((time) => (
-                                  <SelectItem key={time} value={time}>
-                                    {time}
-                                  </SelectItem>
-                                ))
+                                <div className="px-2 py-1 text-sm text-muted-foreground">
+                                  Vui lòng chọn ngày có lịch trống
+                                </div>
                               )}
                             </SelectContent>
                           </Select>
@@ -722,15 +726,20 @@ export default function BookingForm() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Giờ kết thúc</FormLabel>
-                          {getAvailableTimesForSelectedDate().length > 0 && (
+                          {getAvailableTimesForSelectedDate().length > 0 ? (
                             <div className="text-xs mb-2 text-muted-foreground">
                               (Chỉ hiển thị giờ trong khung thời gian gia sư có lịch trống)
+                            </div>
+                          ) : (
+                            <div className="text-xs mb-2 text-amber-600">
+                              Vui lòng chọn ngày và giờ bắt đầu trước
                             </div>
                           )}
                           <Select
                             onValueChange={field.onChange}
                             defaultValue={field.value}
                             value={field.value}
+                            disabled={getAvailableTimesForSelectedDate().length === 0 || !form.watch("start_time")}
                           >
                             <FormControl>
                               <SelectTrigger>
