@@ -574,7 +574,60 @@ export default function TutorDashboardProfile() {
   });
   
   // Thêm mới một khung giờ trống
+  // Hàm kiểm tra xem một khung giờ mới có bị trùng với bất kỳ khung giờ nào đã tồn tại hay không
+  const isTimeSlotOverlapping = (newSlot: AvailabilityItem) => {
+    return availabilityItems.some(existingSlot => {
+      // Chỉ kiểm tra trùng lặp nếu cùng ngày trong tuần
+      if (existingSlot.day === newSlot.day) {
+        // Chuyển đổi giờ:phút thành số phút để dễ so sánh
+        const [existingStartHour, existingStartMin] = existingSlot.startTime.split(':').map(Number);
+        const [existingEndHour, existingEndMin] = existingSlot.endTime.split(':').map(Number);
+        const [newStartHour, newStartMin] = newSlot.startTime.split(':').map(Number);
+        const [newEndHour, newEndMin] = newSlot.endTime.split(':').map(Number);
+        
+        const existingStartMinutes = existingStartHour * 60 + existingStartMin;
+        const existingEndMinutes = existingEndHour * 60 + existingEndMin;
+        const newStartMinutes = newStartHour * 60 + newStartMin;
+        const newEndMinutes = newEndHour * 60 + newEndMin;
+        
+        // Kiểm tra xem hai khoảng thời gian có giao nhau không
+        // Nếu thời gian bắt đầu mới nhỏ hơn thời gian kết thúc hiện tại
+        // VÀ thời gian kết thúc mới lớn hơn thời gian bắt đầu hiện tại
+        // thì hai khoảng thời gian giao nhau
+        return (newStartMinutes < existingEndMinutes && newEndMinutes > existingStartMinutes);
+      }
+      return false;
+    });
+  };
+
   const handleAddAvailability = () => {
+    // Kiểm tra nếu thời gian kết thúc <= thời gian bắt đầu
+    const [startHour, startMin] = newAvailabilityItem.startTime.split(':').map(Number);
+    const [endHour, endMin] = newAvailabilityItem.endTime.split(':').map(Number);
+    
+    const startMinutes = startHour * 60 + startMin;
+    const endMinutes = endHour * 60 + endMin;
+    
+    if (endMinutes <= startMinutes) {
+      toast({
+        title: "Lỗi thời gian",
+        description: "Thời gian kết thúc phải sau thời gian bắt đầu.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Kiểm tra trùng lặp
+    if (isTimeSlotOverlapping(newAvailabilityItem)) {
+      toast({
+        title: "Lịch trùng lặp",
+        description: "Khung giờ này trùng với một khung giờ đã tồn tại. Vui lòng chọn thời gian khác.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Nếu không có vấn đề gì, thêm khung giờ mới
     setAvailabilityItems([...availabilityItems, newAvailabilityItem]);
     setNewAvailabilityItem({
       day: "monday",
@@ -590,9 +643,96 @@ export default function TutorDashboardProfile() {
     setAvailabilityItems(newItems);
   };
   
+  // Xóa lịch trùng lặp trước khi lưu
+  const removeDuplicateTimeSlots = (slots: AvailabilityItem[]): AvailabilityItem[] => {
+    // Sử dụng Map để lọc các khung giờ trùng lặp theo ngày
+    const dayMaps: Record<string, AvailabilityItem[]> = {};
+    
+    // Nhóm các khung giờ theo ngày
+    slots.forEach(slot => {
+      if (!dayMaps[slot.day]) {
+        dayMaps[slot.day] = [];
+      }
+      dayMaps[slot.day].push(slot);
+    });
+    
+    // Kết quả cuối cùng
+    const result: AvailabilityItem[] = [];
+    
+    // Xử lý cho từng ngày
+    Object.entries(dayMaps).forEach(([day, daySlots]) => {
+      // Sắp xếp các slot theo thời gian bắt đầu
+      daySlots.sort((a, b) => {
+        const [aHour, aMin] = a.startTime.split(':').map(Number);
+        const [bHour, bMin] = b.startTime.split(':').map(Number);
+        
+        const aMinutes = aHour * 60 + aMin;
+        const bMinutes = bHour * 60 + bMin;
+        
+        return aMinutes - bMinutes;
+      });
+      
+      // Kết hợp các khung giờ chồng lấp
+      const mergedSlots: AvailabilityItem[] = [];
+      
+      for (const slot of daySlots) {
+        if (mergedSlots.length === 0) {
+          mergedSlots.push(slot);
+          continue;
+        }
+        
+        const lastSlot = mergedSlots[mergedSlots.length - 1];
+        
+        // Chuyển đổi giờ:phút thành số phút
+        const [lastStartHour, lastStartMin] = lastSlot.startTime.split(':').map(Number);
+        const [lastEndHour, lastEndMin] = lastSlot.endTime.split(':').map(Number);
+        const [currStartHour, currStartMin] = slot.startTime.split(':').map(Number);
+        const [currEndHour, currEndMin] = slot.endTime.split(':').map(Number);
+        
+        const lastStartMinutes = lastStartHour * 60 + lastStartMin;
+        const lastEndMinutes = lastEndHour * 60 + lastEndMin;
+        const currStartMinutes = currStartHour * 60 + currStartMin;
+        const currEndMinutes = currEndHour * 60 + currEndMin;
+        
+        // Nếu khung giờ hiện tại chồng lấp với khung giờ trước đó, hợp nhất chúng
+        if (currStartMinutes <= lastEndMinutes) {
+          // Cập nhật thời gian kết thúc của khung giờ cuối nếu cần
+          if (currEndMinutes > lastEndMinutes) {
+            // Chuyển số phút thành giờ:phút
+            const newEndHour = Math.floor(currEndMinutes / 60);
+            const newEndMin = currEndMinutes % 60;
+            lastSlot.endTime = `${newEndHour.toString().padStart(2, '0')}:${newEndMin.toString().padStart(2, '0')}`;
+          }
+        } else {
+          // Nếu không chồng lấp, thêm khung giờ mới
+          mergedSlots.push(slot);
+        }
+      }
+      
+      // Thêm các khung giờ đã hợp nhất vào kết quả
+      result.push(...mergedSlots);
+    });
+    
+    return result;
+  };
+
   // Cập nhật thông tin lịch trống
   const handleSubmitAvailability = () => {
-    updateAvailabilityMutation.mutate(availabilityItems);
+    // Loại bỏ các lịch trùng lặp trước khi gửi lên server
+    const cleanedAvailabilityItems = removeDuplicateTimeSlots(availabilityItems);
+    
+    // Cập nhật state để người dùng biết lịch đã được dọn dẹp
+    if (JSON.stringify(cleanedAvailabilityItems) !== JSON.stringify(availabilityItems)) {
+      setAvailabilityItems(cleanedAvailabilityItems);
+      toast({
+        title: "Đã tối ưu hóa lịch trống",
+        description: "Hệ thống đã tự động loại bỏ các khung giờ trùng lặp.",
+        variant: "default",
+      });
+    }
+    
+    // Gửi dữ liệu đã được dọn dẹp lên server
+    updateAvailabilityMutation.mutate(cleanedAvailabilityItems);
   };
 
   if (profileLoading) {
