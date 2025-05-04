@@ -246,6 +246,9 @@ export default function BookingForm() {
         const hasSpecificDate = availabilityData.some((slot: any) => slot.specificDate);
         
         // Tổ chức lại các khoảng thời gian theo ngày
+        // Kiểm tra nếu có bất kỳ ngày cụ thể nào được cung cấp
+        const hasSpecificDateFromData = availabilityData.some((slot: any) => slot.specificDate);
+        
         availabilityData.forEach((slot: any) => {
           let keyDate: string;
           
@@ -254,10 +257,30 @@ export default function BookingForm() {
             keyDate = slot.specificDate; // Giả sử format là YYYY-MM-DD
             specificDates[keyDate] = true;
           } else if (slot.day) {
-            // Nếu không có ngày cụ thể, sử dụng ngày trong tuần
+            // Nếu dữ liệu chỉ có ngày trong tuần, nhưng không có ngày cụ thể
             const dayNumber = dayMap[slot.day.toLowerCase()];
             if (!dayNumber) return;
-            keyDate = `day_${dayNumber}`;
+            
+            // Tạo ngày cụ thể từ ngày trong tuần
+            // Tìm ngày gần nhất có thứ tương ứng trong 4 tuần tới
+            const today = new Date();
+            const targetDay = parseInt(dayNumber);
+            
+            // Xác định ngày gần nhất có thứ tương ứng
+            let nextDate = new Date(today);
+            const todayDay = today.getDay();
+            
+            // Tính toán ngày gần nhất có thứ giống như slot.day
+            // Ví dụ: Nếu hôm nay là Chủ nhật (0) và cần tìm Thứ Ba (2), thì cần thêm 2 ngày
+            let daysToAdd = (targetDay - todayDay + 7) % 7;
+            if (daysToAdd === 0) daysToAdd = 7; // Nếu trùng với ngày hiện tại, lấy tuần sau
+            
+            nextDate.setDate(today.getDate() + daysToAdd);
+            
+            // Format ngày thành YYYY-MM-DD
+            const formattedDate = nextDate.toISOString().split('T')[0];
+            keyDate = formattedDate;
+            specificDates[keyDate] = true;
           } else {
             // Nếu không có cả ngày cụ thể và ngày trong tuần, bỏ qua slot này
             console.warn("Slot không có thông tin ngày:", slot);
@@ -336,35 +359,11 @@ export default function BookingForm() {
         console.log("Slots đã xử lý:", slots);
         console.log("TimeRanges đã xử lý:", timeRanges);
         
-        // Giả định rằng API chưa trả về ngày cụ thể, ta cần tự tạo ra
-        // Hiện tại, gia sư chỉ có thể chọn thứ trong tuần hoặc ngày cụ thể (05/05/2025 - Thứ 2)
-        // Nếu API chưa hỗ trợ trường specificDate, chúng ta có thể thêm logic để tạm thời giả định
-        // đây là ngày Thứ Hai gần nhất (ngày 05/05/2025)
-        const hasDateField = availabilityData.some((slot: any) => slot.date);
-        if (!hasDateField && !hasSpecificDate && Object.keys(slots).length > 0) {
-          // Giả định đây là ngày cụ thể của Thứ Hai trong tuần hiện tại
-          const today = new Date();
-          const mondayThisWeek = new Date(today);
-          const dayDiff = (1 - today.getDay() + 7) % 7; // Monday is 1, calculate days until next Monday
-          mondayThisWeek.setDate(today.getDate() + dayDiff);
-          
-          const mondayKey = `day_1`; // key for Monday
-          if (slots[mondayKey]) {
-            // Format ngày YYYY-MM-DD
-            const dateStr = mondayThisWeek.toISOString().split('T')[0];
-            
-            // Chuyển dữ liệu từ day_1 sang ngày cụ thể
-            slots[dateStr] = slots[mondayKey];
-            timeRanges[dateStr] = timeRanges[mondayKey];
-            
-            // Xóa dữ liệu ngày không cụ thể
-            delete slots[mondayKey];
-            delete timeRanges[mondayKey];
-            
-            // Đánh dấu là có ngày cụ thể
-            specificDates[dateStr] = true;
-          }
-        }
+        // Đã xử lý tất cả ngày trong tuần thành ngày cụ thể ở trên
+        // Không cần xử lý thêm ngày cụ thể ở đây nữa
+        
+        // Ghi log thông tin các ngày cụ thể đã được tạo
+        console.log("Các ngày cụ thể đã được tạo:", specificDates);
         
         // Lưu thông tin khoảng thời gian để sử dụng khi tính toán thời gian kết thúc
         // @ts-ignore - Thêm thuộc tính tạm cho state
@@ -834,7 +833,10 @@ export default function BookingForm() {
                         <FormLabel>Ngày học</FormLabel>
                         {Object.keys(availableTimeSlots).length > 0 ? (
                           <div className="text-xs mb-2 text-muted-foreground">
-                            (Lịch chỉ hiển thị những ngày gia sư có lịch trống)
+                            {tutorData?.availability && JSON.parse(tutorData.availability).some((slot: any) => slot.day === "tuesday") ? 
+                              "(Chỉ hiển thị những ngày Thứ Ba mà gia sư có lịch trống)" :
+                              "(Chỉ hiển thị những ngày mà gia sư có lịch trống)"
+                            }
                           </div>
                         ) : (
                           <div className="text-xs text-amber-600 mb-2">
