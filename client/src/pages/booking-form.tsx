@@ -196,6 +196,8 @@ export default function BookingForm() {
         const availabilityData = typeof tutorData.availability === 'string' 
           ? JSON.parse(tutorData.availability) 
           : tutorData.availability;
+        
+        console.log("Dữ liệu lịch trống nhận được:", JSON.stringify(availabilityData));
           
         // Tạo object mới để lưu trữ thời gian trống theo ngày trong tuần
         const slots: {[key: string]: string[]} = {};
@@ -211,38 +213,83 @@ export default function BookingForm() {
           'saturday': '6'
         };
         
-        // Xử lý dữ liệu availability
+        // Xóa trùng lặp và hợp nhất các khung giờ cho mỗi ngày
+        // Sắp xếp lịch trống theo ngày và thời gian bắt đầu
+        const mergedSlots: {[key: string]: Array<{start: number, end: number}>} = {};
+        
+        // Bước 1: Nhóm lịch theo ngày và chuyển thành số phút
         availabilityData.forEach((slot: any) => {
           const dayNumber = dayMap[slot.day.toLowerCase()];
           if (!dayNumber) return;
           
-          // Chuyển đổi startTime và endTime thành một mảng các time slot 30 phút
-          const startTime = slot.startTime;
-          const endTime = slot.endTime;
-          
-          // Tạo mảng các thời điểm trống với khoảng cách 30 phút
-          const timeSlots: string[] = [];
-          const [startHour, startMin] = startTime.split(':').map(Number);
-          const [endHour, endMin] = endTime.split(':').map(Number);
+          // Chuyển startTime và endTime sang số phút để dễ tính toán
+          const [startHour, startMin] = slot.startTime.split(':').map(Number);
+          const [endHour, endMin] = slot.endTime.split(':').map(Number);
           
           const startMinutes = startHour * 60 + startMin;
           const endMinutes = endHour * 60 + endMin;
           
-          // Tạo các time slot từ start đến end, mỗi 30 phút
-          for (let minute = startMinutes; minute < endMinutes; minute += 30) {
-            const hour = Math.floor(minute / 60);
-            const min = minute % 60;
-            const timeStr = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
-            timeSlots.push(timeStr);
+          // Kiểm tra thời gian hợp lệ
+          if (startMinutes >= endMinutes) return;
+          
+          if (!mergedSlots[dayNumber]) {
+            mergedSlots[dayNumber] = [];
           }
           
-          // Lưu vào slots
-          if (!slots[dayNumber]) {
-            slots[dayNumber] = timeSlots;
-          } else {
-            slots[dayNumber] = [...slots[dayNumber], ...timeSlots];
-          }
+          mergedSlots[dayNumber].push({ start: startMinutes, end: endMinutes });
         });
+        
+        // Bước 2: Sắp xếp và hợp nhất các khoảng thời gian chồng lấp cho mỗi ngày
+        for (const dayNumber in mergedSlots) {
+          // Sắp xếp theo thời gian bắt đầu
+          mergedSlots[dayNumber].sort((a, b) => a.start - b.start);
+          
+          const mergedRanges: Array<{start: number, end: number}> = [];
+          
+          for (const range of mergedSlots[dayNumber]) {
+            if (mergedRanges.length === 0) {
+              mergedRanges.push(range);
+              continue;
+            }
+            
+            const lastRange = mergedRanges[mergedRanges.length - 1];
+            
+            // Kiểm tra nếu có sự chồng chéo
+            if (range.start <= lastRange.end) {
+              // Hợp nhất khoảng thời gian
+              lastRange.end = Math.max(lastRange.end, range.end);
+            } else {
+              // Thêm khoảng thời gian mới
+              mergedRanges.push(range);
+            }
+          }
+          
+          // Bước 3: Chuyển các khoảng đã hợp nhất thành các time slot 30 phút
+          const timeSlots: string[] = [];
+          
+          mergedRanges.forEach(({ start, end }) => {
+            // Làm tròn thời gian bắt đầu lên 30 phút
+            const roundedStart = Math.ceil(start / 30) * 30;
+            
+            // Tạo các time slot từ start đến end, mỗi 30 phút
+            for (let minute = roundedStart; minute < end; minute += 30) {
+              const hour = Math.floor(minute / 60);
+              const min = minute % 60;
+              
+              // Bỏ qua nếu giờ nằm ngoài phạm vi 6h sáng đến 22h tối
+              if (hour < 6 || hour >= 22) continue;
+              
+              const timeStr = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
+              timeSlots.push(timeStr);
+            }
+          });
+          
+          // Loại bỏ trùng lặp và sắp xếp
+          const uniqueTimeSlots = Array.from(new Set(timeSlots));
+          slots[dayNumber] = uniqueTimeSlots.sort();
+        }
+        
+        console.log("Slots đã xử lý:", slots);
         
         // Cập nhật state
         setAvailableTimeSlots(slots);
@@ -252,16 +299,25 @@ export default function BookingForm() {
     }
   }, [tutorData]);
   
-  // Lấy các ngày trong tuần có lịch trống
+  // Lấy các ngày trong tuần có lịch trống (4 tuần tới)
   const getAvailableDays = () => {
-    return Object.keys(availableTimeSlots).map(dayStr => {
-      const day = parseInt(dayStr);
-      const today = new Date();
-      const currentDay = today.getDay();
-      let daysToAdd = day - currentDay;
-      if (daysToAdd < 0) daysToAdd += 7;
-      return addDays(today, daysToAdd);
-    });
+    // Tạo mảng các ngày có lịch trống trong 4 tuần tới
+    const result: Date[] = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Bắt đầu từ thời điểm 00:00:00 của ngày hôm nay
+    
+    // 28 ngày (4 tuần)
+    for (let i = 0; i < 28; i++) {
+      const date = addDays(today, i);
+      const dayOfWeek = date.getDay().toString();
+      
+      // Chỉ thêm ngày có slot trống
+      if (availableTimeSlots[dayOfWeek] && availableTimeSlots[dayOfWeek].length > 0) {
+        result.push(date);
+      }
+    }
+    
+    return result;
   };
   
   // Hiển thị thời gian trống cho ngày đã chọn
@@ -271,15 +327,94 @@ export default function BookingForm() {
     return availableTimeSlots[dayOfWeek] || [];
   };
   
+  // Cập nhật khoảng thời gian khi người dùng chọn giờ bắt đầu
+  const updateEndTimeBasedOnStartTime = (startTime: string) => {
+    const availableTimes = getAvailableTimesForSelectedDate();
+    const startIndex = availableTimes.indexOf(startTime);
+    
+    if (startIndex >= 0) {
+      // Chọn slot 30 phút làm mặc định
+      let endTime = "";
+      
+      // Kiểm tra xem có slot tiếp theo không
+      if (startIndex + 1 < availableTimes.length) {
+        // Nếu có, kiểm tra xem có liên tục không
+        const [startHour, startMin] = startTime.split(':').map(Number);
+        const nextTime = availableTimes[startIndex + 1];
+        const [nextHour, nextMin] = nextTime.split(':').map(Number);
+        
+        const startMinutes = startHour * 60 + startMin;
+        const nextMinutes = nextHour * 60 + nextMin;
+        
+        // Nếu thời gian tiếp theo sau 30 phút, nó là liên tục
+        if (nextMinutes - startMinutes === 30) {
+          // Tìm chuỗi các slots liên tục
+          let lastIndex = startIndex;
+          
+          for (let i = startIndex + 1; i < availableTimes.length; i++) {
+            const [currHour, currMin] = availableTimes[i].split(':').map(Number);
+            const prevTime = availableTimes[i - 1];
+            const [prevHour, prevMin] = prevTime.split(':').map(Number);
+            
+            const currMinutes = currHour * 60 + currMin;
+            const prevMinutes = prevHour * 60 + prevMin;
+            
+            if (currMinutes - prevMinutes === 30) {
+              lastIndex = i;
+            } else {
+              break;
+            }
+          }
+          
+          // Đặt thời gian kết thúc sau 60 phút nếu có đủ slot liên tục
+          if (lastIndex >= startIndex + 1) {
+            const [hour, min] = availableTimes[startIndex + 1].split(':').map(Number);
+            const endMinutes = hour * 60 + min + 30;
+            const endHour = Math.floor(endMinutes / 60);
+            const endMin = endMinutes % 60;
+            endTime = `${endHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}`;
+          }
+        }
+      }
+      
+      // Nếu không tìm được slot liên tục, tạo thời gian kết thúc 60 phút sau giờ bắt đầu
+      if (!endTime) {
+        const [hour, min] = startTime.split(':').map(Number);
+        const endMinutes = hour * 60 + min + 60;
+        const endHour = Math.floor(endMinutes / 60);
+        const endMin = endMinutes % 60;
+        endTime = `${endHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}`;
+      }
+      
+      form.setValue("end_time", endTime);
+    }
+  };
+  
   // Cập nhật danh sách thời gian trống khi ngày thay đổi
   useEffect(() => {
     if (form.watch("date")) {
       const availableTimes = getAvailableTimesForSelectedDate();
-      if (availableTimes.length > 0 && !availableTimes.includes(form.watch("start_time"))) {
-        form.setValue("start_time", availableTimes[0]);
+      
+      // Nếu có thời gian trống và thời gian bắt đầu hiện tại không có trong danh sách
+      if (availableTimes.length > 0) {
+        // Cập nhật thời gian bắt đầu
+        if (!availableTimes.includes(form.watch("start_time"))) {
+          form.setValue("start_time", availableTimes[0]);
+          updateEndTimeBasedOnStartTime(availableTimes[0]);
+        } else {
+          // Nếu thời gian bắt đầu vẫn hợp lệ, cập nhật thời gian kết thúc
+          updateEndTimeBasedOnStartTime(form.watch("start_time"));
+        }
       }
     }
   }, [form.watch("date")]);
+  
+  // Cập nhật thời gian kết thúc khi thời gian bắt đầu thay đổi
+  useEffect(() => {
+    if (form.watch("start_time")) {
+      updateEndTimeBasedOnStartTime(form.watch("start_time"));
+    }
+  }, [form.watch("start_time")]);
   
   // Danh sách các ngày có lịch trống
   const availableDays = getAvailableDays();
