@@ -49,8 +49,8 @@ export const createBooking = async (req: Request, res: Response) => {
     const bookingDate = validatedData.date as string;
     
     // Chuẩn hóa định dạng giờ HH:MM
-    let startTimeStr = typeof validatedData.start_time === 'string' ? validatedData.start_time : validatedData.start_time.toString();
-    let endTimeStr = typeof validatedData.end_time === 'string' ? validatedData.end_time : validatedData.end_time.toString();
+    let startTimeStr = String(validatedData.start_time);
+    let endTimeStr = String(validatedData.end_time);
     
     // Đảm bảo định dạng giờ có đầy đủ 2 chữ số ở phần giờ (HH:MM)
     if (startTimeStr.length === 4) {

@@ -113,23 +113,35 @@ export default function BookingForm() {
     try {
       setIsSubmitting(true);
 
-      // Định dạng ngày và giờ cho API
+      // Định dạng ngày và giờ cho API mới
       const datePart = format(values.date, "yyyy-MM-dd");
-      const startDateTime = new Date(`${datePart}T${values.start_time}:00`);
-      const endDateTime = new Date(`${datePart}T${values.end_time}:00`);
+      
+      // Đảm bảo giờ có đúng định dạng HH:MM
+      let startTimeStr = values.start_time;
+      if (startTimeStr.length === 4) {
+        startTimeStr = "0" + startTimeStr;
+      }
+      
+      let endTimeStr = values.end_time;
+      if (endTimeStr.length === 4) {
+        endTimeStr = "0" + endTimeStr;
+      }
 
-      // Tạo dữ liệu đặt lịch
+      // Tạo dữ liệu đặt lịch với định dạng mới
       const bookingData = {
         tutor_id: tutorIdNum,
         title: values.title,
         description: values.description,
         teaching_mode: values.teaching_mode,
         location: values.teaching_mode === "online" ? "" : values.location,
-        online_meeting_url: values.teaching_mode === "offline" ? "" : values.online_meeting_url,
-        start_time: startDateTime.toISOString(),
-        end_time: endDateTime.toISOString(),
+        meeting_url: values.teaching_mode === "offline" ? "" : values.online_meeting_url,
+        // Gửi ngày và giờ riêng biệt thay vì dạng ISO string
+        date: datePart,
+        start_time: startTimeStr,
+        end_time: endTimeStr,
         ad_id: adIdNum,
         notes: values.notes || "",
+        hourly_rate: tutorData?.hourly_rate || 0,
       };
 
       console.log("Dữ liệu đặt lịch gửi đi:", bookingData);
