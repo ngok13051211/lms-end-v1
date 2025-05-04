@@ -1273,44 +1273,153 @@ export default function TutorDashboardProfile() {
               </CardHeader>
               <CardContent>
                 {availabilityItems.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {availabilityItems.map((item, index) => (
-                      <div key={index} className="border rounded-md p-4 flex flex-col">
-                        <div className="font-medium mb-2">
-                          {(() => {
-                            // Lấy ngày tương ứng
-                            const weekdayDate = getNextWeekdayDate(item.day);
-                            const formattedDate = format(weekdayDate, 'dd/MM/yyyy', { locale: vi });
-                            
-                            // Hiển thị tên ngày trong tuần kèm ngày/tháng/năm
-                            let dayName = '';
-                            switch(item.day) {
-                              case 'monday': dayName = 'Thứ Hai'; break;
-                              case 'tuesday': dayName = 'Thứ Ba'; break;
-                              case 'wednesday': dayName = 'Thứ Tư'; break;
-                              case 'thursday': dayName = 'Thứ Năm'; break;
-                              case 'friday': dayName = 'Thứ Sáu'; break;
-                              case 'saturday': dayName = 'Thứ Bảy'; break;
-                              case 'sunday': dayName = 'Chủ Nhật'; break;
-                              default: dayName = item.day;
-                            }
-                            
-                            return (
-                              <>
-                                {dayName}
-                                <span className="text-sm font-normal text-muted-foreground ml-1">
-                                  ({formattedDate})
-                                </span>
-                              </>
-                            );
-                          })()}
-                        </div>
-                        <div className="flex items-center">
-                          <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
-                          <span className="text-sm">{item.startTime} - {item.endTime}</span>
+                  <div className="space-y-4">
+                    {/* Lịch hàng tuần */}
+                    {availabilityItems.some(item => item.type === 'weekly') && (
+                      <div>
+                        <h3 className="font-medium text-sm text-muted-foreground mb-2">Lịch hàng tuần</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {availabilityItems
+                            .filter(item => item.type === 'weekly')
+                            .map((item, index) => {
+                              const weeklyItem = item as WeeklyAvailabilityItem;
+                              // Lấy ngày tương ứng để hiển thị minh họa
+                              const weekdayDate = getNextWeekdayDate(weeklyItem.day);
+                              const formattedDate = format(weekdayDate, 'dd/MM/yyyy', { locale: vi });
+                              
+                              // Hiển thị tên ngày trong tuần kèm ngày/tháng/năm minh họa
+                              let dayName = '';
+                              switch(weeklyItem.day) {
+                                case 'monday': dayName = 'Thứ Hai'; break;
+                                case 'tuesday': dayName = 'Thứ Ba'; break;
+                                case 'wednesday': dayName = 'Thứ Tư'; break;
+                                case 'thursday': dayName = 'Thứ Năm'; break;
+                                case 'friday': dayName = 'Thứ Sáu'; break;
+                                case 'saturday': dayName = 'Thứ Bảy'; break;
+                                case 'sunday': dayName = 'Chủ Nhật'; break;
+                                default: dayName = weeklyItem.day;
+                              }
+                              
+                              return (
+                                <div key={`weekly-${index}`} className="border rounded-md p-4 flex flex-col">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <Badge variant="outline" className="bg-blue-50 text-blue-700 hover:bg-blue-50 border-blue-200">
+                                      Hàng tuần
+                                    </Badge>
+                                  </div>
+                                  <div className="font-medium mb-2">
+                                    {dayName}
+                                    <span className="text-sm font-normal text-muted-foreground ml-1">
+                                      (Ví dụ: {formattedDate})
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center">
+                                    <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
+                                    <span className="text-sm">{weeklyItem.startTime} - {weeklyItem.endTime}</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
                         </div>
                       </div>
-                    ))}
+                    )}
+                    
+                    {/* Lịch ngày cụ thể */}
+                    {availabilityItems.some(item => item.type === 'specific') && (
+                      <div className="mt-6">
+                        <h3 className="font-medium text-sm text-muted-foreground mb-2">Lịch theo ngày cụ thể</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {availabilityItems
+                            .filter(item => item.type === 'specific')
+                            .map((item, index) => {
+                              const specificItem = item as SpecificDateAvailabilityItem;
+                              const specificDate = new Date(specificItem.date);
+                              const formattedDate = format(specificDate, 'dd/MM/yyyy', { locale: vi });
+                              const dayName = format(specificDate, 'EEEE', { locale: vi });
+                              
+                              // Kiểm tra ngày đã qua chưa
+                              const isPastDate = specificDate < new Date();
+                              
+                              return (
+                                <div 
+                                  key={`specific-${index}`} 
+                                  className={`border rounded-md p-4 flex flex-col ${isPastDate ? 'opacity-50' : ''}`}
+                                >
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <Badge variant="outline" className="bg-green-50 text-green-700 hover:bg-green-50 border-green-200">
+                                      Ngày cụ thể
+                                    </Badge>
+                                    {isPastDate && (
+                                      <Badge variant="outline" className="bg-red-50 text-red-700 hover:bg-red-50 border-red-200">
+                                        Đã qua
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <div className="font-medium mb-2">
+                                    {dayName.charAt(0).toUpperCase() + dayName.slice(1)}
+                                    <span className="text-sm font-normal text-muted-foreground ml-1">
+                                      ({formattedDate})
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center">
+                                    <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
+                                    <span className="text-sm">{specificItem.startTime} - {specificItem.endTime}</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Hỗ trợ dữ liệu cũ (không có type) */}
+                    {availabilityItems.some(item => !item.type) && (
+                      <div className="mt-6">
+                        <h3 className="font-medium text-sm text-muted-foreground mb-2">Lịch trống khác</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {availabilityItems
+                            .filter(item => !item.type && 'day' in item)
+                            .map((item: any, index) => {
+                              // Lấy ngày tương ứng để hiển thị minh họa
+                              const weekdayDate = getNextWeekdayDate(item.day);
+                              const formattedDate = format(weekdayDate, 'dd/MM/yyyy', { locale: vi });
+                              
+                              // Hiển thị tên ngày trong tuần kèm ngày/tháng/năm minh họa
+                              let dayName = '';
+                              switch(item.day) {
+                                case 'monday': dayName = 'Thứ Hai'; break;
+                                case 'tuesday': dayName = 'Thứ Ba'; break;
+                                case 'wednesday': dayName = 'Thứ Tư'; break;
+                                case 'thursday': dayName = 'Thứ Năm'; break;
+                                case 'friday': dayName = 'Thứ Sáu'; break;
+                                case 'saturday': dayName = 'Thứ Bảy'; break;
+                                case 'sunday': dayName = 'Chủ Nhật'; break;
+                                default: dayName = item.day;
+                              }
+                              
+                              return (
+                                <div key={`legacy-${index}`} className="border rounded-md p-4 flex flex-col">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <Badge variant="outline" className="bg-gray-100 text-gray-700 hover:bg-gray-100 border-gray-200">
+                                      Định dạng cũ
+                                    </Badge>
+                                  </div>
+                                  <div className="font-medium mb-2">
+                                    {dayName}
+                                    <span className="text-sm font-normal text-muted-foreground ml-1">
+                                      (Ví dụ: {formattedDate})
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center">
+                                    <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
+                                    <span className="text-sm">{item.startTime} - {item.endTime}</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="text-center p-6 border border-dashed rounded-md">
@@ -1472,132 +1581,429 @@ export default function TutorDashboardProfile() {
           </DialogHeader>
           
           <div className="space-y-6 py-4">
-            <div className="space-y-4">
-              {availabilityItems.map((item, index) => (
-                <div key={index} className="flex items-center space-x-4 p-4 border rounded-md">
-                  <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Select
-                      value={item.day}
-                      onValueChange={(value) => {
-                        const newItems = [...availabilityItems];
-                        newItems[index].day = value as any;
-                        setAvailabilityItems(newItems);
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Chọn ngày" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="monday">{formatWeekdayWithDate("monday")}</SelectItem>
-                        <SelectItem value="tuesday">{formatWeekdayWithDate("tuesday")}</SelectItem>
-                        <SelectItem value="wednesday">{formatWeekdayWithDate("wednesday")}</SelectItem>
-                        <SelectItem value="thursday">{formatWeekdayWithDate("thursday")}</SelectItem>
-                        <SelectItem value="friday">{formatWeekdayWithDate("friday")}</SelectItem>
-                        <SelectItem value="saturday">{formatWeekdayWithDate("saturday")}</SelectItem>
-                        <SelectItem value="sunday">{formatWeekdayWithDate("sunday")}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm text-muted-foreground whitespace-nowrap">Từ:</span>
-                      <Input
-                        type="time"
-                        value={item.startTime}
-                        onChange={(e) => {
-                          const newItems = [...availabilityItems];
-                          newItems[index].startTime = e.target.value;
-                          setAvailabilityItems(newItems);
-                        }}
-                      />
-                    </div>
-                    
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm text-muted-foreground whitespace-nowrap">Đến:</span>
-                      <Input
-                        type="time"
-                        value={item.endTime}
-                        onChange={(e) => {
-                          const newItems = [...availabilityItems];
-                          newItems[index].endTime = e.target.value;
-                          setAvailabilityItems(newItems);
-                        }}
-                      />
-                    </div>
-                  </div>
-                  
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleRemoveAvailability(index)}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="w-4 h-4 text-destructive"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg>
-                  </Button>
-                </div>
-              ))}
-            </div>
-            
-            <div className="flex items-center p-4 border border-dashed rounded-md">
-              <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Select
-                  value={newAvailabilityItem.day}
-                  onValueChange={(value) => {
-                    setNewAvailabilityItem({
-                      ...newAvailabilityItem,
-                      day: value as any
-                    });
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Chọn ngày" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="monday">{formatWeekdayWithDate("monday")}</SelectItem>
-                    <SelectItem value="tuesday">{formatWeekdayWithDate("tuesday")}</SelectItem>
-                    <SelectItem value="wednesday">{formatWeekdayWithDate("wednesday")}</SelectItem>
-                    <SelectItem value="thursday">{formatWeekdayWithDate("thursday")}</SelectItem>
-                    <SelectItem value="friday">{formatWeekdayWithDate("friday")}</SelectItem>
-                    <SelectItem value="saturday">{formatWeekdayWithDate("saturday")}</SelectItem>
-                    <SelectItem value="sunday">{formatWeekdayWithDate("sunday")}</SelectItem>
-                  </SelectContent>
-                </Select>
-                
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-muted-foreground whitespace-nowrap">Từ:</span>
-                  <Input
-                    type="time"
-                    value={newAvailabilityItem.startTime}
-                    onChange={(e) => {
-                      setNewAvailabilityItem({
-                        ...newAvailabilityItem,
-                        startTime: e.target.value
-                      });
-                    }}
-                  />
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-muted-foreground whitespace-nowrap">Đến:</span>
-                  <Input
-                    type="time"
-                    value={newAvailabilityItem.endTime}
-                    onChange={(e) => {
-                      setNewAvailabilityItem({
-                        ...newAvailabilityItem,
-                        endTime: e.target.value
-                      });
-                    }}
-                  />
-                </div>
-              </div>
+            {/* Tab để chuyển đổi giữa việc xem/chỉnh sửa lịch hiện tại và thêm lịch mới */}
+            <Tabs defaultValue="current">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="current">Lịch đã lưu</TabsTrigger>
+                <TabsTrigger value="add">Thêm lịch trống</TabsTrigger>
+              </TabsList>
               
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleAddAvailability}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="w-4 h-4"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>
-              </Button>
-            </div>
+              {/* Tab hiển thị lịch hiện tại */}
+              <TabsContent value="current">
+                <div className="space-y-4 py-2">
+                  {availabilityItems.length > 0 ? (
+                    <div className="space-y-4">
+                      {/* Danh sách lịch hàng tuần */}
+                      {availabilityItems
+                        .filter(item => item.type === 'weekly')
+                        .map((item, index) => {
+                          const weeklyItem = item as WeeklyAvailabilityItem;
+                          return (
+                            <div key={`weekly-${index}`} className="flex items-center space-x-4 p-4 border rounded-md">
+                              <div className="w-auto">
+                                <Badge variant="outline" className="bg-blue-50 text-blue-700 hover:bg-blue-50 border-blue-200">
+                                  Hàng tuần
+                                </Badge>
+                              </div>
+                              
+                              <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <Select
+                                  value={weeklyItem.day}
+                                  onValueChange={(value) => {
+                                    const newItems = [...availabilityItems];
+                                    const itemIndex = availabilityItems.indexOf(item);
+                                    if (itemIndex !== -1) {
+                                      (newItems[itemIndex] as WeeklyAvailabilityItem).day = value as "monday"|"tuesday"|"wednesday"|"thursday"|"friday"|"saturday"|"sunday";
+                                      setAvailabilityItems(newItems);
+                                    }
+                                  }}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Chọn ngày" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="monday">{formatWeekdayWithDate("monday")}</SelectItem>
+                                    <SelectItem value="tuesday">{formatWeekdayWithDate("tuesday")}</SelectItem>
+                                    <SelectItem value="wednesday">{formatWeekdayWithDate("wednesday")}</SelectItem>
+                                    <SelectItem value="thursday">{formatWeekdayWithDate("thursday")}</SelectItem>
+                                    <SelectItem value="friday">{formatWeekdayWithDate("friday")}</SelectItem>
+                                    <SelectItem value="saturday">{formatWeekdayWithDate("saturday")}</SelectItem>
+                                    <SelectItem value="sunday">{formatWeekdayWithDate("sunday")}</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-sm text-muted-foreground whitespace-nowrap">Từ:</span>
+                                  <Input
+                                    type="time"
+                                    value={weeklyItem.startTime}
+                                    onChange={(e) => {
+                                      const newItems = [...availabilityItems];
+                                      const itemIndex = availabilityItems.indexOf(item);
+                                      if (itemIndex !== -1) {
+                                        newItems[itemIndex].startTime = e.target.value;
+                                        setAvailabilityItems(newItems);
+                                      }
+                                    }}
+                                  />
+                                </div>
+                                
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-sm text-muted-foreground whitespace-nowrap">Đến:</span>
+                                  <Input
+                                    type="time"
+                                    value={weeklyItem.endTime}
+                                    onChange={(e) => {
+                                      const newItems = [...availabilityItems];
+                                      const itemIndex = availabilityItems.indexOf(item);
+                                      if (itemIndex !== -1) {
+                                        newItems[itemIndex].endTime = e.target.value;
+                                        setAvailabilityItems(newItems);
+                                      }
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                              
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleRemoveAvailability(availabilityItems.indexOf(item))}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="w-4 h-4 text-destructive"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg>
+                              </Button>
+                            </div>
+                          );
+                        })
+                      }
+                      
+                      {/* Danh sách lịch ngày cụ thể */}
+                      {availabilityItems
+                        .filter(item => item.type === 'specific')
+                        .map((item, index) => {
+                          const specificItem = item as SpecificDateAvailabilityItem;
+                          const specificDate = new Date(specificItem.date);
+                          const isPastDate = specificDate < new Date();
+                          
+                          return (
+                            <div key={`specific-${index}`} className={`flex items-center space-x-4 p-4 border rounded-md ${isPastDate ? 'opacity-50' : ''}`}>
+                              <div className="w-auto">
+                                <Badge variant="outline" className="bg-green-50 text-green-700 hover:bg-green-50 border-green-200">
+                                  Ngày cụ thể
+                                </Badge>
+                                {isPastDate && (
+                                  <Badge variant="outline" className="mt-1 bg-red-50 text-red-700 hover:bg-red-50 border-red-200">
+                                    Đã qua
+                                  </Badge>
+                                )}
+                              </div>
+                              
+                              <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                  <Input
+                                    type="date"
+                                    value={specificItem.date}
+                                    onChange={(e) => {
+                                      const newItems = [...availabilityItems];
+                                      const itemIndex = availabilityItems.indexOf(item);
+                                      if (itemIndex !== -1) {
+                                        (newItems[itemIndex] as SpecificDateAvailabilityItem).date = e.target.value;
+                                        setAvailabilityItems(newItems);
+                                      }
+                                    }}
+                                  />
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {format(specificDate, 'EEEE', { locale: vi })}
+                                  </p>
+                                </div>
+                                
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-sm text-muted-foreground whitespace-nowrap">Từ:</span>
+                                  <Input
+                                    type="time"
+                                    value={specificItem.startTime}
+                                    onChange={(e) => {
+                                      const newItems = [...availabilityItems];
+                                      const itemIndex = availabilityItems.indexOf(item);
+                                      if (itemIndex !== -1) {
+                                        newItems[itemIndex].startTime = e.target.value;
+                                        setAvailabilityItems(newItems);
+                                      }
+                                    }}
+                                  />
+                                </div>
+                                
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-sm text-muted-foreground whitespace-nowrap">Đến:</span>
+                                  <Input
+                                    type="time"
+                                    value={specificItem.endTime}
+                                    onChange={(e) => {
+                                      const newItems = [...availabilityItems];
+                                      const itemIndex = availabilityItems.indexOf(item);
+                                      if (itemIndex !== -1) {
+                                        newItems[itemIndex].endTime = e.target.value;
+                                        setAvailabilityItems(newItems);
+                                      }
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                              
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleRemoveAvailability(availabilityItems.indexOf(item))}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="w-4 h-4 text-destructive"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg>
+                              </Button>
+                            </div>
+                          );
+                        })
+                      }
+                      
+                      {/* Danh sách lịch cũ (không có trường type) */}
+                      {availabilityItems
+                        .filter(item => !item.type && 'day' in item)
+                        .map((item: any, index) => (
+                          <div key={`legacy-${index}`} className="flex items-center space-x-4 p-4 border rounded-md">
+                            <div className="w-auto">
+                              <Badge variant="outline" className="bg-gray-100 text-gray-700 hover:bg-gray-100 border-gray-200">
+                                Định dạng cũ
+                              </Badge>
+                            </div>
+                            
+                            <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <Select
+                                value={item.day}
+                                onValueChange={(value) => {
+                                  const newItems = [...availabilityItems];
+                                  const itemIndex = availabilityItems.indexOf(item);
+                                  if (itemIndex !== -1) {
+                                    newItems[itemIndex].day = value as any;
+                                    setAvailabilityItems(newItems);
+                                  }
+                                }}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Chọn ngày" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="monday">{formatWeekdayWithDate("monday")}</SelectItem>
+                                  <SelectItem value="tuesday">{formatWeekdayWithDate("tuesday")}</SelectItem>
+                                  <SelectItem value="wednesday">{formatWeekdayWithDate("wednesday")}</SelectItem>
+                                  <SelectItem value="thursday">{formatWeekdayWithDate("thursday")}</SelectItem>
+                                  <SelectItem value="friday">{formatWeekdayWithDate("friday")}</SelectItem>
+                                  <SelectItem value="saturday">{formatWeekdayWithDate("saturday")}</SelectItem>
+                                  <SelectItem value="sunday">{formatWeekdayWithDate("sunday")}</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              
+                              <div className="flex items-center space-x-2">
+                                <span className="text-sm text-muted-foreground whitespace-nowrap">Từ:</span>
+                                <Input
+                                  type="time"
+                                  value={item.startTime}
+                                  onChange={(e) => {
+                                    const newItems = [...availabilityItems];
+                                    const itemIndex = availabilityItems.indexOf(item);
+                                    if (itemIndex !== -1) {
+                                      newItems[itemIndex].startTime = e.target.value;
+                                      setAvailabilityItems(newItems);
+                                    }
+                                  }}
+                                />
+                              </div>
+                              
+                              <div className="flex items-center space-x-2">
+                                <span className="text-sm text-muted-foreground whitespace-nowrap">Đến:</span>
+                                <Input
+                                  type="time"
+                                  value={item.endTime}
+                                  onChange={(e) => {
+                                    const newItems = [...availabilityItems];
+                                    const itemIndex = availabilityItems.indexOf(item);
+                                    if (itemIndex !== -1) {
+                                      newItems[itemIndex].endTime = e.target.value;
+                                      setAvailabilityItems(newItems);
+                                    }
+                                  }}
+                                />
+                              </div>
+                            </div>
+                            
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleRemoveAvailability(availabilityItems.indexOf(item))}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="w-4 h-4 text-destructive"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" x2="10" y1="11" y2="17"></line><line x1="14" x2="14" y1="11" y2="17"></line></svg>
+                            </Button>
+                          </div>
+                        ))
+                      }
+                    </div>
+                  ) : (
+                    <div className="text-center p-6 border border-dashed rounded-md">
+                      <CalendarDays className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
+                      <p className="text-muted-foreground">
+                        Bạn chưa thiết lập lịch trống. Chuyển sang tab "Thêm lịch trống" để bắt đầu.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+              
+              {/* Tab thêm lịch mới */}
+              <TabsContent value="add">
+                <div className="space-y-4 py-2">
+                  {/* Chọn loại lịch trống */}
+                  <Tabs value={availabilityType} onValueChange={(value) => setAvailabilityType(value as "weekly" | "specific")}>
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="weekly">Lịch hàng tuần</TabsTrigger>
+                      <TabsTrigger value="specific">Ngày cụ thể</TabsTrigger>
+                    </TabsList>
+                    
+                    {/* Form thêm lịch hàng tuần */}
+                    <TabsContent value="weekly">
+                      <div className="p-4 border rounded-md mt-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <Label htmlFor="weekly-day">Ngày trong tuần</Label>
+                            <Select 
+                              value={newAvailabilityItem.day}
+                              onValueChange={(value) => 
+                                setNewAvailabilityItem({ 
+                                  ...newAvailabilityItem, 
+                                  day: value as "monday"|"tuesday"|"wednesday"|"thursday"|"friday"|"saturday"|"sunday"
+                                })
+                              }
+                            >
+                              <SelectTrigger id="weekly-day">
+                                <SelectValue placeholder="Chọn ngày" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="monday">Thứ Hai</SelectItem>
+                                <SelectItem value="tuesday">Thứ Ba</SelectItem>
+                                <SelectItem value="wednesday">Thứ Tư</SelectItem>
+                                <SelectItem value="thursday">Thứ Năm</SelectItem>
+                                <SelectItem value="friday">Thứ Sáu</SelectItem>
+                                <SelectItem value="saturday">Thứ Bảy</SelectItem>
+                                <SelectItem value="sunday">Chủ Nhật</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {formatWeekdayWithDate(newAvailabilityItem.day)}
+                            </p>
+                          </div>
+                          
+                          <div>
+                            <Label htmlFor="weekly-start">Thời gian bắt đầu</Label>
+                            <Input
+                              id="weekly-start"
+                              type="time"
+                              value={newAvailabilityItem.startTime}
+                              onChange={(e) => 
+                                setNewAvailabilityItem({ 
+                                  ...newAvailabilityItem, 
+                                  startTime: e.target.value 
+                                })
+                              }
+                            />
+                          </div>
+                          
+                          <div>
+                            <Label htmlFor="weekly-end">Thời gian kết thúc</Label>
+                            <Input
+                              id="weekly-end"
+                              type="time"
+                              value={newAvailabilityItem.endTime}
+                              onChange={(e) => 
+                                setNewAvailabilityItem({ 
+                                  ...newAvailabilityItem, 
+                                  endTime: e.target.value 
+                                })
+                              }
+                            />
+                          </div>
+                        </div>
+                        
+                        <Button 
+                          type="button" 
+                          className="w-full mt-4"
+                          onClick={handleAddWeeklyAvailability}
+                        >
+                          Thêm lịch hàng tuần
+                        </Button>
+                      </div>
+                    </TabsContent>
+                    
+                    {/* Form thêm lịch theo ngày cụ thể */}
+                    <TabsContent value="specific">
+                      <div className="p-4 border rounded-md mt-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <Label htmlFor="specific-date">Ngày cụ thể</Label>
+                            <Input
+                              id="specific-date"
+                              type="date"
+                              value={newSpecificDateItem.date}
+                              onChange={(e) => 
+                                setNewSpecificDateItem({ 
+                                  ...newSpecificDateItem, 
+                                  date: e.target.value 
+                                })
+                              }
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {format(new Date(newSpecificDateItem.date), 'EEEE', { locale: vi })}
+                            </p>
+                          </div>
+                          
+                          <div>
+                            <Label htmlFor="specific-start">Thời gian bắt đầu</Label>
+                            <Input
+                              id="specific-start"
+                              type="time"
+                              value={newSpecificDateItem.startTime}
+                              onChange={(e) => 
+                                setNewSpecificDateItem({ 
+                                  ...newSpecificDateItem, 
+                                  startTime: e.target.value 
+                                })
+                              }
+                            />
+                          </div>
+                          
+                          <div>
+                            <Label htmlFor="specific-end">Thời gian kết thúc</Label>
+                            <Input
+                              id="specific-end"
+                              type="time"
+                              value={newSpecificDateItem.endTime}
+                              onChange={(e) => 
+                                setNewSpecificDateItem({ 
+                                  ...newSpecificDateItem, 
+                                  endTime: e.target.value 
+                                })
+                              }
+                            />
+                          </div>
+                        </div>
+                        
+                        <Button 
+                          type="button" 
+                          className="w-full mt-4"
+                          onClick={handleAddSpecificDateAvailability}
+                        >
+                          Thêm lịch ngày cụ thể
+                        </Button>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                </div>
+              </TabsContent>
+            </Tabs>
             
             {availabilityItems.length === 0 && (
               <p className="text-sm text-muted-foreground text-center mt-4">
