@@ -113,8 +113,16 @@ export default function BookingForm() {
     try {
       setIsSubmitting(true);
 
-      // Định dạng ngày và giờ cho API mới
-      const datePart = format(values.date, "yyyy-MM-dd");
+      // Lấy thành phần date từ đối tượng Date và tạo chuỗi ngày chuẩn
+      const date = values.date as Date;
+      const year = date.getFullYear();
+      const month = date.getMonth() + 1; // getMonth() trả về 0-11
+      const day = date.getDate();
+      
+      // Tạo chuỗi ngày chuẩn yyyy-MM-dd
+      const datePart = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+      console.log("Ngày gốc:", date);
+      console.log("Ngày đã xử lý:", datePart);
       
       // Đảm bảo giờ có đúng định dạng HH:MM
       let startTimeStr = values.start_time;
@@ -220,13 +228,18 @@ export default function BookingForm() {
       specificSlots.forEach(slot => {
         console.log("Đang xử lý khoảng thời gian:", slot);
         
-        // Thêm 'T00:00:00' để đảm bảo ngày được xử lý ở giờ địa phương, không phải UTC
-        const dateObj = new Date(`${slot.date}T00:00:00`);
-        console.log("Đối tượng ngày tạo ra:", dateObj.toISOString());
+        // QUAN TRỌNG: KHÔNG sử dụng new Date() tại đây vì nó có thể gây lỗi múi giờ
+        // Thay vào đó, dùng parse năm-tháng-ngày trực tiếp từ chuỗi
+        const [year, month, day] = slot.date.split("-").map(Number);
+        
+        // Tạo ngày mới với giờ địa phương để tránh lỗi múi giờ
+        const dateObj = new Date(year, month - 1, day, 0, 0, 0, 0);
+        console.log(`Tạo ngày từ ${year}-${month}-${day}:`, dateObj.toISOString());
         
         // Chỉ xem xét ngày hợp lệ và trong tương lai
         if (!isNaN(dateObj.getTime()) && dateObj >= today) {
-          const dateStr = slot.date; // Sử dụng ngày gốc từ dữ liệu thay vì chuyển đổi qua ISO
+          // Sử dụng date string như nó được lưu trữ, không chuyển đổi
+          const dateStr = slot.date;
           
           // Thêm khoảng thời gian vào ngày
           if (!slotsByDate[dateStr]) {
@@ -268,8 +281,14 @@ export default function BookingForm() {
   const getAvailableStartTimes = (selectedDate: Date | undefined): string[] => {
     if (!selectedDate) return [];
 
-    // Đảm bảo lấy đúng ngày địa phương, không bị ảnh hưởng bởi múi giờ
-    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    // Lấy về năm, tháng, ngày từ ngày đã chọn để so sánh chính xác
+    const year = selectedDate.getFullYear();
+    const month = selectedDate.getMonth() + 1; // getMonth() trả về 0-11, cần +1
+    const day = selectedDate.getDate();
+    
+    // Tạo chuỗi ngày chuẩn yyyy-MM-dd
+    const dateStr = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+    
     console.log("Tìm kiếm lịch trống cho ngày:", dateStr);
     console.log("Dữ liệu lịch trống hiện có:", availableTimeSlots);
     
@@ -281,14 +300,18 @@ export default function BookingForm() {
       
       // Duyệt qua tất cả các ngày trong availableTimeSlots để tìm ngày phù hợp
       for (const key in availableTimeSlots) {
-        // Chuyển đổi key thành đối tượng Date để so sánh
-        const keyDate = new Date(`${key}T00:00:00`);
-        const selectedDateWithoutTime = new Date(selectedDate);
-        selectedDateWithoutTime.setHours(0, 0, 0, 0);
+        // Phân tích key (yyyy-MM-dd) thành các thành phần để so sánh
+        const [keyYear, keyMonth, keyDay] = key.split("-").map(Number);
         
-        console.log(`So sánh ${key} (${keyDate.toISOString()}) với ${dateStr} (${selectedDateWithoutTime.toISOString()})`);
+        // So sánh từng thành phần riêng lẻ
+        const isSameDate = 
+          year === keyYear && 
+          month === keyMonth && 
+          day === keyDay;
         
-        if (keyDate.getTime() === selectedDateWithoutTime.getTime()) {
+        console.log(`So sánh ${year}-${month}-${day} với ${key} (${keyYear}-${keyMonth}-${keyDay}): ${isSameDate}`);
+        
+        if (isSameDate) {
           console.log(`Tìm thấy ngày phù hợp: ${key}`);
           slots = availableTimeSlots[key];
           break;
@@ -310,8 +333,15 @@ export default function BookingForm() {
     const selectedDate = form.getValues("date");
     if (!selectedDate || !startTime) return;
 
-    // Đảm bảo lấy đúng ngày địa phương, không bị ảnh hưởng bởi múi giờ
-    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    // Lấy về năm, tháng, ngày từ ngày đã chọn để so sánh chính xác
+    const year = selectedDate.getFullYear();
+    const month = selectedDate.getMonth() + 1; // getMonth() trả về 0-11, cần +1
+    const day = selectedDate.getDate();
+    
+    // Tạo chuỗi ngày chuẩn yyyy-MM-dd
+    const dateStr = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+    
+    console.log("Tìm khoảng thời gian cho ngày và giờ:", dateStr, startTime);
     
     // Cố gắng tìm slots từ tất cả các định dạng ngày có thể
     let slots = availableTimeSlots[dateStr] || [];
@@ -319,11 +349,18 @@ export default function BookingForm() {
     if (slots.length === 0) {
       // Duyệt qua tất cả các ngày trong availableTimeSlots để tìm ngày phù hợp
       for (const key in availableTimeSlots) {
-        const keyDate = new Date(`${key}T00:00:00`);
-        const selectedDateWithoutTime = new Date(selectedDate);
-        selectedDateWithoutTime.setHours(0, 0, 0, 0);
+        // Phân tích key (yyyy-MM-dd) thành các thành phần để so sánh
+        const [keyYear, keyMonth, keyDay] = key.split("-").map(Number);
         
-        if (keyDate.getTime() === selectedDateWithoutTime.getTime()) {
+        // So sánh từng thành phần riêng lẻ
+        const isSameDate = 
+          year === keyYear && 
+          month === keyMonth && 
+          day === keyDay;
+        
+        console.log(`So sánh trong updateEndTime: ${year}-${month}-${day} với ${key}: ${isSameDate}`);
+        
+        if (isSameDate) {
           slots = availableTimeSlots[key];
           break;
         }
