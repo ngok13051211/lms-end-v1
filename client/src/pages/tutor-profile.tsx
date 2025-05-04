@@ -4,7 +4,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Mail, Clock, Book, Award, Star, MapPin, Users, Heart } from "lucide-react";
+import { Loader2, Mail, Clock, Book, Award, Star, MapPin, Users, Heart, Calendar } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -421,7 +421,7 @@ export default function TutorProfile() {
                 
                 {user && user.role === "student" && (
                   <Button
-                    onClick={() => navigate(`/book/${tutorId}`)}
+                    onClick={() => navigate(`/book/${id}`)}
                     className="w-full mb-3"
                     variant="default"
                   >
