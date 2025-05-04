@@ -270,7 +270,7 @@ export default function Courses() {
             <SelectValue placeholder="Tất cả các môn" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Tất cả các môn</SelectItem>
+            <SelectItem value="all_subjects">Tất cả các môn</SelectItem>
             {subjects && subjects.length > 0 && subjects.map((subject) => (
               <SelectItem key={subject.id} value={subject.id.toString()}>
                 {subject.name}
@@ -287,7 +287,7 @@ export default function Courses() {
             <SelectValue placeholder="Tất cả các cấp độ" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Tất cả các cấp độ</SelectItem>
+            <SelectItem value="all_levels">Tất cả các cấp độ</SelectItem>
             {educationLevels && educationLevels.length > 0 && educationLevels.map((level) => (
               <SelectItem key={level.id} value={level.id.toString()}>
                 {level.name}
@@ -304,7 +304,7 @@ export default function Courses() {
             <SelectValue placeholder="Tất cả hình thức" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Tất cả hình thức</SelectItem>
+            <SelectItem value="all_modes">Tất cả hình thức</SelectItem>
             <SelectItem value="online">Trực tuyến</SelectItem>
             <SelectItem value="offline">Tại chỗ</SelectItem>
             <SelectItem value="both">Cả hai</SelectItem>

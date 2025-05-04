@@ -39,8 +39,9 @@ export async function apiRequest(
 type UnauthorizedBehavior = "returnNull" | "throw";
 export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
+  params?: Record<string, any>;
 }) => QueryFunction<T> =
-  ({ on401: unauthorizedBehavior }) =>
+  ({ on401: unauthorizedBehavior, params }) =>
   async ({ queryKey }) => {
     // Get token from localStorage
     const token = localStorage.getItem("token");
@@ -51,9 +52,24 @@ export const getQueryFn: <T>(options: {
       headers["Authorization"] = `Bearer ${token}`;
     }
     
-    console.log(`Query Request: GET ${queryKey[0]} - Headers:`, headers);
+    // Build URL with query parameters if provided
+    let url = queryKey[0] as string;
+    if (params) {
+      const queryParams = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          queryParams.append(key, String(value));
+        }
+      });
+      const queryString = queryParams.toString();
+      if (queryString) {
+        url = `${url}?${queryString}`;
+      }
+    }
     
-    const res = await fetch(queryKey[0] as string, {
+    console.log(`Query Request: GET ${url} - Headers:`, headers);
+    
+    const res = await fetch(url, {
       credentials: "include",
       headers
     });
