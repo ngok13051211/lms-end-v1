@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { db } from "@db";
 import * as schema from "@shared/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 
@@ -264,6 +264,58 @@ export const deleteAd = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Delete ad error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// Get all active ads for courses page
+export const getAllAds = async (req: Request, res: Response) => {
+  try {
+    // Parse query params for filtering
+    const { subject, level, teaching_mode, min_price, max_price, page = 1, limit = 10 } = req.query;
+    const pageNumber = parseInt(page as string) || 1;
+    const pageSize = parseInt(limit as string) || 10;
+    const offset = (pageNumber - 1) * pageSize;
+    
+    // Build base query for active ads
+    let queryBuilder = db.query.ads.findMany({
+      where: eq(schema.ads.status, "active"),
+      with: {
+        subject: true,
+        level: true,
+        tutor: {
+          with: {
+            user: true
+          }
+        }
+      },
+      limit: pageSize,
+      offset: offset,
+      orderBy: [desc(schema.ads.created_at)]
+    });
+    
+    // Extract results
+    const ads = await queryBuilder;
+    
+    // Get total count for pagination
+    const totalAdsCount = await db.query.ads.findMany({
+      where: eq(schema.ads.status, "active")
+    });
+    
+    const total = totalAdsCount.length;
+    const totalPages = Math.ceil(total / pageSize);
+    
+    return res.status(200).json({
+      ads,
+      pagination: {
+        total,
+        page: pageNumber,
+        limit: pageSize,
+        total_pages: totalPages
+      }
+    });
+  } catch (error) {
+    console.error("Get all ads error:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 };
