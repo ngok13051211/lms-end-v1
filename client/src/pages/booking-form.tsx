@@ -186,16 +186,71 @@ export default function BookingForm() {
   };
 
   // Khung giờ trống của gia sư (trong thực tế, bạn sẽ cần lấy dữ liệu này từ API)
-  const [availableTimeSlots, setAvailableTimeSlots] = useState<{[key: string]: string[]}>({
-    // Key là ngày trong tuần (0 = Chủ nhật, 1 = Thứ hai, ...)
-    "1": ["08:00", "09:00", "10:00", "14:00", "15:00", "16:00"],
-    "2": ["08:00", "09:00", "10:00", "14:00", "15:00", "16:00"],
-    "3": ["10:00", "11:00", "14:00", "15:00", "16:00"],
-    "4": ["08:00", "09:00", "14:00", "15:00", "16:00", "17:00"],
-    "5": ["08:00", "09:00", "10:00", "14:00", "15:00"],
-    "6": ["09:00", "10:00", "14:00"],
-    "0": ["14:00", "15:00", "16:00"],
-  });
+  const [availableTimeSlots, setAvailableTimeSlots] = useState<{[key: string]: string[]}>({});
+  
+  // Xử lý dữ liệu availability từ profile của gia sư
+  useEffect(() => {
+    if (tutorData && tutorData.availability) {
+      try {
+        // Nếu availability đã là JSON object thì không cần parse
+        const availabilityData = typeof tutorData.availability === 'string' 
+          ? JSON.parse(tutorData.availability) 
+          : tutorData.availability;
+          
+        // Tạo object mới để lưu trữ thời gian trống theo ngày trong tuần
+        const slots: {[key: string]: string[]} = {};
+        
+        // Ánh xạ tên ngày sang số ngày trong tuần
+        const dayMap: {[key: string]: string} = {
+          'sunday': '0',
+          'monday': '1',
+          'tuesday': '2',
+          'wednesday': '3',
+          'thursday': '4',
+          'friday': '5',
+          'saturday': '6'
+        };
+        
+        // Xử lý dữ liệu availability
+        availabilityData.forEach((slot: any) => {
+          const dayNumber = dayMap[slot.day.toLowerCase()];
+          if (!dayNumber) return;
+          
+          // Chuyển đổi startTime và endTime thành một mảng các time slot 30 phút
+          const startTime = slot.startTime;
+          const endTime = slot.endTime;
+          
+          // Tạo mảng các thời điểm trống với khoảng cách 30 phút
+          const timeSlots: string[] = [];
+          const [startHour, startMin] = startTime.split(':').map(Number);
+          const [endHour, endMin] = endTime.split(':').map(Number);
+          
+          const startMinutes = startHour * 60 + startMin;
+          const endMinutes = endHour * 60 + endMin;
+          
+          // Tạo các time slot từ start đến end, mỗi 30 phút
+          for (let minute = startMinutes; minute < endMinutes; minute += 30) {
+            const hour = Math.floor(minute / 60);
+            const min = minute % 60;
+            const timeStr = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
+            timeSlots.push(timeStr);
+          }
+          
+          // Lưu vào slots
+          if (!slots[dayNumber]) {
+            slots[dayNumber] = timeSlots;
+          } else {
+            slots[dayNumber] = [...slots[dayNumber], ...timeSlots];
+          }
+        });
+        
+        // Cập nhật state
+        setAvailableTimeSlots(slots);
+      } catch (error) {
+        console.error("Lỗi khi xử lý dữ liệu lịch trống:", error);
+      }
+    }
+  }, [tutorData]);
   
   // Lấy các ngày trong tuần có lịch trống
   const getAvailableDays = () => {
@@ -310,15 +365,6 @@ export default function BookingForm() {
             Nhập thông tin lịch học của bạn với{" "}
             <span className="font-medium">{tutorName}</span>
           </CardDescription>
-          <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-md border border-blue-200 dark:border-blue-800">
-            <h3 className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-1">Quy trình đặt lịch</h3>
-            <ul className="text-xs text-blue-700 dark:text-blue-400 list-disc pl-5 space-y-1">
-              <li>Bạn đặt lịch và thanh toán qua cổng VNPAY</li>
-              <li>Hệ thống giữ tiền trong tài khoản escrow của HomiTutor</li>
-              <li>Sau khi buổi học hoàn thành, gia sư sẽ nhận được thanh toán</li>
-              <li>Nếu có vấn đề, bạn có thể yêu cầu hoàn tiền trong vòng 24 giờ</li>
-            </ul>
-          </div>
         </CardHeader>
         <CardContent>
           <Form {...form}>
