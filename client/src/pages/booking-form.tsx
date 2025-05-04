@@ -328,6 +328,8 @@ export default function BookingForm() {
           setAvailableTimeSlots(emptyState);
           return;
         }
+        
+        console.log("Kiểm tra dữ liệu lịch trống chi tiết:", availabilityData);
 
         // Reset form values để đảm bảo không có giá trị mặc định
         form.setValue("start_time", "");
@@ -615,10 +617,13 @@ export default function BookingForm() {
     }
     
     try {
+      console.log("Kiểm tra lịch trống cho ngày:", form.watch("date"));
+      console.log("Dữ liệu lịch trống hiện tại:", availableTimeSlots);
+      
       // Kiểm tra nếu không có dữ liệu lịch trống hoặc đánh dấu là rỗng
       // @ts-ignore - Truy cập thuộc tính động
       if (availableTimeSlots._empty) {
-        console.log("Không có thời gian khả dụng cho ngày này");
+        console.log("Không có thời gian khả dụng (lịch trống rỗng)");
         return []; 
       }
       
@@ -626,17 +631,17 @@ export default function BookingForm() {
       
       // Format ngày thành chuỗi YYYY-MM-DD để tìm trong object
       const dateStr = selectedDate.toISOString().split('T')[0];
+      console.log(`Tìm lịch trống cho ngày: ${dateStr}`);
       
       // Lấy các khoảng thời gian cho ngày đã chọn
       // @ts-ignore - Truy cập thuộc tính động
       const timeRanges = availableTimeSlots._timeRanges?.[dateStr] || [];
+      console.log(`Tìm thấy ${timeRanges.length} khoảng thời gian cho ngày ${dateStr}:`, timeRanges);
       
       if (timeRanges.length === 0) {
         console.log(`Không tìm thấy thời gian khả dụng cho ngày ${dateStr}`);
         return [];
       }
-      
-      console.log(`Dữ liệu khoảng thời gian cho ngày ${dateStr}:`, timeRanges);
       
       // Trích xuất giờ bắt đầu từ các khoảng thời gian
       const startTimes = timeRanges.map(range => range.startTime);
@@ -1083,8 +1088,8 @@ export default function BookingForm() {
                           <Select
                             onValueChange={(value) => {
                               field.onChange(value);
-                              // Reset giờ kết thúc khi đổi giờ bắt đầu
-                              form.setValue("end_time", "");
+                              // Cập nhật giờ kết thúc dựa trên giờ bắt đầu
+                              updateEndTimeBasedOnStartTime(value);
                             }}
                             value={field.value}
                             disabled={!form.watch("date") || getAvailableTimesForSelectedDate().length === 0}
@@ -1096,11 +1101,18 @@ export default function BookingForm() {
                             </FormControl>
                             <SelectContent>
                               {form.watch("date") && getAvailableTimesForSelectedDate().length > 0 ? (
-                                getAvailableTimesForSelectedDate().map((time: string) => (
-                                  <SelectItem key={time} value={time}>
-                                    {time}
-                                  </SelectItem>
-                                ))
+                                getAvailableTimesForSelectedDate().map((time: string) => {
+                                  // Tìm khoảng thời gian tương ứng để hiển thị giờ kết thúc
+                                  // @ts-ignore - Truy cập thuộc tính động
+                                  const timeRanges = availableTimeSlots._timeRanges?.[form.watch("date").toISOString().split('T')[0]] || [];
+                                  const matchedRange = timeRanges.find(range => range.startTime === time);
+                                  
+                                  return (
+                                    <SelectItem key={time} value={time}>
+                                      {time} {matchedRange ? `→ ${matchedRange.endTime}` : ''}
+                                    </SelectItem>
+                                  );
+                                })
                               ) : (
                                 <div className="px-2 py-1 text-sm text-muted-foreground">
                                   Vui lòng chọn ngày có lịch trống
