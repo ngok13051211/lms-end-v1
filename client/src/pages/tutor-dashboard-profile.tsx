@@ -25,15 +25,32 @@ import TutorDashboardLayout from "@/components/layout/TutorDashboardLayout";
 import { format, addDays, nextMonday, nextTuesday, nextWednesday, nextThursday, nextFriday, nextSaturday, nextSunday } from "date-fns";
 import { vi } from 'date-fns/locale';
 
-// Định nghĩa cấu trúc cho một khung giờ trống
-const availabilityItemSchema = z.object({
+// Định nghĩa cấu trúc cho khung giờ trống theo ngày trong tuần
+const weeklyAvailabilityItemSchema = z.object({
+  type: z.literal("weekly"),
   day: z.enum(["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]),
   startTime: z.string(), // Format: "HH:MM" in 24h
   endTime: z.string(),   // Format: "HH:MM" in 24h
 });
 
+// Định nghĩa cấu trúc cho khung giờ trống theo ngày cụ thể
+const specificDateAvailabilityItemSchema = z.object({
+  type: z.literal("specific"),
+  date: z.string(), // Format: "YYYY-MM-DD"
+  startTime: z.string(), // Format: "HH:MM" in 24h
+  endTime: z.string(),   // Format: "HH:MM" in 24h
+});
+
+// Kết hợp hai loại lịch trống
+const availabilityItemSchema = z.discriminatedUnion("type", [
+  weeklyAvailabilityItemSchema,
+  specificDateAvailabilityItemSchema
+]);
+
 // Định nghĩa kiểu dữ liệu cho một khung giờ trống
 export type AvailabilityItem = z.infer<typeof availabilityItemSchema>;
+export type WeeklyAvailabilityItem = z.infer<typeof weeklyAvailabilityItemSchema>;
+export type SpecificDateAvailabilityItem = z.infer<typeof specificDateAvailabilityItemSchema>;
 
 // Form schema for tutor profile
 const tutorProfileSchema = z.object({
@@ -108,8 +125,20 @@ export default function TutorDashboardProfile() {
   const [availabilityDialogOpen, setAvailabilityDialogOpen] = useState(false);
   
   // State để quản lý một khung giờ mới
-  const [newAvailabilityItem, setNewAvailabilityItem] = useState<AvailabilityItem>({
+  const [newAvailabilityItem, setNewAvailabilityItem] = useState<WeeklyAvailabilityItem>({
+    type: "weekly",
     day: "monday",
+    startTime: "08:00",
+    endTime: "17:00"
+  });
+  
+  // State để quản lý loại lịch trống đang tạo (hàng tuần hoặc ngày cụ thể)
+  const [availabilityType, setAvailabilityType] = useState<"weekly" | "specific">("weekly");
+  
+  // State cho khung giờ trống theo ngày cụ thể
+  const [newSpecificDateItem, setNewSpecificDateItem] = useState<SpecificDateAvailabilityItem>({
+    type: "specific",
+    date: format(new Date(), 'yyyy-MM-dd'),
     startTime: "08:00",
     endTime: "17:00"
   });
@@ -583,38 +612,68 @@ export default function TutorDashboardProfile() {
           
           // Đảm bảo dữ liệu đúng định dạng
           if (Array.isArray(parsedAvailability)) {
-            // Chuẩn hóa dữ liệu trước khi lưu vào state
-            const normalizedData = parsedAvailability.map(item => {
-              // Đảm bảo có đầy đủ các trường
-              if (!item.day || !item.startTime || !item.endTime) {
-                console.warn("Thiếu thông tin trong item lịch trống:", item);
-                return null;
-              }
-              
-              // Chuẩn hóa tên ngày
-              const day = item.day.toLowerCase();
-              
-              // Chuẩn hóa thời gian bắt đầu
-              let startTime = item.startTime;
-              if (startTime.length === 4) { // Nếu là H:MM
-                startTime = "0" + startTime;
-              }
-              
-              // Chuẩn hóa thời gian kết thúc
-              let endTime = item.endTime;
-              if (endTime.length === 4) { // Nếu là H:MM
-                endTime = "0" + endTime;
-              }
-              
-              return {
-                day,
-                startTime,
-                endTime
-              };
-            }).filter(Boolean) as AvailabilityItem[]; // Loại bỏ các giá trị null
+            const convertedItems: AvailabilityItem[] = [];
             
-            console.log("Dữ liệu lịch trống đã chuẩn hóa:", normalizedData);
-            setAvailabilityItems(normalizedData);
+            // Xử lý dữ liệu lịch trống cũ (không có trường type)
+            for (const item of parsedAvailability) {
+              // Nếu đã có trường type, giữ nguyên
+              if (item.type === "weekly" || item.type === "specific") {
+                // Chỉ cần chuẩn hóa thời gian
+                const newItem = { ...item };
+                
+                // Chuẩn hóa thời gian bắt đầu
+                if (newItem.startTime && newItem.startTime.length === 4) {
+                  newItem.startTime = "0" + newItem.startTime;
+                }
+                
+                // Chuẩn hóa thời gian kết thúc
+                if (newItem.endTime && newItem.endTime.length === 4) {
+                  newItem.endTime = "0" + newItem.endTime;
+                }
+                
+                convertedItems.push(newItem as AvailabilityItem);
+                continue;
+              }
+              
+              // Đối với data cũ không có type, nếu có day thì chuyển thành weekly
+              if (item.day) {
+                const day = item.day.toLowerCase() as "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
+                
+                // Chuẩn hóa thời gian bắt đầu
+                let startTime = item.startTime || "08:00";
+                if (startTime.length === 4) {
+                  startTime = "0" + startTime;
+                }
+                
+                // Chuẩn hóa thời gian kết thúc
+                let endTime = item.endTime || "17:00";
+                if (endTime.length === 4) {
+                  endTime = "0" + endTime;
+                }
+                
+                convertedItems.push({
+                  type: "weekly",
+                  day,
+                  startTime,
+                  endTime
+                });
+              }
+              // Nếu có date thì chuyển thành specific
+              else if (item.date) {
+                convertedItems.push({
+                  type: "specific",
+                  date: item.date,
+                  startTime: item.startTime || "08:00",
+                  endTime: item.endTime || "17:00"
+                });
+              }
+              else {
+                console.warn("Item lịch trống không đúng định dạng:", item);
+              }
+            }
+            
+            console.log("Dữ liệu lịch trống đã chuyển đổi:", convertedItems);
+            setAvailabilityItems(convertedItems);
           } else {
             console.warn("Dữ liệu lịch trống không phải mảng:", parsedAvailability);
             setAvailabilityItems([]);
@@ -637,31 +696,73 @@ export default function TutorDashboardProfile() {
   // Hàm xử lý cập nhật lịch trống
   const updateAvailabilityMutation = useMutation({
     mutationFn: async (availabilityData: AvailabilityItem[]) => {
-      // Chuẩn hóa dữ liệu:
-      // 1. Đảm bảo các giá trị day đều ở dạng lowercase
-      // 2. Đảm bảo các giá trị startTime và endTime đều ở định dạng HH:MM
+      // Sử dụng kiểu AvailabilityItem mới với discriminated union
+      // Tuy nhiên vẫn chuẩn hóa để tương thích với backend cũ
       const normalizedData = availabilityData.map(item => {
-        // Chuẩn hóa tên ngày
-        const day = item.day.toLowerCase();
-        
-        // Chuẩn hóa thời gian bắt đầu
-        let startTime = item.startTime;
-        if (startTime.length === 4) { // Nếu là H:MM
-          startTime = "0" + startTime;
+        if (item.type === "weekly") {
+          // Weekly availability - compatibile with old format
+          const day = item.day.toLowerCase() as "monday"|"tuesday"|"wednesday"|"thursday"|"friday"|"saturday"|"sunday";
+          
+          // Chuẩn hóa thời gian
+          let startTime = item.startTime;
+          if (startTime.length === 4) { // Nếu là H:MM
+            startTime = "0" + startTime;
+          }
+          
+          let endTime = item.endTime;
+          if (endTime.length === 4) { // Nếu là H:MM
+            endTime = "0" + endTime;
+          }
+          
+          // Convert to old data format for backward compatibility
+          return {
+            day: day,
+            startTime: startTime,
+            endTime: endTime
+          };
+        } 
+        else if (item.type === "specific") {
+          // For specific date, we convert to standardized format that backend can understand
+          // Hiện tại backend chưa hỗ trợ ngày cụ thể, nên chuyển ngày sang ngày trong tuần
+          const specificDate = new Date(item.date);
+          let day: string;
+          
+          // Lấy ngày trong tuần từ date
+          switch (specificDate.getDay()) {
+            case 0: day = "sunday"; break;
+            case 1: day = "monday"; break;
+            case 2: day = "tuesday"; break;
+            case 3: day = "wednesday"; break;
+            case 4: day = "thursday"; break;
+            case 5: day = "friday"; break;
+            case 6: day = "saturday"; break;
+            default: day = "monday";
+          }
+          
+          // Chuẩn hóa thời gian
+          let startTime = item.startTime;
+          if (startTime.length === 4) { // Nếu là H:MM
+            startTime = "0" + startTime;
+          }
+          
+          let endTime = item.endTime;
+          if (endTime.length === 4) { // Nếu là H:MM
+            endTime = "0" + endTime;
+          }
+          
+          // Lưu thông tin ngày cụ thể vào metadata
+          return {
+            day,
+            startTime,
+            endTime,
+            specificDate: item.date // Metadata cho phía client
+          };
         }
-        
-        // Chuẩn hóa thời gian kết thúc
-        let endTime = item.endTime;
-        if (endTime.length === 4) { // Nếu là H:MM
-          endTime = "0" + endTime;
+        else {
+          console.warn("Không nhận ra loại lịch trống:", item);
+          return null;
         }
-        
-        return {
-          day,
-          startTime,
-          endTime
-        };
-      });
+      }).filter(Boolean); // Remove any null values
       
       // Chuyển danh sách availability thành chuỗi JSON
       const availabilityJson = JSON.stringify(normalizedData);
@@ -720,15 +821,21 @@ export default function TutorDashboardProfile() {
     });
   };
 
-  const handleAddAvailability = () => {
-    // Kiểm tra nếu thời gian kết thúc <= thời gian bắt đầu
-    const [startHour, startMin] = newAvailabilityItem.startTime.split(':').map(Number);
-    const [endHour, endMin] = newAvailabilityItem.endTime.split(':').map(Number);
+  // Kiểm tra thời gian (cả hàng tuần và ngày cụ thể)
+  const validateTimeRange = (startTime: string, endTime: string): boolean => {
+    const [startHour, startMin] = startTime.split(':').map(Number);
+    const [endHour, endMin] = endTime.split(':').map(Number);
     
     const startMinutes = startHour * 60 + startMin;
     const endMinutes = endHour * 60 + endMin;
     
-    if (endMinutes <= startMinutes) {
+    return endMinutes > startMinutes;
+  };
+  
+  // Thêm lịch trống hàng tuần
+  const handleAddWeeklyAvailability = () => {
+    // Kiểm tra nếu thời gian kết thúc <= thời gian bắt đầu
+    if (!validateTimeRange(newAvailabilityItem.startTime, newAvailabilityItem.endTime)) {
       toast({
         title: "Lỗi thời gian",
         description: "Thời gian kết thúc phải sau thời gian bắt đầu.",
@@ -737,8 +844,27 @@ export default function TutorDashboardProfile() {
       return;
     }
     
-    // Kiểm tra trùng lặp
-    if (isTimeSlotOverlapping(newAvailabilityItem)) {
+    // Kiểm tra trùng lặp (chỉ đối với weekly, specific sẽ kiểm tra riêng)
+    // Phải update isTimeSlotOverlapping để hỗ trợ kiểu mới
+    const weeklyItems = availabilityItems.filter(item => item.type === "weekly") as WeeklyAvailabilityItem[];
+    const isOverlapping = weeklyItems.some(existingSlot => {
+      if (existingSlot.day === newAvailabilityItem.day) {
+        const [existingStartHour, existingStartMin] = existingSlot.startTime.split(':').map(Number);
+        const [existingEndHour, existingEndMin] = existingSlot.endTime.split(':').map(Number);
+        const [newStartHour, newStartMin] = newAvailabilityItem.startTime.split(':').map(Number);
+        const [newEndHour, newEndMin] = newAvailabilityItem.endTime.split(':').map(Number);
+        
+        const existingStartMinutes = existingStartHour * 60 + existingStartMin;
+        const existingEndMinutes = existingEndHour * 60 + existingEndMin;
+        const newStartMinutes = newStartHour * 60 + newStartMin;
+        const newEndMinutes = newEndHour * 60 + newEndMin;
+        
+        return (newStartMinutes < existingEndMinutes && newEndMinutes > existingStartMinutes);
+      }
+      return false;
+    });
+    
+    if (isOverlapping) {
       toast({
         title: "Lịch trùng lặp",
         description: "Khung giờ này trùng với một khung giờ đã tồn tại. Vui lòng chọn thời gian khác.",
@@ -748,12 +874,81 @@ export default function TutorDashboardProfile() {
     }
     
     // Nếu không có vấn đề gì, thêm khung giờ mới
-    setAvailabilityItems([...availabilityItems, newAvailabilityItem]);
+    setAvailabilityItems([...availabilityItems, { ...newAvailabilityItem }]);
+    
+    // Reset form
     setNewAvailabilityItem({
+      type: "weekly",
       day: "monday",
       startTime: "08:00",
       endTime: "17:00"
     });
+  };
+  
+  // Thêm lịch trống ngày cụ thể
+  const handleAddSpecificDateAvailability = () => {
+    // Kiểm tra nếu thời gian kết thúc <= thời gian bắt đầu
+    if (!validateTimeRange(newSpecificDateItem.startTime, newSpecificDateItem.endTime)) {
+      toast({
+        title: "Lỗi thời gian",
+        description: "Thời gian kết thúc phải sau thời gian bắt đầu.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Kiểm tra xem đã có lịch trống cho ngày này chưa
+    const specificItems = availabilityItems.filter(item => 
+      item.type === "specific") as SpecificDateAvailabilityItem[];
+    
+    const isOverlapping = specificItems.some(existingSlot => {
+      if (existingSlot.date === newSpecificDateItem.date) {
+        const [existingStartHour, existingStartMin] = existingSlot.startTime.split(':').map(Number);
+        const [existingEndHour, existingEndMin] = existingSlot.endTime.split(':').map(Number);
+        const [newStartHour, newStartMin] = newSpecificDateItem.startTime.split(':').map(Number);
+        const [newEndHour, newEndMin] = newSpecificDateItem.endTime.split(':').map(Number);
+        
+        const existingStartMinutes = existingStartHour * 60 + existingStartMin;
+        const existingEndMinutes = existingEndHour * 60 + existingEndMin;
+        const newStartMinutes = newStartHour * 60 + newStartMin;
+        const newEndMinutes = newEndHour * 60 + newEndMin;
+        
+        return (newStartMinutes < existingEndMinutes && newEndMinutes > existingStartMinutes);
+      }
+      return false;
+    });
+    
+    if (isOverlapping) {
+      toast({
+        title: "Lịch trùng lặp",
+        description: "Đã có lịch cho ngày này trong cùng khung giờ. Vui lòng chọn thời gian khác.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Nếu không có vấn đề gì, thêm khung giờ mới
+    setAvailabilityItems([...availabilityItems, { ...newSpecificDateItem }]);
+    
+    // Reset form nhưng giữ lại date (ngày mai)
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    setNewSpecificDateItem({
+      type: "specific",
+      date: format(tomorrow, 'yyyy-MM-dd'),
+      startTime: "08:00",
+      endTime: "17:00"
+    });
+  };
+  
+  // Hàm xử lý thêm lịch trống dựa trên loại lịch đang được chọn
+  const handleAddAvailability = () => {
+    if (availabilityType === "weekly") {
+      handleAddWeeklyAvailability();
+    } else {
+      handleAddSpecificDateAvailability();
+    }
   };
   
   // Xóa một khung giờ trống
