@@ -22,6 +22,8 @@ import { CheckboxGroup, CheckboxItem } from "@/components/ui/checkbox-group";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import TutorDashboardLayout from "@/components/layout/TutorDashboardLayout";
+import { format, addDays, nextMonday, nextTuesday, nextWednesday, nextThursday, nextFriday, nextSaturday, nextSunday } from "date-fns";
+import { vi } from 'date-fns/locale';
 
 // Định nghĩa cấu trúc cho một khung giờ trống
 const availabilityItemSchema = z.object({
@@ -44,6 +46,38 @@ const tutorProfileSchema = z.object({
   teachingMode: z.enum(["online", "offline", "both"]),
   // Trường availability là tùy chọn, sẽ được xử lý riêng
 });
+
+// Hàm tiện ích để lấy ngày trong tuần tới dựa trên tên ngày trong tuần
+const getNextWeekdayDate = (weekday: string): Date => {
+  const today = new Date();
+  switch (weekday) {
+    case "monday": return nextMonday(today);
+    case "tuesday": return nextTuesday(today);
+    case "wednesday": return nextWednesday(today);
+    case "thursday": return nextThursday(today);
+    case "friday": return nextFriday(today);
+    case "saturday": return nextSaturday(today);
+    case "sunday": return nextSunday(today);
+    default: return today;
+  }
+};
+
+// Hàm chuyển đổi tên ngày trong tuần tiếng Anh sang tiếng Việt và thêm ngày/tháng/năm
+const formatWeekdayWithDate = (weekday: string): string => {
+  const date = getNextWeekdayDate(weekday);
+  const weekdayName = {
+    "monday": "Thứ Hai",
+    "tuesday": "Thứ Ba",
+    "wednesday": "Thứ Tư",
+    "thursday": "Thứ Năm",
+    "friday": "Thứ Sáu",
+    "saturday": "Thứ Bảy",
+    "sunday": "Chủ Nhật"
+  }[weekday] || weekday;
+  
+  // Format: Thứ Hai (06/05/2025)
+  return `${weekdayName} (${format(date, 'dd/MM/yyyy', { locale: vi })})`;
+};
 
 export default function TutorDashboardProfile() {
   const { user } = useSelector((state: RootState) => state.auth);
@@ -1158,13 +1192,13 @@ export default function TutorDashboardProfile() {
                         <SelectValue placeholder="Chọn ngày" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="monday">Thứ Hai</SelectItem>
-                        <SelectItem value="tuesday">Thứ Ba</SelectItem>
-                        <SelectItem value="wednesday">Thứ Tư</SelectItem>
-                        <SelectItem value="thursday">Thứ Năm</SelectItem>
-                        <SelectItem value="friday">Thứ Sáu</SelectItem>
-                        <SelectItem value="saturday">Thứ Bảy</SelectItem>
-                        <SelectItem value="sunday">Chủ Nhật</SelectItem>
+                        <SelectItem value="monday">{formatWeekdayWithDate("monday")}</SelectItem>
+                        <SelectItem value="tuesday">{formatWeekdayWithDate("tuesday")}</SelectItem>
+                        <SelectItem value="wednesday">{formatWeekdayWithDate("wednesday")}</SelectItem>
+                        <SelectItem value="thursday">{formatWeekdayWithDate("thursday")}</SelectItem>
+                        <SelectItem value="friday">{formatWeekdayWithDate("friday")}</SelectItem>
+                        <SelectItem value="saturday">{formatWeekdayWithDate("saturday")}</SelectItem>
+                        <SelectItem value="sunday">{formatWeekdayWithDate("sunday")}</SelectItem>
                       </SelectContent>
                     </Select>
                     
@@ -1221,13 +1255,13 @@ export default function TutorDashboardProfile() {
                     <SelectValue placeholder="Chọn ngày" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="monday">Thứ Hai</SelectItem>
-                    <SelectItem value="tuesday">Thứ Ba</SelectItem>
-                    <SelectItem value="wednesday">Thứ Tư</SelectItem>
-                    <SelectItem value="thursday">Thứ Năm</SelectItem>
-                    <SelectItem value="friday">Thứ Sáu</SelectItem>
-                    <SelectItem value="saturday">Thứ Bảy</SelectItem>
-                    <SelectItem value="sunday">Chủ Nhật</SelectItem>
+                    <SelectItem value="monday">{formatWeekdayWithDate("monday")}</SelectItem>
+                    <SelectItem value="tuesday">{formatWeekdayWithDate("tuesday")}</SelectItem>
+                    <SelectItem value="wednesday">{formatWeekdayWithDate("wednesday")}</SelectItem>
+                    <SelectItem value="thursday">{formatWeekdayWithDate("thursday")}</SelectItem>
+                    <SelectItem value="friday">{formatWeekdayWithDate("friday")}</SelectItem>
+                    <SelectItem value="saturday">{formatWeekdayWithDate("saturday")}</SelectItem>
+                    <SelectItem value="sunday">{formatWeekdayWithDate("sunday")}</SelectItem>
                   </SelectContent>
                 </Select>
                 
