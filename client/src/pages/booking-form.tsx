@@ -254,9 +254,14 @@ export default function BookingForm() {
           }
           
           // Thêm các thời điểm 30 phút từ lúc bắt đầu đến trước khi kết thúc
-          // Làm tròn lên để đảm bảo bắt đầu vào các khoảng 30 phút (00 hoặc 30)
+          // Bắt đầu từ giờ đầu tiên sau khi làm tròn lên đến 30p hoặc 00p
           const roundedStart = Math.ceil(startMinutes / 30) * 30;
-          for (let minute = roundedStart; minute < endMinutes - 30; minute += 30) {
+          
+          // Tính toán số phút kết thúc - 60p (thời gian tối thiểu cho một buổi học)
+          const maxStartMinutes = endMinutes - 60;
+          
+          // Thêm tất cả các điểm bắt đầu có thể trong khoảng thời gian này
+          for (let minute = roundedStart; minute <= maxStartMinutes; minute += 30) {
             const hour = Math.floor(minute / 60);
             const min = minute % 60;
             
@@ -660,8 +665,17 @@ export default function BookingForm() {
                                 available: availableDays
                               }}
                               modifiersClassNames={{
-                                available: "bg-primary/10"
+                                available: "bg-primary/10 font-medium"
                               }}
+                              footer={
+                                <div className="p-3 border-t border-border/50 text-xs text-center text-muted-foreground space-y-1">
+                                  <div className="flex items-center justify-center gap-2">
+                                    <div className="w-3 h-3 rounded-sm bg-primary/10"></div>
+                                    <span>Ngày có lịch trống</span>
+                                  </div>
+                                  <div>Chỉ hiển thị các ngày gia sư có thể dạy</div>
+                                </div>
+                              }
                             />
                           </PopoverContent>
                         </Popover>
