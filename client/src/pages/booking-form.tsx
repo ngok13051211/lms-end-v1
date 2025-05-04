@@ -747,22 +747,26 @@ export default function BookingForm() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {getAvailableTimesForSelectedDate().length > 0 ? (
+                              {getAvailableTimesForSelectedDate().length > 0 && form.watch("start_time") ? (
                                 getAvailableTimesForSelectedDate()
                                   .filter((time) => time > form.watch("start_time"))
-                                  .map((time) => (
-                                    <SelectItem key={time} value={time}>
-                                      {time}
-                                    </SelectItem>
-                                  ))
+                                  .length > 0 ? (
+                                    getAvailableTimesForSelectedDate()
+                                      .filter((time) => time > form.watch("start_time"))
+                                      .map((time) => (
+                                        <SelectItem key={time} value={time}>
+                                          {time}
+                                        </SelectItem>
+                                      ))
+                                  ) : (
+                                    <div className="px-2 py-1 text-sm text-muted-foreground">
+                                      Không có khung giờ kết thúc phù hợp
+                                    </div>
+                                  )
                               ) : (
-                                timeOptions
-                                  .filter((time) => time > form.watch("start_time"))
-                                  .map((time) => (
-                                    <SelectItem key={time} value={time}>
-                                      {time}
-                                    </SelectItem>
-                                  ))
+                                <div className="px-2 py-1 text-sm text-muted-foreground">
+                                  Vui lòng chọn ngày và giờ bắt đầu trước
+                                </div>
                               )}
                             </SelectContent>
                           </Select>
