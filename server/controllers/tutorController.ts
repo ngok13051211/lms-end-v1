@@ -74,7 +74,13 @@ export const getTutors = async (req: Request, res: Response) => {
     
     // Add search condition if provided
     if (search) {
-      // We need to join with users table to search by name
+      // First, find tutors by subject name match
+      const tutorsBySubject = await db.select({ tutor_id: schema.tutorSubjects.tutor_id })
+        .from(schema.tutorSubjects)
+        .innerJoin(schema.subjects, eq(schema.tutorSubjects.subject_id, schema.subjects.id))
+        .where(like(schema.subjects.name, `%${search}%`));
+
+      // Find tutors by name, bio, or certifications
       const tutorsByName = await db.select({ id: schema.tutorProfiles.id })
         .from(schema.tutorProfiles)
         .innerJoin(schema.users, eq(schema.tutorProfiles.user_id, schema.users.id))
@@ -87,10 +93,19 @@ export const getTutors = async (req: Request, res: Response) => {
           )
         );
       
-      if (tutorsByName.length > 0) {
-        conditions.push(inArray(schema.tutorProfiles.id, tutorsByName.map(t => t.id)));
+      // Combine both search results (tutors by name/bio and tutors by subject)
+      const tutorIds = [
+        ...tutorsByName.map(t => t.id),
+        ...tutorsBySubject.map(t => t.tutor_id)
+      ];
+
+      // Remove duplicates from the IDs
+      const uniqueTutorIds = Array.from(new Set(tutorIds));
+      
+      if (uniqueTutorIds.length > 0) {
+        conditions.push(inArray(schema.tutorProfiles.id, uniqueTutorIds));
       } else {
-        // If no name matches, return empty result
+        // If no matches, return empty result
         return res.status(200).json({
           tutors: [],
           total: 0,
