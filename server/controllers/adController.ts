@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { db } from "@db";
 import * as schema from "@shared/schema";
-import { eq, and, desc, like } from "drizzle-orm";
+import { eq, and, desc, like, sql } from "drizzle-orm";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 
@@ -283,10 +283,10 @@ export const getAllAds = async (req: Request, res: Response) => {
     // Always show only active ads
     conditions.push(eq(schema.ads.status, "active"));
     
-    // Add search condition if provided - search by ad title
+    // Add search condition if provided - search by ad title (case-insensitive)
     if (searchTerm && searchTerm !== '') {
-      const search = searchTerm as string;
-      conditions.push(like(schema.ads.title, `%${search}%`));
+      const search = (searchTerm as string).toLowerCase();
+      conditions.push(sql`LOWER(${schema.ads.title}) LIKE ${'%' + search + '%'}`);
     }
     
     // Add filters if they exist and they're not the "all" option

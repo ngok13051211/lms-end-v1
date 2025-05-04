@@ -74,22 +74,25 @@ export const getTutors = async (req: Request, res: Response) => {
     
     // Add search condition if provided
     if (search) {
-      // First, find tutors by subject name match
+      // Convert search term to lowercase for case-insensitive search
+      const searchLower = search.toLowerCase();
+      
+      // First, find tutors by subject name match (case-insensitive)
       const tutorsBySubject = await db.select({ tutor_id: schema.tutorSubjects.tutor_id })
         .from(schema.tutorSubjects)
         .innerJoin(schema.subjects, eq(schema.tutorSubjects.subject_id, schema.subjects.id))
-        .where(like(schema.subjects.name, `%${search}%`));
+        .where(sql`LOWER(${schema.subjects.name}) LIKE ${'%' + searchLower + '%'}`);
 
-      // Find tutors by name, bio, or certifications
+      // Find tutors by name, bio, or certifications (case-insensitive)
       const tutorsByName = await db.select({ id: schema.tutorProfiles.id })
         .from(schema.tutorProfiles)
         .innerJoin(schema.users, eq(schema.tutorProfiles.user_id, schema.users.id))
         .where(
           or(
-            like(schema.users.first_name, `%${search}%`),
-            like(schema.users.last_name, `%${search}%`),
-            like(schema.tutorProfiles.bio, `%${search}%`),
-            like(schema.tutorProfiles.certifications, `%${search}%`)
+            sql`LOWER(${schema.users.first_name}) LIKE ${'%' + searchLower + '%'}`,
+            sql`LOWER(${schema.users.last_name}) LIKE ${'%' + searchLower + '%'}`,
+            sql`LOWER(${schema.tutorProfiles.bio}) LIKE ${'%' + searchLower + '%'}`,
+            sql`LOWER(${schema.tutorProfiles.certifications}) LIKE ${'%' + searchLower + '%'}`
           )
         );
       
@@ -216,8 +219,11 @@ export const getTutors = async (req: Request, res: Response) => {
       );
     }
     
-    // Add location filter for offline tutoring
+    // Add location filter for offline tutoring (case-insensitive)
     if (location && (mode === 'offline' || mode === 'both' || mode === 'all')) {
+      // Convert location to lowercase for case-insensitive search
+      const locationLower = location.toLowerCase();
+      
       // Search for location in user profile - this would be better with proper location fields
       const tutorsInLocation = await db.select({ id: schema.tutorProfiles.id })
         .from(schema.tutorProfiles)
@@ -230,7 +236,7 @@ export const getTutors = async (req: Request, res: Response) => {
             ),
             // Here we're assuming the location might be stored in the bio or description 
             // In a real app, you'd have proper location fields
-            like(schema.tutorProfiles.bio, `%${location}%`)
+            sql`LOWER(${schema.tutorProfiles.bio}) LIKE ${'%' + locationLower + '%'}`
           )
         );
       
