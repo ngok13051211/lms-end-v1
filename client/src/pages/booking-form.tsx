@@ -213,6 +213,10 @@ export default function BookingForm() {
           'saturday': '6'
         };
         
+        // Reset form values để đảm bảo không có giá trị mặc định
+        form.setValue("start_time", "");
+        form.setValue("end_time", "");
+        
         // Xóa trùng lặp và hợp nhất các khung giờ cho mỗi ngày
         // Sắp xếp lịch trống theo ngày và thời gian bắt đầu
         const mergedSlots: {[key: string]: Array<{start: number, end: number}>} = {};
@@ -264,15 +268,31 @@ export default function BookingForm() {
             }
           }
           
-          // Bước 3: Chuyển các khoảng đã hợp nhất thành các time slot 30 phút
+          // Bước 3: Thêm cả thời gian bắt đầu và kết thúc từ gia sư vào danh sách
           const timeSlots: string[] = [];
           
           mergedRanges.forEach(({ start, end }) => {
-            // Làm tròn thời gian bắt đầu lên 30 phút
-            const roundedStart = Math.ceil(start / 30) * 30;
+            // Thêm cả thời gian bắt đầu và kết thúc chính xác từ dữ liệu gia sư
+            const startHour = Math.floor(start / 60);
+            const startMin = start % 60;
+            const startTimeStr = `${startHour.toString().padStart(2, '0')}:${startMin.toString().padStart(2, '0')}`;
             
-            // Tạo các time slot từ start đến end, mỗi 30 phút
-            for (let minute = roundedStart; minute < end; minute += 30) {
+            const endHour = Math.floor(end / 60);
+            const endMin = end % 60;
+            const endTimeStr = `${endHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}`;
+            
+            // Chỉ thêm khi giờ nằm trong phạm vi 6h sáng đến 22h tối
+            if (startHour >= 6 && startHour < 22) {
+              timeSlots.push(startTimeStr);
+            }
+            
+            if (endHour >= 6 && endHour < 22) {
+              timeSlots.push(endTimeStr);
+            }
+            
+            // Thêm các thời điểm 30 phút ở giữa nếu có
+            const roundedStart = Math.ceil(start / 30) * 30;
+            for (let minute = roundedStart + 30; minute < end; minute += 30) {
               const hour = Math.floor(minute / 60);
               const min = minute % 60;
               
