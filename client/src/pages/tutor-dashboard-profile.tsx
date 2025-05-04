@@ -1234,18 +1234,48 @@ export default function TutorDashboardProfile() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
                         <Label htmlFor="specific-date">Ngày cụ thể</Label>
-                        <Input
-                          id="specific-date"
-                          type="date"
-                          value={newAvailabilityItem.date}
-                          min={format(new Date(), "yyyy-MM-dd")}
-                          onChange={(e) =>
-                            setNewAvailabilityItem({
-                              ...newAvailabilityItem,
-                              date: e.target.value,
-                            })
-                          }
-                        />
+                        <div className="relative">
+                          <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant={"outline"}
+                                className="w-full pl-9 text-left font-normal"
+                                id="specific-date"
+                              >
+                                {newAvailabilityItem.date ? (
+                                  format(
+                                    parseISO(newAvailabilityItem.date),
+                                    "EEEE, dd/MM/yyyy",
+                                    { locale: vi }
+                                  )
+                                ) : (
+                                  <span>Chọn ngày</span>
+                                )}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={newAvailabilityItem.date ? parseISO(newAvailabilityItem.date) : undefined}
+                                onSelect={(date) => {
+                                  if (date) {
+                                    setNewAvailabilityItem({
+                                      ...newAvailabilityItem,
+                                      date: format(date, "yyyy-MM-dd"),
+                                    });
+                                  }
+                                }}
+                                disabled={(date) => {
+                                  // Chỉ cho phép chọn ngày từ hôm nay trở đi
+                                  return date < new Date();
+                                }}
+                                initialFocus
+                                locale={vi}
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
                       </div>
 
                       <div>
