@@ -54,7 +54,7 @@ interface AvailabilityItem {
   endTime: string;
 }
 
-export default function BookingFormV2() {
+export default function BookingForm() {
   const [location, navigate] = useLocation();
   const { tutorId, adId } = useParams<{ tutorId?: string; adId?: string }>();
   const { toast } = useToast();
@@ -607,73 +607,82 @@ export default function BookingFormV2() {
                     )}
                   />
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="start_time"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Giờ bắt đầu</FormLabel>
-                          <Select
-                            onValueChange={(value) => {
-                              field.onChange(value);
-                              updateEndTime(value);
-                            }}
-                            value={field.value}
-                            disabled={!form.watch("date") || getAvailableStartTimes(form.watch("date")).length === 0}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Chọn giờ bắt đầu" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {form.watch("date") && getAvailableStartTimes(form.watch("date")).length > 0 ? (
-                                getAvailableStartTimes(form.watch("date")).map((time: string) => {
-                                  // Tìm khoảng thời gian tương ứng để hiển thị giờ kết thúc
-                                  const dateStr = form.watch("date").toISOString().split('T')[0];
-                                  const slots = availableTimeSlots[dateStr] || [];
-                                  const matchedSlot = slots.find(slot => slot.startTime === time);
-                                  
-                                  return (
-                                    <SelectItem key={time} value={time}>
-                                      {time} {matchedSlot ? `→ ${matchedSlot.endTime}` : ''}
-                                    </SelectItem>
-                                  );
-                                })
-                              ) : (
-                                <SelectItem value="no-slots" disabled>
-                                  Không có giờ trống
-                                </SelectItem>
-                              )}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="end_time"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Giờ kết thúc</FormLabel>
+                  <FormField
+                    control={form.control}
+                    name="start_time"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Chọn khung giờ học</FormLabel>
+                        <Select
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            updateEndTime(value);
+                          }}
+                          value={field.value}
+                          disabled={!form.watch("date") || getAvailableStartTimes(form.watch("date")).length === 0}
+                        >
                           <FormControl>
-                            <Input 
-                              value={field.value} 
-                              readOnly 
-                              className="bg-muted cursor-not-allowed" 
-                            />
+                            <SelectTrigger>
+                              <SelectValue placeholder="Chọn khung giờ học" />
+                            </SelectTrigger>
                           </FormControl>
-                          <p className="text-xs text-muted-foreground">
-                            Tự động tính toán dựa trên lịch của gia sư
-                          </p>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                          <SelectContent>
+                            {form.watch("date") && getAvailableStartTimes(form.watch("date")).length > 0 ? (
+                              getAvailableStartTimes(form.watch("date")).map((time: string) => {
+                                // Tìm khoảng thời gian tương ứng để hiển thị giờ kết thúc
+                                const dateStr = form.watch("date").toISOString().split('T')[0];
+                                const slots = availableTimeSlots[dateStr] || [];
+                                const matchedSlot = slots.find(slot => slot.startTime === time);
+                                
+                                if (!matchedSlot) return null;
+                                
+                                return (
+                                  <SelectItem key={time} value={time}>
+                                    <span className="font-medium">{time} → {matchedSlot.endTime}</span>
+                                    {(() => {
+                                      // Tính thời gian học
+                                      const [startHour, startMin] = time.split(":").map(Number);
+                                      const [endHour, endMin] = matchedSlot.endTime.split(":").map(Number);
+                                      
+                                      const startMinutes = startHour * 60 + startMin;
+                                      const endMinutes = endHour * 60 + endMin;
+                                      
+                                      const diffMinutes = endMinutes - startMinutes;
+                                      const hours = Math.floor(diffMinutes / 60);
+                                      const minutes = diffMinutes % 60;
+                                      
+                                      return (
+                                        <span className="text-xs text-muted-foreground ml-2">
+                                          ({hours} giờ{minutes > 0 ? ` ${minutes} phút` : ""})
+                                        </span>
+                                      );
+                                    })()}
+                                  </SelectItem>
+                                );
+                              })
+                            ) : (
+                              <SelectItem value="no-slots" disabled>
+                                Không có khung giờ trống
+                              </SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                        {form.watch("start_time") && form.watch("end_time") && (
+                          <div className="text-sm text-muted-foreground mt-1 flex items-center">
+                            <div className="bg-primary/10 text-primary rounded-md px-2 py-1 font-medium">
+                              {form.watch("start_time")} → {form.watch("end_time")}
+                            </div>
+                            <input 
+                              type="hidden" 
+                              name="end_time" 
+                              value={form.watch("end_time")} 
+                            />
+                          </div>
+                        )}
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
                   <div className="mt-6">
                     <h3 className="text-lg font-medium mb-2">Thông tin thanh toán</h3>
