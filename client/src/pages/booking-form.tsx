@@ -490,7 +490,7 @@ export default function BookingForm() {
                             style: "currency",
                             currency: "VND",
                           }).format(
-                            adData?.hourly_rate || tutorData?.hourly_rate || 0
+                            adData?.hourly_rate || (tutorData?.hourly_rate ? Number(tutorData.hourly_rate) : 0)
                           )}
                         </span>
                       </div>
@@ -539,7 +539,7 @@ export default function BookingForm() {
                                 const diffMinutes = endMinutes - startMinutes;
                                 const hours = diffMinutes / 60;
                                 
-                                const hourlyRate = adData?.hourly_rate || tutorData?.hourly_rate || 0;
+                                const hourlyRate = adData?.hourly_rate || (tutorData?.hourly_rate ? Number(tutorData.hourly_rate) : 0);
                                 const totalAmount = hourlyRate * hours;
                                 
                                 return new Intl.NumberFormat("vi-VN", {

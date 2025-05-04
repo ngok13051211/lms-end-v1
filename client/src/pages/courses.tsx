@@ -519,12 +519,29 @@ export default function Courses() {
                       </div>
                     </CardContent>
                     
-                    <CardFooter className="pt-0">
-                      <Link href={`/tutors/${ad.tutor.id}`}>
-                        <Button className="w-full">
-                          Xem chi tiết
-                        </Button>
-                      </Link>
+                    <CardFooter className="pt-0 flex flex-col space-y-2">
+                      <div className="grid grid-cols-2 gap-2 w-full">
+                        <Link href={`/tutors/${ad.tutor.id}`}>
+                          <Button variant="outline" className="w-full">
+                            Xem gia sư
+                          </Button>
+                        </Link>
+                        
+                        {user && user.role === "student" && (
+                          <Link href={`/book/${ad.tutor.id}/${ad.id}`}>
+                            <Button className="w-full">
+                              Đặt lịch học
+                            </Button>
+                          </Link>
+                        )}
+                        {!user && (
+                          <Link href="/login">
+                            <Button className="w-full">
+                              Đăng nhập để đặt lịch
+                            </Button>
+                          </Link>
+                        )}
+                      </div>
                     </CardFooter>
                   </Card>
                 ))}
