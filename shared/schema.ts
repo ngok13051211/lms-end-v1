@@ -332,3 +332,121 @@ export type NewReview = typeof reviews.$inferInsert;
 
 export type FavoriteTutor = typeof favoriteTutors.$inferSelect;
 export type NewFavoriteTutor = typeof favoriteTutors.$inferInsert;
+
+// Bảng đặt lịch (bookings)
+export const bookings = pgTable("bookings", {
+  id: serial("id").primaryKey(),
+  student_id: integer("student_id").notNull().references(() => users.id),
+  tutor_id: integer("tutor_id").notNull().references(() => tutorProfiles.id),
+  ad_id: integer("ad_id").references(() => ads.id),
+  
+  // Thông tin lịch học
+  title: text("title").notNull(),
+  description: text("description"),
+  start_time: timestamp("start_time").notNull(),
+  end_time: timestamp("end_time").notNull(),
+  location: text("location"),  // Địa điểm nếu dạy trực tiếp
+  meeting_url: text("meeting_url"), // URL nếu dạy trực tuyến
+  
+  // Thông tin thanh toán
+  hourly_rate: decimal("hourly_rate", { precision: 10, scale: 2 }).notNull(),
+  total_hours: decimal("total_hours", { precision: 5, scale: 2 }).notNull(),
+  total_amount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  
+  // Trạng thái đặt lịch
+  status: text("status").notNull().default("pending"), // pending, confirmed, completed, cancelled, rejected
+  
+  // Timestamps
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull()
+});
+
+// Bảng thanh toán (payments)
+export const payments = pgTable("payments", {
+  id: serial("id").primaryKey(),
+  booking_id: integer("booking_id").notNull().references(() => bookings.id),
+  transaction_id: text("transaction_id"),  // ID giao dịch từ VNPay
+  
+  // Thông tin thanh toán
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  fee: decimal("fee", { precision: 10, scale: 2 }).default("0"),
+  net_amount: decimal("net_amount", { precision: 10, scale: 2 }).notNull(),
+  
+  // Thông tin người thanh toán/nhận tiền
+  payer_id: integer("payer_id").notNull().references(() => users.id),
+  payee_id: integer("payee_id").notNull().references(() => users.id),
+  
+  // Trạng thái thanh toán
+  status: text("status").notNull().default("pending"), // pending, completed, refunded, failed
+  payment_method: text("payment_method").notNull(),  // vnpay, bank_transfer, wallet
+  
+  // Data bổ sung
+  payment_data: json("payment_data"),  // Lưu dữ liệu phản hồi từ cổng thanh toán
+  
+  // Timestamps
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull()
+});
+
+// Bảng ghi chú và đánh giá buổi học (session_notes)
+export const sessionNotes = pgTable("session_notes", {
+  id: serial("id").primaryKey(),
+  booking_id: integer("booking_id").notNull().references(() => bookings.id),
+  
+  // Ghi chú của gia sư
+  tutor_notes: text("tutor_notes"),
+  
+  // Đánh giá của học sinh
+  student_rating: integer("student_rating"),  // 1-5 sao
+  student_feedback: text("student_feedback"),
+  
+  // Timestamps
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull()
+});
+
+// Relations
+export const bookingsRelations = relations(bookings, ({ one }) => ({
+  student: one(users, { fields: [bookings.student_id], references: [users.id] }),
+  tutor: one(tutorProfiles, { fields: [bookings.tutor_id], references: [tutorProfiles.id] }),
+  ad: one(ads, { fields: [bookings.ad_id], references: [ads.id] }),
+  payment: one(payments, { fields: [bookings.id], references: [payments.booking_id] }),
+  sessionNote: one(sessionNotes, { fields: [bookings.id], references: [sessionNotes.booking_id] })
+}));
+
+export const paymentsRelations = relations(payments, ({ one }) => ({
+  booking: one(bookings, { fields: [payments.booking_id], references: [bookings.id] }),
+  payer: one(users, { fields: [payments.payer_id], references: [users.id] }),
+  payee: one(users, { fields: [payments.payee_id], references: [users.id] })
+}));
+
+export const sessionNotesRelations = relations(sessionNotes, ({ one }) => ({
+  booking: one(bookings, { fields: [sessionNotes.booking_id], references: [bookings.id] })
+}));
+
+// Schemas
+export const bookingInsertSchema = createInsertSchema(bookings, {
+  title: (schema) => schema.min(3, "Tiêu đề phải có ít nhất 3 ký tự"),
+  start_time: (schema) => schema.refine(val => new Date(val) > new Date(), {
+    message: "Thời gian bắt đầu phải là trong tương lai"
+  }),
+  end_time: (schema) => schema.refine(val => new Date(val) > new Date(), {
+    message: "Thời gian kết thúc phải là trong tương lai"
+  })
+});
+export const bookingSelectSchema = createSelectSchema(bookings);
+
+export const paymentInsertSchema = createInsertSchema(payments);
+export const paymentSelectSchema = createSelectSchema(payments);
+
+export const sessionNoteInsertSchema = createInsertSchema(sessionNotes);
+export const sessionNoteSelectSchema = createSelectSchema(sessionNotes);
+
+export type Booking = typeof bookings.$inferSelect;
+export type NewBooking = typeof bookings.$inferInsert;
+
+export type Payment = typeof payments.$inferSelect;
+export type NewPayment = typeof payments.$inferInsert;
+
+export type SessionNote = typeof sessionNotes.$inferSelect;
+export type NewSessionNote = typeof sessionNotes.$inferInsert;
