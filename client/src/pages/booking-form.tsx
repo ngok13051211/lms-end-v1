@@ -200,7 +200,12 @@ export default function BookingForm() {
       // Lọc chỉ lấy các mục có type là "specific" (ngày cụ thể)
       const specificSlots = availabilityData.filter(
         (slot: any) => slot.type === "specific" && slot.date && slot.startTime && slot.endTime
-      ) as AvailabilityItem[];
+      ).map(slot => ({
+        type: slot.type,
+        date: slot.date,
+        startTime: slot.startTime,
+        endTime: slot.endTime
+      })) as AvailabilityItem[];
 
       console.log("Các khoảng thời gian cụ thể:", specificSlots);
 
@@ -213,12 +218,15 @@ export default function BookingForm() {
       today.setHours(0, 0, 0, 0);
 
       specificSlots.forEach(slot => {
+        console.log("Đang xử lý khoảng thời gian:", slot);
+        
         // Thêm 'T00:00:00' để đảm bảo ngày được xử lý ở giờ địa phương, không phải UTC
         const dateObj = new Date(`${slot.date}T00:00:00`);
+        console.log("Đối tượng ngày tạo ra:", dateObj.toISOString());
         
         // Chỉ xem xét ngày hợp lệ và trong tương lai
         if (!isNaN(dateObj.getTime()) && dateObj >= today) {
-          const dateStr = dateObj.toISOString().split('T')[0];
+          const dateStr = slot.date; // Sử dụng ngày gốc từ dữ liệu thay vì chuyển đổi qua ISO
           
           // Thêm khoảng thời gian vào ngày
           if (!slotsByDate[dateStr]) {
@@ -262,10 +270,34 @@ export default function BookingForm() {
 
     // Đảm bảo lấy đúng ngày địa phương, không bị ảnh hưởng bởi múi giờ
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
-    const slots = availableTimeSlots[dateStr] || [];
+    console.log("Tìm kiếm lịch trống cho ngày:", dateStr);
+    console.log("Dữ liệu lịch trống hiện có:", availableTimeSlots);
+    
+    // Thử tìm lịch trống theo định dạng chuẩn yyyy-MM-dd
+    let slots = availableTimeSlots[dateStr] || [];
     
     if (slots.length === 0) {
-      console.log(`Không có khoảng thời gian nào cho ngày ${dateStr}`);
+      console.log(`Không có khoảng thời gian nào cho ngày ${dateStr} trong định dạng chuẩn`);
+      
+      // Duyệt qua tất cả các ngày trong availableTimeSlots để tìm ngày phù hợp
+      for (const key in availableTimeSlots) {
+        // Chuyển đổi key thành đối tượng Date để so sánh
+        const keyDate = new Date(`${key}T00:00:00`);
+        const selectedDateWithoutTime = new Date(selectedDate);
+        selectedDateWithoutTime.setHours(0, 0, 0, 0);
+        
+        console.log(`So sánh ${key} (${keyDate.toISOString()}) với ${dateStr} (${selectedDateWithoutTime.toISOString()})`);
+        
+        if (keyDate.getTime() === selectedDateWithoutTime.getTime()) {
+          console.log(`Tìm thấy ngày phù hợp: ${key}`);
+          slots = availableTimeSlots[key];
+          break;
+        }
+      }
+    }
+    
+    if (slots.length === 0) {
+      console.log(`Không tìm thấy khoảng thời gian nào cho ngày ${dateStr}`);
       return [];
     }
 
@@ -280,7 +312,23 @@ export default function BookingForm() {
 
     // Đảm bảo lấy đúng ngày địa phương, không bị ảnh hưởng bởi múi giờ
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
-    const slots = availableTimeSlots[dateStr] || [];
+    
+    // Cố gắng tìm slots từ tất cả các định dạng ngày có thể
+    let slots = availableTimeSlots[dateStr] || [];
+    
+    if (slots.length === 0) {
+      // Duyệt qua tất cả các ngày trong availableTimeSlots để tìm ngày phù hợp
+      for (const key in availableTimeSlots) {
+        const keyDate = new Date(`${key}T00:00:00`);
+        const selectedDateWithoutTime = new Date(selectedDate);
+        selectedDateWithoutTime.setHours(0, 0, 0, 0);
+        
+        if (keyDate.getTime() === selectedDateWithoutTime.getTime()) {
+          slots = availableTimeSlots[key];
+          break;
+        }
+      }
+    }
     
     // Tìm khoảng thời gian tương ứng với giờ bắt đầu
     const matchedSlot = slots.find(slot => slot.startTime === startTime);
