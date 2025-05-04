@@ -419,8 +419,18 @@ export default function TutorProfile() {
                   </p>
                 </div>
                 
-                <Button onClick={startConversation} className="w-full mb-3">
-                  <Mail className="mr-2 h-4 w-4" /> Message Tutor
+                {user && user.role === "student" && (
+                  <Button
+                    onClick={() => navigate(`/book/${tutorId}`)}
+                    className="w-full mb-3"
+                    variant="default"
+                  >
+                    <Calendar className="mr-2 h-4 w-4" /> Đặt lịch học
+                  </Button>
+                )}
+
+                <Button onClick={startConversation} className="w-full mb-3" variant="secondary">
+                  <Mail className="mr-2 h-4 w-4" /> Nhắn tin với gia sư
                 </Button>
                 
                 {user && user.role === "student" && (

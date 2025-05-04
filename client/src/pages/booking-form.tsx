@@ -2,12 +2,12 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useNavigate, useParams, useLocation } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useSelector } from "react-redux";
 import { RootState } from "../store";
-import { addDays, addHours, format, parse } from "date-fns";
+import { addDays, format, parse } from "date-fns";
 
 // UI Components
 import { Button } from "@/components/ui/button";
@@ -118,9 +118,9 @@ export default function BookingForm() {
       end_time: "10:00",
       location: adData?.location || "",
       meeting_url: "",
-      teaching_mode: adData?.teaching_mode 
+      teaching_mode: (adData?.teaching_mode 
         ? getTeachingModeInEnglish(adData.teaching_mode)
-        : "both",
+        : "both") as "online" | "offline" | "both",
     },
   });
 
@@ -186,7 +186,7 @@ export default function BookingForm() {
   };
 
   // Chọn giờ
-  const timeOptions = [];
+  const timeOptions: string[] = [];
   for (let hour = 6; hour < 22; hour++) {
     for (let min = 0; min < 60; min += 30) {
       const time = `${hour.toString().padStart(2, "0")}:${min
