@@ -202,6 +202,8 @@ export default function BookingForm() {
         // Tạo object mới để lưu trữ thông tin về các khoảng thời gian theo ngày
         const slots: {[key: string]: string[]} = {};
         const timeRanges: {[key: string]: Array<{startTime: string, endTime: string}>} = {};
+        // Dùng để lưu trữ thông tin về các ngày cụ thể có lịch trống
+        const specificDates: {[key: string]: boolean} = {};
         
         // Ánh xạ tên ngày sang số ngày trong tuần (JavaScript getDay trả về 0 = Sunday, 1 = Monday, ...)
         const dayMap: {[key: string]: string} = {
@@ -218,17 +220,30 @@ export default function BookingForm() {
         form.setValue("start_time", "");
         form.setValue("end_time", "");
         
-        // Tổ chức lại các khoảng thời gian theo ngày trong tuần
+        // Kiểm tra xem có ngày cụ thể trong dữ liệu lịch trống không
+        const hasSpecificDate = availabilityData.some((slot: any) => slot.specificDate);
+        
+        // Tổ chức lại các khoảng thời gian theo ngày
         availabilityData.forEach((slot: any) => {
-          const dayNumber = dayMap[slot.day.toLowerCase()];
-          if (!dayNumber) return;
+          let keyDate: string;
           
-          // Lưu khoảng thời gian đầy đủ
-          if (!timeRanges[dayNumber]) {
-            timeRanges[dayNumber] = [];
+          if (slot.specificDate) {
+            // Nếu có ngày cụ thể, sử dụng ngày đó làm khóa
+            keyDate = slot.specificDate; // Giả sử format là YYYY-MM-DD
+            specificDates[keyDate] = true;
+          } else {
+            // Nếu không có ngày cụ thể, sử dụng ngày trong tuần
+            const dayNumber = dayMap[slot.day.toLowerCase()];
+            if (!dayNumber) return;
+            keyDate = `day_${dayNumber}`;
           }
           
-          timeRanges[dayNumber].push({
+          // Lưu khoảng thời gian đầy đủ
+          if (!timeRanges[keyDate]) {
+            timeRanges[keyDate] = [];
+          }
+          
+          timeRanges[keyDate].push({
             startTime: slot.startTime,
             endTime: slot.endTime
           });
@@ -243,14 +258,14 @@ export default function BookingForm() {
           if (startMinutes >= endMinutes) return;
           
           // Tạo danh sách các thời điểm có thể bắt đầu (30 phút một)
-          if (!slots[dayNumber]) {
-            slots[dayNumber] = [];
+          if (!slots[keyDate]) {
+            slots[keyDate] = [];
           }
           
           // Thêm thời gian bắt đầu chính xác từ dữ liệu gia sư
           const startTimeStr = `${startHour.toString().padStart(2, '0')}:${startMin.toString().padStart(2, '0')}`;
           if (startHour >= 6 && startHour < 22) {
-            slots[dayNumber].push(startTimeStr);
+            slots[keyDate].push(startTimeStr);
           }
           
           // Thêm các thời điểm 30 phút từ lúc bắt đầu đến trước khi kết thúc
@@ -269,23 +284,55 @@ export default function BookingForm() {
             if (hour < 6 || hour >= 22) continue;
             
             const timeStr = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
-            slots[dayNumber].push(timeStr);
+            slots[keyDate].push(timeStr);
           }
         });
         
         // Loại bỏ trùng lặp và sắp xếp các thời điểm có thể bắt đầu cho mỗi ngày
-        for (const dayNumber in slots) {
-          slots[dayNumber] = Array.from(new Set(slots[dayNumber])).sort();
+        for (const keyDate in slots) {
+          slots[keyDate] = Array.from(new Set(slots[keyDate])).sort();
         }
         
         console.log("Slots đã xử lý:", slots);
         console.log("TimeRanges đã xử lý:", timeRanges);
         
+        // Giả định rằng API chưa trả về ngày cụ thể, ta cần tự tạo ra
+        // Hiện tại, gia sư chỉ có thể chọn thứ trong tuần hoặc ngày cụ thể (05/05/2025 - Thứ 2)
+        // Nếu API chưa hỗ trợ trường specificDate, chúng ta có thể thêm logic để tạm thời giả định
+        // đây là ngày Thứ Hai gần nhất (ngày 05/05/2025)
+        const hasDateField = availabilityData.some((slot: any) => slot.date);
+        if (!hasDateField && !hasSpecificDate && Object.keys(slots).length > 0) {
+          // Giả định đây là ngày cụ thể của Thứ Hai trong tuần hiện tại
+          const today = new Date();
+          const mondayThisWeek = new Date(today);
+          const dayDiff = (1 - today.getDay() + 7) % 7; // Monday is 1, calculate days until next Monday
+          mondayThisWeek.setDate(today.getDate() + dayDiff);
+          
+          const mondayKey = `day_1`; // key for Monday
+          if (slots[mondayKey]) {
+            // Format ngày YYYY-MM-DD
+            const dateStr = mondayThisWeek.toISOString().split('T')[0];
+            
+            // Chuyển dữ liệu từ day_1 sang ngày cụ thể
+            slots[dateStr] = slots[mondayKey];
+            timeRanges[dateStr] = timeRanges[mondayKey];
+            
+            // Xóa dữ liệu ngày không cụ thể
+            delete slots[mondayKey];
+            delete timeRanges[mondayKey];
+            
+            // Đánh dấu là có ngày cụ thể
+            specificDates[dateStr] = true;
+          }
+        }
+        
         // Lưu thông tin khoảng thời gian để sử dụng khi tính toán thời gian kết thúc
         // @ts-ignore - Thêm thuộc tính tạm cho state
         setAvailableTimeSlots((prev) => ({
           ...slots,
-          _timeRanges: timeRanges
+          _timeRanges: timeRanges,
+          _specificDates: specificDates,
+          _hasSpecificDates: Object.keys(specificDates).length > 0
         }));
       } catch (error) {
         console.error("Lỗi khi xử lý dữ liệu lịch trống:", error);
@@ -300,36 +347,81 @@ export default function BookingForm() {
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Bắt đầu từ thời điểm 00:00:00 của ngày hôm nay
     
-    // 28 ngày (4 tuần)
-    for (let i = 0; i < 28; i++) {
-      const date = addDays(today, i);
-      const dayOfWeek = date.getDay().toString();
+    // @ts-ignore - Truy cập thuộc tính động
+    const hasSpecificDates = availableTimeSlots._hasSpecificDates;
+    
+    if (hasSpecificDates) {
+      // @ts-ignore - Truy cập thuộc tính động
+      const specificDates = availableTimeSlots._specificDates || {};
       
-      // Chỉ thêm ngày có slot trống
-      if (availableTimeSlots[dayOfWeek] && availableTimeSlots[dayOfWeek].length > 0) {
-        result.push(date);
+      // Chỉ hiển thị những ngày cụ thể (YYYY-MM-DD)
+      Object.keys(specificDates).forEach(dateStr => {
+        const date = new Date(dateStr);
+        // Kiểm tra ngày hợp lệ 
+        if (!isNaN(date.getTime()) && date >= today) {
+          result.push(date);
+        }
+      });
+    } else {
+      // 28 ngày (4 tuần)
+      for (let i = 0; i < 28; i++) {
+        const date = addDays(today, i);
+        const dayKey = `day_${date.getDay()}`;
+        
+        // Chỉ thêm ngày có slot trống
+        if (availableTimeSlots[dayKey] && availableTimeSlots[dayKey].length > 0) {
+          result.push(date);
+        }
       }
     }
     
-    return result;
+    // Sắp xếp theo thứ tự ngày tăng dần
+    return result.sort((a, b) => a.getTime() - b.getTime());
   };
   
   // Hiển thị thời gian trống cho ngày đã chọn
   const getAvailableTimesForSelectedDate = () => {
     if (!form.watch("date")) return [];
-    const dayOfWeek = form.watch("date").getDay().toString();
-    return availableTimeSlots[dayOfWeek] || [];
+    
+    const selectedDate = form.watch("date");
+    
+    // @ts-ignore - Truy cập thuộc tính động
+    const hasSpecificDates = availableTimeSlots._hasSpecificDates;
+    
+    if (hasSpecificDates) {
+      // Format ngày YYYY-MM-DD để tìm ngày cụ thể
+      const dateStr = selectedDate.toISOString().split('T')[0];
+      return availableTimeSlots[dateStr] || [];
+    } else {
+      // Dùng day_X để tìm theo ngày trong tuần
+      const dayKey = `day_${selectedDate.getDay()}`;
+      return availableTimeSlots[dayKey] || [];
+    }
   };
   
   // Cập nhật khoảng thời gian khi người dùng chọn giờ bắt đầu
   const updateEndTimeBasedOnStartTime = (startTime: string) => {
     if (!startTime) return;
     
-    const dayOfWeek = form.watch("date")?.getDay()?.toString();
-    if (!dayOfWeek) return;
+    const selectedDate = form.watch("date");
+    if (!selectedDate) return;
     
     // @ts-ignore - Truy cập thuộc tính động
-    const timeRanges = availableTimeSlots._timeRanges?.[dayOfWeek] || [];
+    const hasSpecificDates = availableTimeSlots._hasSpecificDates;
+    
+    // Xác định khóa để tìm khoảng thời gian
+    let timeRangeKey: string;
+    
+    if (hasSpecificDates) {
+      // Format ngày YYYY-MM-DD để tìm ngày cụ thể
+      timeRangeKey = selectedDate.toISOString().split('T')[0];
+    } else {
+      // Dùng day_X để tìm theo ngày trong tuần
+      timeRangeKey = `day_${selectedDate.getDay()}`;
+    }
+    
+    // @ts-ignore - Truy cập thuộc tính động
+    const timeRanges = availableTimeSlots._timeRanges?.[timeRangeKey] || [];
     if (timeRanges.length === 0) return;
     
     // Chuyển đổi startTime sang số phút từ nửa đêm
@@ -379,15 +471,39 @@ export default function BookingForm() {
       console.log(`Thời gian được chọn: ${startTime}, Khoảng thời gian phù hợp: ${matchedRange.startStr}-${matchedRange.endStr}`);
       console.log(`Đặt thời gian kết thúc: ${endTime}`);
     } else {
-      console.log(`Không tìm thấy khoảng thời gian phù hợp cho ${startTime}`);
+      console.log(`Không tìm thấy khoảng thời gian phù hợp cho ${startTime} vào ngày ${timeRangeKey}`);
       
-      // Nếu không tìm thấy khoảng thời gian phù hợp, sử dụng thời gian kết thúc mặc định 1 giờ sau
-      const endMinutes = startMinutes + 60;
-      const endHour = Math.floor(endMinutes / 60);
-      const endMin = endMinutes % 60;
-      const endTime = `${endHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}`;
-      
-      form.setValue("end_time", endTime);
+      // Tìm khoảng thời gian gần nhất (nếu có)
+      if (timeRanges.length > 0) {
+        // Kiểm tra khoảng thời gian khả dụng
+        const availableTimePoints = getAvailableTimesForSelectedDate();
+        if (availableTimePoints.includes(startTime)) {
+          // Nếu thời gian bắt đầu hợp lệ, tìm khoảng thời gian kết thúc phù hợp
+          
+          // Thêm 60 phút cho thời gian kết thúc - (nhưng giới hạn không quá 22h)
+          const endMinutes = Math.min(startMinutes + 60, 22 * 60);
+          const endHour = Math.floor(endMinutes / 60);
+          const endMin = endMinutes % 60;
+          const endTime = `${endHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}`;
+          
+          form.setValue("end_time", endTime);
+        } else {
+          // Nếu thời gian bắt đầu không nằm trong danh sách thời gian có sẵn
+          // đặt giờ bắt đầu về giá trị đầu tiên
+          if (availableTimePoints.length > 0) {
+            form.setValue("start_time", availableTimePoints[0]);
+            updateEndTimeBasedOnStartTime(availableTimePoints[0]);
+          }
+        }
+      } else {
+        // Nếu không có khoảng thời gian nào, đặt mặc định 1 giờ sau
+        const endMinutes = startMinutes + 60;
+        const endHour = Math.floor(endMinutes / 60);
+        const endMin = endMinutes % 60;
+        const endTime = `${endHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}`;
+        
+        form.setValue("end_time", endTime);
+      }
     }
   };
   
