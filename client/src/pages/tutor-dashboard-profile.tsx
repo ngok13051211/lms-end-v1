@@ -86,14 +86,19 @@ const specificDateAvailabilityItemSchema = z.object({
   endTime: z.string(), // Format: "HH:MM" in 24h
 });
 
-// Định nghĩa cấu trúc cho lịch trống (chỉ có lịch theo ngày cụ thể)
+// Định nghĩa cấu trúc cho lịch trống
 const availabilityItemSchema = specificDateAvailabilityItemSchema;
 
-// Định nghĩa kiểu dữ liệu cho một khung giờ trống
-export type AvailabilityItem = z.infer<typeof availabilityItemSchema>;
-export type SpecificDateAvailabilityItem = z.infer<
-  typeof specificDateAvailabilityItemSchema
->;
+// Định nghĩa kiểu dữ liệu cho một khung giờ trống (ngày cụ thể)
+export type AvailabilityItem = {
+  type: "specific";
+  date: string; // Ngày ở định dạng YYYY-MM-DD
+  startTime: string; // Thời gian ở định dạng HH:MM
+  endTime: string; // Thời gian ở định dạng HH:MM
+};
+
+// Sử dụng cùng kiểu dữ liệu cho cả hai biến type
+export type SpecificDateAvailabilityItem = AvailabilityItem;
 
 // Form schema for tutor profile
 const tutorProfileSchema = z.object({
@@ -108,7 +113,24 @@ const tutorProfileSchema = z.object({
   // Trường availability là tùy chọn, sẽ được xử lý riêng
 });
 
-// Không cần các hàm xử lý ngày trong tuần nữa
+// Hàm kiểm tra hai khung giờ có chồng lấn nhau không
+const isTimeSlotOverlapping = (
+  slot1: AvailabilityItem,
+  slot2: AvailabilityItem
+): boolean => {
+  if (slot1.date !== slot2.date) return false;
+  
+  const startTime1 = slot1.startTime;
+  const endTime1 = slot1.endTime;
+  const startTime2 = slot2.startTime;
+  const endTime2 = slot2.endTime;
+  
+  // Kiểm tra có chồng lấn không
+  return (
+    (startTime1 < endTime2 && endTime1 > startTime2) ||
+    (startTime2 < endTime1 && endTime2 > startTime1)
+  );
+};
 
 export default function TutorDashboardProfile() {
   const { user } = useSelector((state: RootState) => state.auth);
@@ -121,22 +143,16 @@ export default function TutorDashboardProfile() {
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
 
   // Khung giờ trống
-  const [availabilityItems, setAvailabilityItems] = useState<
-    AvailabilityItem[]
-  >([]);
+  const [availabilityItems, setAvailabilityItems] = useState<AvailabilityItem[]>([]);
   const [availabilityDialogOpen, setAvailabilityDialogOpen] = useState(false);
 
-  // State để quản lý loại lịch trống đang tạo (chỉ có ngày cụ thể)
-  const [availabilityType, setAvailabilityType] = useState<"specific">("specific");
-
-  // State cho khung giờ trống theo ngày cụ thể
-  const [newSpecificDateItem, setNewSpecificDateItem] =
-    useState<SpecificDateAvailabilityItem>({
-      type: "specific",
-      date: format(new Date(), "yyyy-MM-dd"),
-      startTime: "08:00",
-      endTime: "17:00",
-    });
+  // State cho khung giờ trống mới (chỉ có ngày cụ thể)
+  const [newAvailabilityItem, setNewAvailabilityItem] = useState<AvailabilityItem>({
+    type: "specific",
+    date: format(new Date(), "yyyy-MM-dd"),
+    startTime: "08:00",
+    endTime: "17:00",
+  });
 
   // Get tutor profile
   const {
