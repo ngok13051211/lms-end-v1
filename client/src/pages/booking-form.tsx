@@ -197,6 +197,18 @@ export default function BookingForm() {
   // Khung giờ trống của gia sư (trong thực tế, bạn sẽ cần lấy dữ liệu này từ API)
   const [availableTimeSlots, setAvailableTimeSlots] = useState<AvailabilityState>({});
   
+  // Test hàm getDayOfWeekNumber
+  useEffect(() => {
+    console.log("TEST getDayOfWeekNumber:");
+    console.log("sunday ->", getDayOfWeekNumber("sunday"));
+    console.log("monday ->", getDayOfWeekNumber("monday"));
+    console.log("tuesday ->", getDayOfWeekNumber("tuesday"));
+    console.log("wednesday ->", getDayOfWeekNumber("wednesday"));
+    console.log("thursday ->", getDayOfWeekNumber("thursday"));
+    console.log("friday ->", getDayOfWeekNumber("friday"));
+    console.log("saturday ->", getDayOfWeekNumber("saturday"));
+  }, []);
+  
   // Định nghĩa hàm ánh xạ tên ngày sang số thứ tự ngày trong tuần
   const getDayOfWeekNumber = (day: string): number => {
     const dayMap: {[key: string]: number} = {
@@ -206,9 +218,27 @@ export default function BookingForm() {
       'wednesday': 3,
       'thursday': 4,
       'friday': 5,
-      'saturday': 6
+      'saturday': 6,
+      // Vietnamese support
+      'chủ nhật': 0, 
+      'thứ hai': 1,
+      'thứ ba': 2,
+      'thứ tư': 3,
+      'thứ năm': 4,
+      'thứ sáu': 5,
+      'thứ bảy': 6,
+      // Alternatives without diacritics
+      'chu nhat': 0,
+      'thu hai': 1,
+      'thu ba': 2,
+      'thu tu': 3,
+      'thu nam': 4,
+      'thu sau': 5,
+      'thu bay': 6
     };
-    return dayMap[day.toLowerCase()];
+    const result = dayMap[day.toLowerCase()];
+    console.log(`Mapping day: "${day.toLowerCase()}" -> ${result}`);
+    return result;
   };
 
   // Hàm tìm ngày tiếp theo tính từ ngày hiện tại có thứ tương ứng
@@ -359,7 +389,9 @@ export default function BookingForm() {
             }
             
             // Xử lý trường hợp ngày trong tuần (monday, tuesday, etc.)
+            console.log("Xử lý lịch hàng tuần với ngày:", slot.day);
             const dayOfWeek = getDayOfWeekNumber(slot.day);
+            console.log("Số thứ tự ngày trong tuần:", dayOfWeek, "cho ngày", slot.day);
             if (dayOfWeek === undefined) {
               console.warn(`Không nhận dạng được ngày trong tuần: ${slot.day}`);
               return;
