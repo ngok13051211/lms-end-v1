@@ -407,6 +407,10 @@ export default function BookingForm() {
                                 date < new Date() || date > addDays(new Date(), 60)
                               }
                               initialFocus
+                              className="rounded-md border"
+                              weekStartsOn={1}
+                              showOutsideDays={false}
+                              today={new Date()}
                             />
                           </PopoverContent>
                         </Popover>
