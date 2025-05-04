@@ -22,9 +22,9 @@ export default function Courses() {
   const isMobile = useMobile();
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedSubject, setSelectedSubject] = useState("");
-  const [selectedLevel, setSelectedLevel] = useState("");
-  const [teachingMode, setTeachingMode] = useState("");
+  const [selectedSubject, setSelectedSubject] = useState("all_subjects");
+  const [selectedLevel, setSelectedLevel] = useState("all_levels");
+  const [teachingMode, setTeachingMode] = useState("all_modes");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   
   // Define types for subjects and education levels
@@ -115,9 +115,9 @@ export default function Courses() {
   // Clear all filters
   const clearFilters = () => {
     setSearchTerm("");
-    setSelectedSubject("");
-    setSelectedLevel("");
-    setTeachingMode("");
+    setSelectedSubject("all_subjects");
+    setSelectedLevel("all_levels");
+    setTeachingMode("all_modes");
     setCurrentPage(1);
     if (isMobile) {
       setIsFilterOpen(false);

@@ -283,22 +283,22 @@ export const getAllAds = async (req: Request, res: Response) => {
     // Always show only active ads
     conditions.push(eq(schema.ads.status, "active"));
     
-    // Add filters if they exist
-    if (subject && subject !== '') {
+    // Add filters if they exist and they're not the "all" option
+    if (subject && subject !== '' && subject !== 'all_subjects') {
       const subjectId = parseInt(subject as string);
       if (!isNaN(subjectId)) {
         conditions.push(eq(schema.ads.subject_id, subjectId));
       }
     }
     
-    if (level && level !== '') {
+    if (level && level !== '' && level !== 'all_levels') {
       const levelId = parseInt(level as string);
       if (!isNaN(levelId)) {
         conditions.push(eq(schema.ads.level_id, levelId));
       }
     }
     
-    if (teaching_mode && teaching_mode !== '') {
+    if (teaching_mode && teaching_mode !== '' && teaching_mode !== 'all_modes') {
       conditions.push(eq(schema.ads.teaching_mode, teaching_mode as string));
     }
     
