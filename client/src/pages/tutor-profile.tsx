@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import MainLayout from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -133,12 +132,12 @@ export default function TutorProfile() {
   
   if (isLoading) {
     return (
-      <MainLayout>
+      <div>
         <div className="flex items-center justify-center min-h-[60vh]">
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
           <span className="ml-2 text-xl">Loading tutor profile...</span>
         </div>
-      </MainLayout>
+      </div>
     );
   }
   
@@ -171,7 +170,7 @@ export default function TutorProfile() {
   };
   
   return (
-    <MainLayout>
+    <div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
@@ -458,6 +457,6 @@ export default function TutorProfile() {
           </div>
         </div>
       </div>
-    </MainLayout>
+    </div>
   );
 }

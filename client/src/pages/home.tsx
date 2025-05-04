@@ -1,4 +1,3 @@
-import MainLayout from "@/components/layout/MainLayout";
 import HeroSection from "@/components/home/HeroSection";
 import SearchSection from "@/components/home/SearchSection";
 import FeaturedTutors from "@/components/home/FeaturedTutors";
@@ -33,17 +32,15 @@ export default function Home() {
 
   if (isLoading) {
     return (
-      <MainLayout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          <span className="ml-2 text-xl">Loading...</span>
-        </div>
-      </MainLayout>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <span className="ml-2 text-xl">Loading...</span>
+      </div>
     );
   }
 
   return (
-    <MainLayout>
+    <>
       <HeroSection />
       <SearchSection subjects={subjects || []} educationLevels={educationLevels || []} />
       <FeaturedTutors tutors={tutors || []} />
@@ -53,6 +50,6 @@ export default function Home() {
       <BecomeTutor />
       <AppDownload />
       <FAQ />
-    </MainLayout>
+    </>
   );
 }

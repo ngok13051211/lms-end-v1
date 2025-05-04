@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import MainLayout from "@/components/layout/MainLayout";
 import TutorCard from "@/components/ui/TutorCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -110,7 +109,7 @@ export default function TutorListing() {
   const isLoading = tutorsLoading || subjectsLoading || levelsLoading;
   
   return (
-    <MainLayout>
+    <div>
       <div className="bg-white shadow-md py-6 sticky top-16 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <form onSubmit={handleSearch} className="flex flex-col lg:flex-row gap-4">
@@ -538,6 +537,6 @@ export default function TutorListing() {
           </>
         )}
       </div>
-    </MainLayout>
+    </div>
   );
 }
