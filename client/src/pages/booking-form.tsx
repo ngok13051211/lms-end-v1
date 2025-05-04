@@ -37,13 +37,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
+import { ArrowLeft, Calendar as CalendarIcon, Loader2, Search } from "lucide-react";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { CalendarIcon, Loader2 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 // Validation schema
@@ -190,15 +190,28 @@ export default function BookingForm() {
   
   // Xử lý dữ liệu availability từ profile của gia sư
   useEffect(() => {
-    if (tutorData && tutorData.availability) {
-      try {
+    try {
+      if (tutorData && tutorData.availability) {
         // Nếu availability đã là JSON object thì không cần parse
         const availabilityData = typeof tutorData.availability === 'string' 
           ? JSON.parse(tutorData.availability) 
           : tutorData.availability;
         
         console.log("Dữ liệu lịch trống nhận được:", JSON.stringify(availabilityData));
-          
+        
+        // Kiểm tra nếu availabilityData là mảng rỗng hoặc không phải là mảng
+        if (!Array.isArray(availabilityData) || availabilityData.length === 0) {
+          console.log("Gia sư chưa thiết lập lịch trống hoặc có lỗi dữ liệu.");
+          // Thiết lập state rỗng nhưng vẫn có cấu trúc cần thiết
+          setAvailableTimeSlots({
+            _timeRanges: {},
+            _specificDates: {},
+            _hasSpecificDates: false,
+            _empty: true // Đánh dấu là không có lịch trống
+          });
+          return;
+        }
+        
         // Tạo object mới để lưu trữ thông tin về các khoảng thời gian theo ngày
         const slots: {[key: string]: string[]} = {};
         const timeRanges: {[key: string]: Array<{startTime: string, endTime: string}>} = {};
@@ -231,11 +244,21 @@ export default function BookingForm() {
             // Nếu có ngày cụ thể, sử dụng ngày đó làm khóa
             keyDate = slot.specificDate; // Giả sử format là YYYY-MM-DD
             specificDates[keyDate] = true;
-          } else {
+          } else if (slot.day) {
             // Nếu không có ngày cụ thể, sử dụng ngày trong tuần
             const dayNumber = dayMap[slot.day.toLowerCase()];
             if (!dayNumber) return;
             keyDate = `day_${dayNumber}`;
+          } else {
+            // Nếu không có cả ngày cụ thể và ngày trong tuần, bỏ qua slot này
+            console.warn("Slot không có thông tin ngày:", slot);
+            return;
+          }
+          
+          // Kiểm tra xem slot có đầy đủ thông tin thời gian bắt đầu và kết thúc không
+          if (!slot.startTime || !slot.endTime) {
+            console.warn("Slot thiếu thông tin thời gian:", slot);
+            return;
           }
           
           // Lưu khoảng thời gian đầy đủ
@@ -252,10 +275,18 @@ export default function BookingForm() {
           const [startHour, startMin] = slot.startTime.split(':').map(Number);
           const [endHour, endMin] = slot.endTime.split(':').map(Number);
           
+          if (isNaN(startHour) || isNaN(startMin) || isNaN(endHour) || isNaN(endMin)) {
+            console.warn("Định dạng thời gian không hợp lệ:", slot);
+            return;
+          }
+          
           const startMinutes = startHour * 60 + startMin;
           const endMinutes = endHour * 60 + endMin;
           
-          if (startMinutes >= endMinutes) return;
+          if (startMinutes >= endMinutes) {
+            console.warn("Thời gian bắt đầu lớn hơn hoặc bằng thời gian kết thúc:", slot);
+            return;
+          }
           
           // Tạo danh sách các thời điểm có thể bắt đầu (30 phút một)
           if (!slots[keyDate]) {
@@ -332,11 +363,28 @@ export default function BookingForm() {
           ...slots,
           _timeRanges: timeRanges,
           _specificDates: specificDates,
-          _hasSpecificDates: Object.keys(specificDates).length > 0
+          _hasSpecificDates: Object.keys(specificDates).length > 0,
+          _empty: Object.keys(slots).length === 0 // Đánh dấu nếu không có slots nào
         }));
-      } catch (error) {
-        console.error("Lỗi khi xử lý dữ liệu lịch trống:", error);
+      } else {
+        // Nếu không có dữ liệu lịch trống
+        console.log("Không có dữ liệu lịch trống cho gia sư này.");
+        setAvailableTimeSlots({
+          _timeRanges: {},
+          _specificDates: {},
+          _hasSpecificDates: false,
+          _empty: true
+        });
       }
+    } catch (error) {
+      console.error("Lỗi khi xử lý dữ liệu lịch trống:", error);
+      // Đảm bảo luôn có giá trị mặc định
+      setAvailableTimeSlots({
+        _timeRanges: {},
+        _specificDates: {},
+        _hasSpecificDates: false,
+        _empty: true
+      });
     }
   }, [tutorData]);
   
