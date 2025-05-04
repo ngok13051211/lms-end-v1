@@ -200,13 +200,21 @@ export default function BookingForm() {
   // Test hàm getDayOfWeekNumber
   useEffect(() => {
     console.log("TEST getDayOfWeekNumber:");
-    console.log("sunday ->", getDayOfWeekNumber("sunday"));
-    console.log("monday ->", getDayOfWeekNumber("monday"));
-    console.log("tuesday ->", getDayOfWeekNumber("tuesday"));
-    console.log("wednesday ->", getDayOfWeekNumber("wednesday"));
-    console.log("thursday ->", getDayOfWeekNumber("thursday"));
-    console.log("friday ->", getDayOfWeekNumber("friday"));
-    console.log("saturday ->", getDayOfWeekNumber("saturday"));
+    console.log("sunday ->", getDayOfWeekNumber("sunday"), "JS getDay():", 0);
+    console.log("monday ->", getDayOfWeekNumber("monday"), "JS getDay():", 1);
+    console.log("tuesday ->", getDayOfWeekNumber("tuesday"), "JS getDay():", 2);
+    console.log("wednesday ->", getDayOfWeekNumber("wednesday"), "JS getDay():", 3);
+    console.log("thursday ->", getDayOfWeekNumber("thursday"), "JS getDay():", 4);
+    console.log("friday ->", getDayOfWeekNumber("friday"), "JS getDay():", 5);
+    console.log("saturday ->", getDayOfWeekNumber("saturday"), "JS getDay():", 6);
+    
+    // Test how JavaScript handles dates
+    const today = new Date(); // Today
+    for (let i = 0; i < 7; i++) {
+      const testDate = new Date(today);
+      testDate.setDate(today.getDate() + i);
+      console.log(`Date: ${testDate.toISOString().split('T')[0]}, Day of week: ${testDate.getDay()}, Day: ${testDate.toLocaleDateString('en-US', { weekday: 'long' })}`);
+    }
   }, []);
   
   // Định nghĩa hàm ánh xạ tên ngày sang số thứ tự ngày trong tuần
@@ -420,8 +428,14 @@ export default function BookingForm() {
             for (let i = 0; i < 28; i++) {
               const date = new Date(today);
               date.setDate(today.getDate() + i);
-              if (date.getDay() === dayOfWeek) {
+              
+              // So sánh ngày trong tuần
+              const currentDayOfWeek = date.getDay();
+              console.log(`So sánh ngày: ${date.toISOString().split('T')[0]}, day.getDay()=${currentDayOfWeek}, dayOfWeek từ slot=${dayOfWeek}, isMatch=${currentDayOfWeek === dayOfWeek}`);
+              
+              if (currentDayOfWeek === dayOfWeek) {
                 dates.push(date);
+                console.log(`Thêm ngày ${date.toISOString().split('T')[0]} vào lịch vì ngày trong tuần=${currentDayOfWeek}`);
               }
             }
             
