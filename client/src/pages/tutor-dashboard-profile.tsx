@@ -121,6 +121,7 @@ const isTimeSlotOverlapping = (
 };
 
 export default function TutorDashboardProfile() {
+  const { toast } = useToast();
   const { user } = useSelector((state: RootState) => state.auth);
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
@@ -544,7 +545,7 @@ export default function TutorDashboardProfile() {
   });
 
   // Kiểm tra khung giờ trùng lặp (chỉ dùng cho ngày cụ thể)
-  const isTimeSlotOverlapping = (newSlot: AvailabilityItem) => {
+  const checkTimeSlotOverlapping = (newSlot: AvailabilityItem) => {
     // Chỉ kiểm tra trùng lặp cho các lịch trống cùng ngày
     return availabilityItems.some((existingSlot) => {
       if (existingSlot.date === newSlot.date) {
@@ -607,7 +608,7 @@ export default function TutorDashboardProfile() {
     }
 
     // Kiểm tra xem đã có lịch trống cho ngày này chưa và có trùng lấp không
-    if (isTimeSlotOverlapping(newAvailabilityItem)) {
+    if (checkTimeSlotOverlapping(newAvailabilityItem)) {
       toast({
         title: "Lịch trùng lặp",
         description:
