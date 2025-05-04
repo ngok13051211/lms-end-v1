@@ -479,8 +479,13 @@ export default function BookingForm() {
                       <FormItem className="flex flex-col">
                         <FormLabel>Ngày học</FormLabel>
                         <div className="text-xs mb-2 text-muted-foreground">
-                          (Lịch học có màu nền xanh nhạt là những ngày gia sư có lịch trống)
+                          (Chỉ hiển thị những ngày gia sư có lịch trống)
                         </div>
+                        {Object.keys(availableTimeSlots).length === 0 && (
+                          <div className="text-xs text-amber-600 mb-2">
+                            Đang đồng bộ lịch với gia sư...
+                          </div>
+                        )}
                         <Popover>
                           <PopoverTrigger asChild>
                             <FormControl>
@@ -582,6 +587,11 @@ export default function BookingForm() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Giờ kết thúc</FormLabel>
+                          {getAvailableTimesForSelectedDate().length > 0 && (
+                            <div className="text-xs mb-2 text-muted-foreground">
+                              (Chỉ hiển thị giờ trong khung thời gian gia sư có lịch trống)
+                            </div>
+                          )}
                           <Select
                             onValueChange={field.onChange}
                             defaultValue={field.value}
@@ -593,15 +603,23 @@ export default function BookingForm() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {timeOptions
-                                .filter(
-                                  (time) => time > form.watch("start_time")
-                                )
-                                .map((time) => (
-                                  <SelectItem key={time} value={time}>
-                                    {time}
-                                  </SelectItem>
-                                ))}
+                              {getAvailableTimesForSelectedDate().length > 0 ? (
+                                getAvailableTimesForSelectedDate()
+                                  .filter((time) => time > form.watch("start_time"))
+                                  .map((time) => (
+                                    <SelectItem key={time} value={time}>
+                                      {time}
+                                    </SelectItem>
+                                  ))
+                              ) : (
+                                timeOptions
+                                  .filter((time) => time > form.watch("start_time"))
+                                  .map((time) => (
+                                    <SelectItem key={time} value={time}>
+                                      {time}
+                                    </SelectItem>
+                                  ))
+                              )}
                             </SelectContent>
                           </Select>
                           <FormMessage />
