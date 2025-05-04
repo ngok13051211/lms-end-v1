@@ -57,6 +57,7 @@ import {
   CalendarDays,
   FileText,
   ExternalLink,
+  Trash,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -65,17 +66,7 @@ import { CheckboxGroup, CheckboxItem } from "@/components/ui/checkbox-group";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import TutorDashboardLayout from "@/components/layout/TutorDashboardLayout";
-import {
-  format,
-  addDays,
-  nextMonday,
-  nextTuesday,
-  nextWednesday,
-  nextThursday,
-  nextFriday,
-  nextSaturday,
-  nextSunday,
-} from "date-fns";
+import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 
 // Định nghĩa cấu trúc cho khung giờ trống theo ngày cụ thể
@@ -96,9 +87,6 @@ export type AvailabilityItem = {
   startTime: string; // Thời gian ở định dạng HH:MM
   endTime: string; // Thời gian ở định dạng HH:MM
 };
-
-// Sử dụng cùng kiểu dữ liệu cho cả hai biến type
-export type SpecificDateAvailabilityItem = AvailabilityItem;
 
 // Form schema for tutor profile
 const tutorProfileSchema = z.object({
@@ -178,563 +166,290 @@ export default function TutorDashboardProfile() {
     enabled: true, // Always fetch education levels for profile creation
   });
 
-  // Tutor profile form
+  // Setup profile form
   const profileForm = useForm<z.infer<typeof tutorProfileSchema>>({
     resolver: zodResolver(tutorProfileSchema),
     defaultValues: {
       bio: "",
       education: "",
       experience: "",
-      hourlyRate: 10000,
-      teachingMode: "online",
+      hourlyRate: 50000,
+      teachingMode: "both",
     },
   });
 
-  // Update form values when profile data changes
-  useEffect(() => {
-    if (tutorProfile) {
-      console.log("Received tutorProfile data:", JSON.stringify(tutorProfile));
-
-      // Manually extract and convert values with appropriate defaults
-      const formData = {
-        bio: tutorProfile.bio || "",
-        education: tutorProfile.education || "",
-        experience: tutorProfile.experience || "",
-        hourlyRate: tutorProfile.hourly_rate
-          ? Number(tutorProfile.hourly_rate)
-          : 10000,
-        teachingMode: tutorProfile.teaching_mode
-          ? (tutorProfile.teaching_mode as "online" | "offline" | "both")
-          : "online",
-      };
-
-      console.log("Setting form values:", JSON.stringify(formData));
-      profileForm.reset(formData);
-    } else {
-      profileForm.reset({
-        bio: "",
-        education: "",
-        experience: "",
-        hourlyRate: 10000,
-        teachingMode: "online",
-      });
-    }
-  }, [tutorProfile, profileForm.reset]);
-
-  // Create/Update tutor profile
-  const profileMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof tutorProfileSchema>) => {
-      const method = tutorProfile ? "PATCH" : "POST";
-
-      // Limit hourly_rate to avoid numeric overflow (PostgreSQL decimal precision limit)
-      const hourlyRate =
-        data.hourlyRate > 99999999 ? 99999999 : data.hourlyRate;
-
-      // Ensure teaching_mode is explicitly set (don't rely on serverside defaults)
-      const teachingMode = data.teachingMode || "online";
-
-      // Build request data with snake_case field names for the API
-      // Make sure experience_years is included as numeric value or undefined
-      const completeData = {
-        bio: data.bio,
-        education: data.education,
-        experience: data.experience,
-        experience_years: tutorProfile?.experience_years || undefined,
-        hourly_rate: hourlyRate,
-        teaching_mode: teachingMode,
-        subject_ids: selectedSubjects,
-        level_ids: selectedLevels,
-      };
-
-      console.log("Sending data to API:", JSON.stringify(completeData));
-
-      // Add extra logging for debugging
-      console.log("Request method:", method);
-      console.log("Request URL:", `/api/v1/tutors/profile`);
-
-      try {
-        const res = await apiRequest(
-          method,
-          `/api/v1/tutors/profile`,
-          completeData,
-        );
-        const responseData = await res.json();
-        console.log("API response:", JSON.stringify(responseData));
-
-        // Lưu dữ liệu cập nhật để sử dụng sau khi mutation thành công
-        const updatedData = {
-          bio: data.bio,
-          education: data.education,
-          experience: data.experience,
-          hourlyRate: hourlyRate,
-          teachingMode: teachingMode,
-          subjects: selectedSubjects,
-          levels: selectedLevels,
-        };
-
-        // Trả về cả responseData và updatedData
-        return {
-          responseData,
-          updatedData,
-        };
-      } catch (error) {
-        console.error("API call error:", error);
-        throw error;
-      }
-    },
-    onSuccess: (result) => {
-      console.log("Profile updated successfully:", result.responseData);
-      toast({
-        title: "Profile updated successfully",
-        description: "Your profile has been updated.",
-        variant: "default",
-      });
-
-      // Thay đổi: Trước tiên, cập nhật form với dữ liệu mới từ form đã submit
-      const updatedFormData = {
-        bio: result.updatedData.bio,
-        education: result.updatedData.education,
-        experience: result.updatedData.experience,
-        hourlyRate: result.updatedData.hourlyRate,
-        teachingMode: result.updatedData.teachingMode as
-          | "online"
-          | "offline"
-          | "both",
-      };
-
-      console.log("Updating form with submitted data:", updatedFormData);
-      profileForm.reset(updatedFormData);
-
-      // Cập nhật selected subjects và levels
-      setSelectedSubjects(result.updatedData.subjects);
-      setSelectedLevels(result.updatedData.levels);
-
-      // Sau đó refetch profile để đảm bảo dữ liệu mới nhất từ server
-      refetchTutorProfile().then(() => {
-        console.log("Profile refetched successfully");
-        setProfileDialogOpen(false);
-      });
-    },
-    onError: (error) => {
-      console.error("Profile update error:", error);
-      toast({
-        title: "Update failed",
-        description:
-          error instanceof Error ? error.message : "Unknown error occurred",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Update avatar
-  const uploadAvatarMutation = useMutation({
-    mutationFn: async (file: File) => {
-      const formData = new FormData();
-      formData.append("avatar", file);
-
-      console.log("Uploading avatar file:", file.name, "size:", file.size);
-
-      const res = await fetch("/api/v1/users/avatar", {
-        method: "POST",
-        credentials: "include",
-        body: formData,
-        // Do not set Content-Type header, browser will automatically set it with the boundary
-      });
-
-      // Log response for debugging
-      console.log("Avatar upload response status:", res.status);
-
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error("Error response body:", errorText);
-        throw new Error(
-          `Upload failed with status: ${res.status}. ${errorText}`,
-        );
-      }
-
-      return res.json();
-    },
-    onSuccess: () => {
-      // Invalidate both user data and tutor profile to ensure all avatar instances get updated
-      queryClient.invalidateQueries({ queryKey: [`/api/v1/auth/me`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/v1/tutors/profile`] });
-
-      toast({
-        title: "Avatar updated",
-        description: "Your profile photo has been updated successfully.",
-        variant: "default",
-      });
-    },
-    onError: (error) => {
-      console.error("Avatar upload error:", error);
-      toast({
-        title: "Upload failed",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Failed to upload profile photo. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Upload certifications
-  const uploadCertificationsMutation = useMutation({
-    mutationFn: async (files: File[]) => {
-      const formData = new FormData();
-      files.forEach((file) => {
-        formData.append("documents", file);
-      });
-
-      // Add console logging for debugging
-      console.log("Uploading certifications, files count:", files.length);
-
-      // Lấy token từ localStorage nếu có
-      const token = localStorage.getItem("token");
-
-      const res = await fetch("/api/v1/tutors/certifications", {
-        method: "POST",
-        credentials: "include",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: formData,
-      });
-
-      // Log response status for debugging
-      console.log("Certification upload response status:", res.status);
-
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error("Certification upload error response:", errorText);
-        throw new Error(
-          `Upload failed with status: ${res.status}. ${errorText}`,
-        );
-      }
-
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/v1/tutors/profile`] });
-
-      toast({
-        title: "Certifications uploaded",
-        description:
-          "Your certification documents have been uploaded successfully.",
-        variant: "default",
-      });
-    },
-    onError: (error) => {
-      console.error("Certifications upload error:", error);
-      toast({
-        title: "Upload failed",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Failed to upload certification documents. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
+  // Handle file change for avatar upload
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      console.log("Selected file:", {
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        lastModified: new Date(file.lastModified).toISOString(),
-      });
-
-      // Validate file size (under 5MB)
-      const maxSize = 5 * 1024 * 1024; // 5MB in bytes
-      if (file.size > maxSize) {
-        toast({
-          title: "File too large",
-          description: `The image must be less than 5MB. Your file is ${(file.size / (1024 * 1024)).toFixed(2)}MB.`,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Validate file type
-      const validTypes = [
-        "image/jpeg",
-        "image/jpg",
-        "image/png",
-        "image/gif",
-        "image/webp",
-      ];
-      if (!validTypes.includes(file.type)) {
-        toast({
-          title: "Invalid file type",
-          description: "Please select an image file (JPEG, PNG, GIF, or WebP).",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      setAvatar(file);
-      toast({
-        title: "File selected",
-        description: `${file.name} (${(file.size / 1024).toFixed(2)}KB) ready to upload. Click Apply to upload.`,
-        variant: "default",
-      });
+    if (e.target.files && e.target.files.length > 0) {
+      setAvatar(e.target.files[0]);
     }
   };
 
+  // Handle certification file change
   const handleCertificationsChange = (
     e: React.ChangeEvent<HTMLInputElement>,
   ) => {
     if (e.target.files && e.target.files.length > 0) {
-      const fileArray = Array.from(e.target.files);
+      const files = Array.from(e.target.files);
+      setCertifications(files);
+    }
+  };
 
-      // Log selected files
-      console.log(
-        "Selected certification files:",
-        fileArray.map((file) => ({
-          name: file.name,
-          size: file.size,
-          type: file.type,
-        })),
-      );
+  // Certifications upload mutation
+  const certificationsUploadMutation = useMutation({
+    mutationFn: async (files: File[]) => {
+      const formData = new FormData();
+      files.forEach((file) => {
+        formData.append("files", file);
+      });
 
-      // Validate file sizes (each under 5MB)
-      const maxSize = 5 * 1024 * 1024; // 5MB in bytes
-      const oversizedFiles = fileArray.filter((file) => file.size > maxSize);
+      const res = await fetch("/api/v1/tutors/certifications", {
+        method: "POST",
+        body: formData,
+        headers: {
+          // No Content-Type header needed as FormData sets it automatically
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
 
-      if (oversizedFiles.length > 0) {
-        toast({
-          title: "Files too large",
-          description: `${oversizedFiles.length} file(s) exceed the 5MB size limit.`,
-          variant: "destructive",
-        });
-        return;
+      if (!res.ok) {
+        throw new Error("Failed to upload certifications");
       }
 
-      // Validate file types
-      const validTypes = [
-        "image/jpeg",
-        "image/jpg",
-        "image/png",
-        "application/pdf",
-      ];
-      const invalidFiles = fileArray.filter(
-        (file) => !validTypes.includes(file.type),
-      );
-
-      if (invalidFiles.length > 0) {
-        toast({
-          title: "Invalid file type(s)",
-          description:
-            "Please select only image files (JPEG, PNG) or PDF documents.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      setCertifications(fileArray);
+      return res.json();
+    },
+    onSuccess: (data) => {
       toast({
-        title: "Files selected",
-        description: `${fileArray.length} file(s) ready to upload. Click Upload to continue.`,
+        title: "Uploaded certifications",
+        description: `${certifications.length} file(s) uploaded successfully`,
         variant: "default",
       });
-    }
-  };
+      setCertifications([]);
+      refetchTutorProfile();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Upload failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
-  const handleAvatarUpload = async () => {
-    if (avatar) {
-      setUploadingAvatar(true);
-      try {
-        await uploadAvatarMutation.mutateAsync(avatar);
-        setAvatar(null);
-      } catch (error) {
-        console.error("Avatar upload error:", error);
-        // Display error toast even if the mutation error handler doesn't catch it
-        toast({
-          title: "Upload failed",
-          description:
-            error instanceof Error
-              ? error.message
-              : "Failed to upload profile photo. Please try again.",
-          variant: "destructive",
-        });
-      } finally {
-        setUploadingAvatar(false);
-      }
-    }
-  };
-
+  // Handle certifications upload
   const handleCertificationsUpload = async () => {
-    if (certifications.length > 0) {
-      setUploadingCertifications(true);
-      try {
-        await uploadCertificationsMutation.mutateAsync(certifications);
-        setCertifications([]);
-      } catch (error) {
-        console.error("Certifications upload error:", error);
-        // Display error toast even if the mutation error handler doesn't catch it
-        toast({
-          title: "Upload failed",
-          description:
-            error instanceof Error
-              ? error.message
-              : "Failed to upload certification documents. Please try again.",
-          variant: "destructive",
-        });
-      } finally {
-        setUploadingCertifications(false);
-      }
+    if (certifications.length === 0) {
+      toast({
+        title: "No files selected",
+        description: "Please select at least one file to upload",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploadingCertifications(true);
+    try {
+      await certificationsUploadMutation.mutateAsync(certifications);
+    } finally {
+      setUploadingCertifications(false);
     }
   };
 
-  const { toast } = useToast();
+  // Avatar upload mutation
+  const avatarUploadMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
 
-  const onSubmitProfile = async (data: z.infer<typeof tutorProfileSchema>) => {
+      // API call to upload avatar
+      const res = await fetch("/api/v1/auth/avatar", {
+        method: "POST",
+        body: formData,
+        headers: {
+          // No Content-Type header needed as FormData sets it automatically
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to upload avatar");
+      }
+
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Avatar updated",
+        description: "Your profile picture has been updated",
+        variant: "default",
+      });
+      setAvatar(null);
+      // Force reload user data
+      queryClient.invalidateQueries({ queryKey: [`/api/v1/auth/me`] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Upload failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Handle avatar upload
+  const handleAvatarUpload = async () => {
+    if (!avatar) {
+      toast({
+        title: "No file selected",
+        description: "Please select a file to upload",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploadingAvatar(true);
     try {
-      console.log("Submitting profile data:", data);
-      const response = await profileMutation.mutateAsync(data);
-      console.log("Profile update response:", response);
+      await avatarUploadMutation.mutateAsync(avatar);
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
 
-      // Show success toast notification
+  // Update profile mutation
+  const updateProfileMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof tutorProfileSchema>) => {
+      // Get selected subjects and levels from state, not from form
+      const profileData = {
+        ...data,
+        subjects: selectedSubjects,
+        levels: selectedLevels,
+      };
+
+      console.log("Updating profile with:", profileData);
+
+      const res = await apiRequest("PATCH", `/api/v1/tutors/profile`, profileData);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/v1/tutors/profile`] });
+      setProfileDialogOpen(false);
+
       toast({
         title: "Profile updated",
-        description: "Your tutor profile has been updated successfully.",
+        description: "Your tutor profile has been updated",
         variant: "default",
       });
-
-      // Manually add a slight delay before refetching to ensure DB has updated
-      setTimeout(() => {
-        refetchTutorProfile().then((result) => {
-          console.log("Manual refetch result:", result);
-
-          // Update form with the latest data after db changes
-          if (result.data) {
-            const formData = {
-              bio: result.data.bio || "",
-              education: result.data.education || "",
-              experience: result.data.experience || "",
-              hourlyRate: result.data.hourly_rate
-                ? Number(result.data.hourly_rate)
-                : 10000,
-              teachingMode: result.data.teaching_mode
-                ? (result.data.teaching_mode as "online" | "offline" | "both")
-                : "online",
-            };
-
-            console.log("Forcing form update with data:", formData);
-            profileForm.reset(formData);
-
-            // Also force update the selected subjects and levels
-            if (result.data.subjects) {
-              setSelectedSubjects(
-                result.data.subjects.map((s: any) => s.id.toString()),
-              );
-            }
-
-            if (result.data.levels) {
-              setSelectedLevels(
-                result.data.levels.map((l: any) => l.id.toString()),
-              );
-            }
-          }
-        });
-      }, 500);
-    } catch (error) {
-      console.error("Profile update error:", error);
-
-      // Show error toast notification
+    },
+    onError: (error) => {
       toast({
         title: "Update failed",
         description:
           error instanceof Error
             ? error.message
-            : "Failed to update your profile. Please try again.",
+            : "Failed to update profile",
         variant: "destructive",
       });
+    },
+  });
+
+  // Submit handler for profile form
+  const onSubmit = (values: z.infer<typeof tutorProfileSchema>) => {
+    if (selectedSubjects.length === 0) {
+      toast({
+        title: "Subjects required",
+        description: "Please select at least one subject you can teach",
+        variant: "destructive",
+      });
+      return;
     }
+
+    if (selectedLevels.length === 0) {
+      toast({
+        title: "Education levels required",
+        description: "Please select at least one education level you can teach",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    updateProfileMutation.mutate(values);
   };
 
-  // Initialize the selected subjects and levels when profile is loaded
+  // Tải profile và thiết lập form
   useEffect(() => {
     if (tutorProfile) {
-      if (tutorProfile.subjects) {
-        setSelectedSubjects(
-          tutorProfile.subjects.map((s: any) => s.id.toString()),
-        );
-      } else {
-        setSelectedSubjects([]);
-      }
+      console.log("Nhận dữ liệu profile:", tutorProfile);
 
-      if (tutorProfile.levels) {
-        setSelectedLevels(tutorProfile.levels.map((l: any) => l.id.toString()));
-      } else {
-        setSelectedLevels([]);
-      }
+      // Xử lý subjects
+      const subjectIds =
+        tutorProfile.subjects?.map((subject: any) => String(subject.id)) || [];
+      setSelectedSubjects(subjectIds);
 
-      // Cập nhật lịch trống từ dữ liệu tutorProfile
+      // Xử lý levels
+      const levelIds =
+        tutorProfile.levels?.map((level: any) => String(level.id)) || [];
+      setSelectedLevels(levelIds);
+
+      // Xử lý lịch trống
       if (tutorProfile.availability) {
         try {
-          let parsedAvailability;
-
-          // Hỗ trợ cả chuỗi JSON và mảng đã parse
-          if (typeof tutorProfile.availability === "string") {
-            parsedAvailability = JSON.parse(tutorProfile.availability);
-          } else if (Array.isArray(tutorProfile.availability)) {
-            parsedAvailability = tutorProfile.availability;
-          } else {
-            console.warn(
-              "Dữ liệu lịch trống không đúng định dạng:",
-              tutorProfile.availability,
-            );
-            parsedAvailability = [];
-          }
+          // Parse JSON string thành đối tượng JavaScript
+          const parsedAvailability = JSON.parse(tutorProfile.availability);
+          console.log("Dữ liệu lịch trống thô:", parsedAvailability);
 
           // Đảm bảo dữ liệu đúng định dạng
           if (Array.isArray(parsedAvailability)) {
             const convertedItems: AvailabilityItem[] = [];
 
-            // Xử lý dữ liệu lịch trống cũ (không có trường type)
+            // Xử lý dữ liệu lịch trống
             for (const item of parsedAvailability) {
-              // Nếu là lịch trống theo ngày cụ thể, giữ lại
-              if (item.type === "specific") {
+              // Nếu là lịch ngày cụ thể
+              if (item.type === "specific" && item.date) {
                 // Chuẩn hóa thời gian
-                const newItem = { ...item };
-
-                // Chuẩn hóa thời gian bắt đầu
-                if (newItem.startTime && newItem.startTime.length === 4) {
-                  newItem.startTime = "0" + newItem.startTime;
+                let startTime = item.startTime || "08:00";
+                if (startTime.length === 4) {
+                  startTime = "0" + startTime;
                 }
 
-                // Chuẩn hóa thời gian kết thúc
-                if (newItem.endTime && newItem.endTime.length === 4) {
-                  newItem.endTime = "0" + newItem.endTime;
+                let endTime = item.endTime || "17:00";
+                if (endTime.length === 4) {
+                  endTime = "0" + endTime;
                 }
 
-                convertedItems.push(newItem as AvailabilityItem);
-                continue;
-              }
-              
-              // Bỏ qua lịch trống theo tuần
-              if (item.type === "weekly") {
-                console.log("Bỏ qua lịch trống theo tuần:", item);
-                continue;
-              }
-
-              // Đối với data cũ không có type, nếu có day thì bỏ qua (vì không sử dụng lịch theo tuần nữa)
-              if (item.day) {
-                console.log("Bỏ qua lịch trống theo tuần (dữ liệu cũ):", item);
-                continue;
-              }
-              // Nếu có date thì chuyển thành specific
-              else if (item.date) {
                 convertedItems.push({
                   type: "specific",
                   date: item.date,
-                  startTime: item.startTime || "08:00",
-                  endTime: item.endTime || "17:00",
+                  startTime,
+                  endTime,
                 });
-              } else {
-                console.warn("Item lịch trống không đúng định dạng:", item);
+                continue;
+              }
+              
+              // Nếu là weekly hoặc không có type nhưng có day, bỏ qua
+              if (item.type === "weekly" || (!item.type && item.day)) {
+                console.log("Bỏ qua lịch trống theo tuần:", item);
+                continue;
+              }
+              
+              // Nếu là data cũ không có type nhưng có date, chuyển thành specific
+              if (!item.type && item.date) {
+                // Chuẩn hóa thời gian
+                let startTime = item.startTime || "08:00";
+                if (startTime.length === 4) {
+                  startTime = "0" + startTime;
+                }
+
+                let endTime = item.endTime || "17:00";
+                if (endTime.length === 4) {
+                  endTime = "0" + endTime;
+                }
+                
+                convertedItems.push({
+                  type: "specific",
+                  date: item.date,
+                  startTime,
+                  endTime,
+                });
               }
             }
 
@@ -1047,7 +762,7 @@ export default function TutorDashboardProfile() {
           <CardHeader className="pb-4">
             <CardTitle>Hồ sơ Gia sư</CardTitle>
             <CardDescription>
-              Thông tin hồ sơ v � cài đặt tài khoản của bạn
+              Thông tin hồ sơ và cài đặt tài khoản của bạn
             </CardDescription>
           </CardHeader>
 
@@ -1222,447 +937,145 @@ export default function TutorDashboardProfile() {
                   <CardTitle>Giới thiệu</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="whitespace-pre-line">{tutorProfile.bio}</div>
+                  <p className="whitespace-pre-wrap">{tutorProfile.bio}</p>
                 </CardContent>
               </Card>
 
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Học vấn</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="whitespace-pre-line">
-                      {tutorProfile.education}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Kinh nghiệm</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="whitespace-pre-line">
-                      {tutorProfile.experience}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Quản lý lịch trống</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Button
+                    onClick={() => setAvailabilityDialogOpen(true)}
+                    className="w-full flex items-center"
+                  >
+                    <CalendarDays className="mr-2 h-4 w-4" />
+                    <span>Thiết lập lịch trống</span>
+                  </Button>
+                </CardContent>
+              </Card>
             </div>
 
-            {/* Lịch trống Section */}
-            <Card className="mt-6">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Lịch trống</CardTitle>
-                  <CardDescription>
-                    Thiết lập thời gian bạn có thể dạy trong tuần
-                  </CardDescription>
-                </div>
-                <Button
-                  onClick={() => setAvailabilityDialogOpen(true)}
-                  variant="outline"
-                >
-                  <Edit className="mr-2 h-4 w-4" />
-                  Cập nhật lịch trống
-                </Button>
-              </CardHeader>
-              <CardContent>
-                {availabilityItems.length > 0 ? (
-                  <div className="space-y-4">
-                    {/* Lịch hàng tuần */}
-                    {availabilityItems.some(
-                      (item) => item.type === "weekly",
-                    ) && (
-                      <div>
-                        <h3 className="font-medium text-sm text-muted-foreground mb-2">
-                          Lịch hàng tuần
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {availabilityItems
-                            .filter((item) => item.type === "weekly")
-                            .map((item, index) => {
-                              const weeklyItem = item as WeeklyAvailabilityItem;
-                              // Lấy ngày tương ứng để hiển thị minh họa
-                              const weekdayDate = getNextWeekdayDate(
-                                weeklyItem.day,
-                              );
-                              const formattedDate = format(
-                                weekdayDate,
-                                "dd/MM/yyyy",
-                                { locale: vi },
-                              );
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Thông tin học vấn</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="whitespace-pre-wrap">{tutorProfile.education}</p>
+                </CardContent>
+              </Card>
 
-                              // Hiển thị tên ngày trong tuần kèm ngày/tháng/năm minh họa
-                              let dayName = "";
-                              switch (weeklyItem.day) {
-                                case "monday":
-                                  dayName = "Thứ Hai";
-                                  break;
-                                case "tuesday":
-                                  dayName = "Thứ Ba";
-                                  break;
-                                case "wednesday":
-                                  dayName = "Thứ Tư";
-                                  break;
-                                case "thursday":
-                                  dayName = "Thứ Năm";
-                                  break;
-                                case "friday":
-                                  dayName = "Thứ Sáu";
-                                  break;
-                                case "saturday":
-                                  dayName = "Thứ Bảy";
-                                  break;
-                                case "sunday":
-                                  dayName = "Chủ Nhật";
-                                  break;
-                                default:
-                                  dayName = weeklyItem.day;
-                              }
+              <Card>
+                <CardHeader>
+                  <CardTitle>Kinh nghiệm</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="whitespace-pre-wrap">
+                    {tutorProfile.experience}
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
 
-                              return (
-                                <div
-                                  key={`weekly-${index}`}
-                                  className="border rounded-md p-4 flex flex-col"
-                                >
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <Badge
-                                      variant="outline"
-                                      className="bg-blue-50 text-blue-700 hover:bg-blue-50 border-blue-200"
-                                    >
-                                      Hàng tuần
-                                    </Badge>
-                                  </div>
-                                  <div className="font-medium mb-2">
-                                    {dayName}
-                                    <span className="text-sm font-normal text-muted-foreground ml-1">
-                                      ({formattedDate})
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center">
-                                    <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
-                                    <span className="text-sm">
-                                      {weeklyItem.startTime} -{" "}
-                                      {weeklyItem.endTime}
-                                    </span>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Lịch ngày cụ thể */}
-                    {availabilityItems.some(
-                      (item) => item.type === "specific",
-                    ) && (
-                      <div className="mt-6">
-                        <h3 className="font-medium text-sm text-muted-foreground mb-2">
-                          Lịch theo ngày cụ thể
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {availabilityItems
-                            .filter((item) => item.type === "specific")
-                            .map((item, index) => {
-                              const specificItem =
-                                item as SpecificDateAvailabilityItem;
-                              const specificDate = new Date(specificItem.date);
-                              const formattedDate = format(
-                                specificDate,
-                                "dd/MM/yyyy",
-                                { locale: vi },
-                              );
-                              const dayName = format(specificDate, "EEEE", {
-                                locale: vi,
-                              });
-
-                              // Kiểm tra ngày đã qua chưa
-                              const isPastDate = specificDate < new Date();
-
-                              return (
-                                <div
-                                  key={`specific-${index}`}
-                                  className={`border rounded-md p-4 flex flex-col ${isPastDate ? "opacity-50" : ""}`}
-                                >
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <Badge
-                                      variant="outline"
-                                      className="bg-green-50 text-green-700 hover:bg-green-50 border-green-200"
-                                    >
-                                      Ngày cụ thể
-                                    </Badge>
-                                    {isPastDate && (
-                                      <Badge
-                                        variant="outline"
-                                        className="bg-red-50 text-red-700 hover:bg-red-50 border-red-200"
-                                      >
-                                        Đã qua
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  <div className="font-medium mb-2">
-                                    {dayName.charAt(0).toUpperCase() +
-                                      dayName.slice(1)}
-                                    <span className="text-sm font-normal text-muted-foreground ml-1">
-                                      ({formattedDate})
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center">
-                                    <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
-                                    <span className="text-sm">
-                                      {specificItem.startTime} -{" "}
-                                      {specificItem.endTime}
-                                    </span>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Hỗ trợ dữ liệu cũ (không có type) */}
-                    {availabilityItems.some((item) => !item.type) && (
-                      <div className="mt-6">
-                        <h3 className="font-medium text-sm text-muted-foreground mb-2">
-                          Lịch trống khác
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {availabilityItems
-                            .filter((item) => !item.type && "day" in item)
-                            .map((item: any, index) => {
-                              // Lấy ngày tương ứng để hiển thị minh họa
-                              const weekdayDate = getNextWeekdayDate(item.day);
-                              const formattedDate = format(
-                                weekdayDate,
-                                "dd/MM/yyyy",
-                                { locale: vi },
-                              );
-
-                              // Hiển thị tên ngày trong tuần kèm ngày/tháng/năm minh họa
-                              let dayName = "";
-                              switch (item.day) {
-                                case "monday":
-                                  dayName = "Thứ Hai";
-                                  break;
-                                case "tuesday":
-                                  dayName = "Thứ Ba";
-                                  break;
-                                case "wednesday":
-                                  dayName = "Thứ Tư";
-                                  break;
-                                case "thursday":
-                                  dayName = "Thứ Năm";
-                                  break;
-                                case "friday":
-                                  dayName = "Thứ Sáu";
-                                  break;
-                                case "saturday":
-                                  dayName = "Thứ Bảy";
-                                  break;
-                                case "sunday":
-                                  dayName = "Chủ Nhật";
-                                  break;
-                                default:
-                                  dayName = item.day;
-                              }
-
-                              return (
-                                <div
-                                  key={`legacy-${index}`}
-                                  className="border rounded-md p-4 flex flex-col"
-                                >
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <Badge
-                                      variant="outline"
-                                      className="bg-gray-100 text-gray-700 hover:bg-gray-100 border-gray-200"
-                                    >
-                                      Định dạng cũ
-                                    </Badge>
-                                  </div>
-                                  <div className="font-medium mb-2">
-                                    {dayName}
-                                    <span className="text-sm font-normal text-muted-foreground ml-1">
-                                      ({formattedDate})
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center">
-                                    <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
-                                    <span className="text-sm">
-                                      {item.startTime} - {item.endTime}
-                                    </span>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-center p-6 border border-dashed rounded-md">
-                    <CalendarDays className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
-                    <p className="text-muted-foreground">
-                      Bạn chưa thiết lập lịch trống. Học viên sẽ không biết khi
-                      nào bạn có thể dạy.
-                    </p>
-                    <Button
-                      onClick={() => setAvailabilityDialogOpen(true)}
-                      className="mt-4"
-                      variant="outline"
-                    >
-                      Thiết lập lịch trống
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Certification Upload Section */}
-            <Card className="mt-6">
+            <Card>
               <CardHeader>
-                <CardTitle>Chứng chỉ & Bằng cấp</CardTitle>
-                <CardDescription>
-                  Tải lên các chứng chỉ và bằng cấp để xác minh trình độ chuyên
-                  môn của bạn
-                </CardDescription>
+                <CardTitle>Chứng chỉ & Giấy tờ</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {tutorProfile?.certifications ? (
-                    <div className="mb-4">
-                      <p>Chứng chỉ đã tải lên:</p>
-                      <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                        {(() => {
-                          try {
-                            const certUrls = Array.isArray(
-                              tutorProfile.certifications,
-                            )
-                              ? tutorProfile.certifications
-                              : JSON.parse(tutorProfile.certifications);
-
-                            return Array.isArray(certUrls) ? (
-                              certUrls.map((url, index) => (
-                                <div key={index} className="relative group">
-                                  <a
-                                    href={url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="block border rounded-md overflow-hidden hover:shadow-md transition-shadow"
-                                  >
-                                    {url.toLowerCase().endsWith(".pdf") ? (
-                                      <div className="flex items-center justify-center h-40 bg-slate-100 p-4">
-                                        <FileText className="h-12 w-12 text-slate-400" />
-                                        <span className="ml-2 text-sm text-slate-700">
-                                          PDF Document
-                                        </span>
-                                      </div>
-                                    ) : (
-                                      <img
-                                        src={url}
-                                        alt={`Certificate ${index + 1}`}
-                                        className="w-full h-40 object-cover"
-                                        onError={(e) => {
-                                          // Fall back to generic doc icon if image fails to load
-                                          const target =
-                                            e.target as HTMLImageElement;
-                                          target.onerror = null;
-                                          target.src =
-                                            "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWZpbGUtdGV4dCI+PHBhdGggZD0iTTE0IDJINmE yIDIgMCAwIDAtMiAydjE2YTIgMiAwIDAgMCAyIDJoMTJhMiAyIDAgMCAwIDItMlY4eiIvPjxwYXRoIGQ9Ik0xNCAydjZoNiIvPjxwYXRoIGQ9Ik0xNiAxM0g4Ii8+PHBhdGggZD0iTTE2IDE3SDgiLz48cGF0aCBkPSJNMTAgOUg4Ii8+PC9zdmc+";
-                                        }}
-                                      />
-                                    )}
-                                  </a>
-                                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30 rounded-md">
-                                    <ExternalLink className="h-6 w-6 text-white" />
-                                  </div>
-                                </div>
-                              ))
-                            ) : (
-                              <div className="col-span-full text-slate-500 italic">
-                                Định dạng chứng chỉ không hợp lệ. Vui lòng liên
-                                hệ quản trị viên.
-                              </div>
-                            );
-                          } catch (error) {
-                            console.error(
-                              "Error parsing certifications:",
-                              error,
-                            );
-                            return (
-                              <div className="col-span-full text-slate-500 italic">
-                                {typeof tutorProfile.certifications === "string"
-                                  ? tutorProfile.certifications
-                                  : "Không thể hiển thị chứng chỉ. Định dạng không hỗ trợ."}
-                              </div>
-                            );
-                          }
-                        })()}
-                      </div>
+                  {/* Display existing certifications */}
+                  {tutorProfile.certifications ? (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {JSON.parse(tutorProfile.certifications as string).map(
+                        (cert: string, index: number) => (
+                          <div
+                            key={index}
+                            className="border rounded-md overflow-hidden flex flex-col"
+                          >
+                            <div className="aspect-video bg-gray-100 relative">
+                              <img
+                                src={cert}
+                                alt={`Certification ${index + 1}`}
+                                className="w-full h-full object-contain"
+                              />
+                            </div>
+                            <div className="p-2 flex justify-between items-center">
+                              <span className="text-sm font-medium truncate">
+                                Certificate {index + 1}
+                              </span>
+                              <a
+                                href={cert}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-primary hover:text-primary/80"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </a>
+                            </div>
+                          </div>
+                        ),
+                      )}
                     </div>
                   ) : (
-                    <Alert className="mb-4">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertTitle>Chưa có chứng chỉ</AlertTitle>
-                      <AlertDescription>
-                        Bạn chưa tải lên chứng chỉ nào. Tải lên để tăng tỷ lệ
-                        được phê duyệt.
-                      </AlertDescription>
-                    </Alert>
+                    <p className="text-muted-foreground">
+                      No certifications uploaded yet
+                    </p>
                   )}
 
-                  <div className="space-y-2">
-                    <label
-                      htmlFor="certification-upload"
-                      className="cursor-pointer"
-                    >
-                      <div className="flex items-center mb-2 text-primary hover:text-primary/80">
-                        <Upload className="h-4 w-4 mr-1" />
-                        <span>Tải lên chứng chỉ và bằng cấp</span>
-                      </div>
-                      <input
-                        id="certification-upload"
-                        type="file"
-                        className="hidden"
-                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                        multiple
-                        onChange={handleCertificationsChange}
-                      />
-                    </label>
+                  {/* Upload certifications form */}
+                  <div className="border rounded-md p-4 mt-4">
+                    <h4 className="font-medium mb-4">Thêm chứng chỉ mới</h4>
 
-                    {certifications.length > 0 && (
-                      <div className="space-y-3">
-                        <div className="text-sm">
-                          <p>{certifications.length} tệp đã chọn:</p>
-                          <ul className="mt-1 list-disc list-inside">
+                    <div>
+                      <label
+                        htmlFor="certification-upload"
+                        className="cursor-pointer block"
+                      >
+                        <div className="border-2 border-dashed border-gray-300 rounded-md p-6 text-center hover:border-primary transition-colors">
+                          <Upload className="h-8 w-8 mx-auto text-gray-400" />
+                          <p className="mt-2 text-sm text-gray-600">
+                            Chọn hoặc kéo thả file vào đây
+                          </p>
+                          <p className="mt-1 text-xs text-gray-500">
+                            Hỗ trợ PDF, JPG, PNG (tối đa 5MB)
+                          </p>
+                        </div>
+                        <input
+                          id="certification-upload"
+                          type="file"
+                          className="hidden"
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          onChange={handleCertificationsChange}
+                          multiple
+                        />
+                      </label>
+
+                      {certifications.length > 0 && (
+                        <div className="mt-4">
+                          <p className="text-sm font-medium mb-2">
+                            Đã chọn {certifications.length} file:
+                          </p>
+                          <ul className="text-sm text-gray-600 list-disc list-inside">
                             {certifications.map((file, index) => (
-                              <li key={index} className="text-muted-foreground">
-                                {file.name}
-                              </li>
+                              <li key={index}>{file.name}</li>
                             ))}
                           </ul>
+
+                          <Button
+                            onClick={handleCertificationsUpload}
+                            className="mt-4"
+                            disabled={uploadingCertifications}
+                          >
+                            {uploadingCertifications && (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            )}
+                            Upload Certifications
+                          </Button>
                         </div>
-
-                        <Button
-                          onClick={handleCertificationsUpload}
-                          disabled={uploadingCertifications}
-                          className="w-full"
-                        >
-                          {uploadingCertifications && (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          )}
-                          Tải lên
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="text-sm text-muted-foreground mt-2">
-                    <p>Chấp nhận các định dạng: PDF, DOC, DOCX, JPG, PNG</p>
-                    <p>Tối đa 5 tệp, mỗi tệp không quá 5MB</p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -1698,342 +1111,55 @@ export default function TutorDashboardProfile() {
                 <div className="space-y-4 py-2">
                   {availabilityItems.length > 0 ? (
                     <div className="space-y-4">
-                      {/* Danh sách lịch hàng tuần */}
-                      {availabilityItems
-                        .filter((item) => item.type === "weekly")
-                        .map((item, index) => {
-                          const weeklyItem = item as WeeklyAvailabilityItem;
-                          return (
-                            <div
-                              key={`weekly-${index}`}
-                              className="flex items-center space-x-4 p-4 border rounded-md"
-                            >
-                              <div className="w-auto">
-                                <Badge
-                                  variant="outline"
-                                  className="bg-blue-50 text-blue-700 hover:bg-blue-50 border-blue-200"
-                                >
-                                  Hàng tuần
-                                </Badge>
-                              </div>
-
-                              <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <Select
-                                  value={weeklyItem.day}
-                                  onValueChange={(value) => {
-                                    const newItems = [...availabilityItems];
-                                    const itemIndex =
-                                      availabilityItems.indexOf(item);
-                                    if (itemIndex !== -1) {
-                                      (
-                                        newItems[
-                                          itemIndex
-                                        ] as WeeklyAvailabilityItem
-                                      ).day = value as
-                                        | "monday"
-                                        | "tuesday"
-                                        | "wednesday"
-                                        | "thursday"
-                                        | "friday"
-                                        | "saturday"
-                                        | "sunday";
-                                      setAvailabilityItems(newItems);
-                                    }
-                                  }}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Chọn ngày" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="monday">
-                                      {formatWeekdayWithDate("monday")}
-                                    </SelectItem>
-                                    <SelectItem value="tuesday">
-                                      {formatWeekdayWithDate("tuesday")}
-                                    </SelectItem>
-                                    <SelectItem value="wednesday">
-                                      {formatWeekdayWithDate("wednesday")}
-                                    </SelectItem>
-                                    <SelectItem value="thursday">
-                                      {formatWeekdayWithDate("thursday")}
-                                    </SelectItem>
-                                    <SelectItem value="friday">
-                                      {formatWeekdayWithDate("friday")}
-                                    </SelectItem>
-                                    <SelectItem value="saturday">
-                                      {formatWeekdayWithDate("saturday")}
-                                    </SelectItem>
-                                    <SelectItem value="sunday">
-                                      {formatWeekdayWithDate("sunday")}
-                                    </SelectItem>
-                                  </SelectContent>
-                                </Select>
-
-                                <div className="flex items-center space-x-2">
-                                  <span className="text-sm text-muted-foreground whitespace-nowrap">
-                                    Từ:
-                                  </span>
-                                  <Input
-                                    type="time"
-                                    value={weeklyItem.startTime}
-                                    onChange={(e) => {
-                                      const newItems = [...availabilityItems];
-                                      const itemIndex =
-                                        availabilityItems.indexOf(item);
-                                      if (itemIndex !== -1) {
-                                        newItems[itemIndex].startTime =
-                                          e.target.value;
-                                        setAvailabilityItems(newItems);
-                                      }
-                                    }}
-                                  />
-                                </div>
-
-                                <div className="flex items-center space-x-2">
-                                  <span className="text-sm text-muted-foreground whitespace-nowrap">
-                                    Đến:
-                                  </span>
-                                  <Input
-                                    type="time"
-                                    value={weeklyItem.endTime}
-                                    onChange={(e) => {
-                                      const newItems = [...availabilityItems];
-                                      const itemIndex =
-                                        availabilityItems.indexOf(item);
-                                      if (itemIndex !== -1) {
-                                        newItems[itemIndex].endTime =
-                                          e.target.value;
-                                        setAvailabilityItems(newItems);
-                                      }
-                                    }}
-                                  />
-                                </div>
-                              </div>
-
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() =>
-                                  handleRemoveAvailability(
-                                    availabilityItems.indexOf(item),
-                                  )
-                                }
-                              >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  width="24"
-                                  height="24"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  stroke-width="2"
-                                  stroke-linecap="round"
-                                  stroke-linejoin="round"
-                                  className="w-4 h-4 text-destructive"
-                                >
-                                  <path d="M3 6h18"></path>
-                                  <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                                  <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                                  <line x1="10" x2="10" y1="11" y2="17"></line>
-                                  <line x1="14" x2="14" y1="11" y2="17"></line>
-                                </svg>
-                              </Button>
-                            </div>
-                          );
-                        })}
-
-                      {/* Danh sách lịch ngày cụ thể */}
-                      {availabilityItems
-                        .filter((item) => item.type === "specific")
-                        .map((item, index) => {
-                          const specificItem =
-                            item as SpecificDateAvailabilityItem;
-                          const specificDate = new Date(specificItem.date);
-                          const isPastDate = specificDate < new Date();
-
-                          return (
-                            <div
-                              key={`specific-${index}`}
-                              className={`flex items-center space-x-4 p-4 border rounded-md ${isPastDate ? "opacity-50" : ""}`}
-                            >
-                              <div className="w-auto">
-                                <Badge
-                                  variant="outline"
-                                  className="bg-green-50 text-green-700 hover:bg-green-50 border-green-200"
-                                >
-                                  Ngày cụ thể
-                                </Badge>
-                                {isPastDate && (
-                                  <Badge
-                                    variant="outline"
-                                    className="mt-1 bg-red-50 text-red-700 hover:bg-red-50 border-red-200"
-                                  >
-                                    Đã qua
-                                  </Badge>
-                                )}
-                              </div>
-
-                              <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                  <Input
-                                    type="date"
-                                    value={specificItem.date}
-                                    onChange={(e) => {
-                                      const newItems = [...availabilityItems];
-                                      const itemIndex =
-                                        availabilityItems.indexOf(item);
-                                      if (itemIndex !== -1) {
-                                        (
-                                          newItems[
-                                            itemIndex
-                                          ] as SpecificDateAvailabilityItem
-                                        ).date = e.target.value;
-                                        setAvailabilityItems(newItems);
-                                      }
-                                    }}
-                                  />
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    {format(specificDate, "EEEE", {
-                                      locale: vi,
-                                    })}
-                                  </p>
-                                </div>
-
-                                <div className="flex items-center space-x-2">
-                                  <span className="text-sm text-muted-foreground whitespace-nowrap">
-                                    Từ:
-                                  </span>
-                                  <Input
-                                    type="time"
-                                    value={specificItem.startTime}
-                                    onChange={(e) => {
-                                      const newItems = [...availabilityItems];
-                                      const itemIndex =
-                                        availabilityItems.indexOf(item);
-                                      if (itemIndex !== -1) {
-                                        newItems[itemIndex].startTime =
-                                          e.target.value;
-                                        setAvailabilityItems(newItems);
-                                      }
-                                    }}
-                                  />
-                                </div>
-
-                                <div className="flex items-center space-x-2">
-                                  <span className="text-sm text-muted-foreground whitespace-nowrap">
-                                    Đến:
-                                  </span>
-                                  <Input
-                                    type="time"
-                                    value={specificItem.endTime}
-                                    onChange={(e) => {
-                                      const newItems = [...availabilityItems];
-                                      const itemIndex =
-                                        availabilityItems.indexOf(item);
-                                      if (itemIndex !== -1) {
-                                        newItems[itemIndex].endTime =
-                                          e.target.value;
-                                        setAvailabilityItems(newItems);
-                                      }
-                                    }}
-                                  />
-                                </div>
-                              </div>
-
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() =>
-                                  handleRemoveAvailability(
-                                    availabilityItems.indexOf(item),
-                                  )
-                                }
-                              >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  width="24"
-                                  height="24"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  stroke-width="2"
-                                  stroke-linecap="round"
-                                  stroke-linejoin="round"
-                                  className="w-4 h-4 text-destructive"
-                                >
-                                  <path d="M3 6h18"></path>
-                                  <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                                  <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                                  <line x1="10" x2="10" y1="11" y2="17"></line>
-                                  <line x1="14" x2="14" y1="11" y2="17"></line>
-                                </svg>
-                              </Button>
-                            </div>
-                          );
-                        })}
-
-                      {/* Danh sách lịch cũ (không có trường type) */}
-                      {availabilityItems
-                        .filter((item) => !item.type && "day" in item)
-                        .map((item: any, index) => (
+                      {/* Danh sách lịch theo ngày cụ thể */}
+                      {availabilityItems.map((item, index) => {
+                        return (
                           <div
-                            key={`legacy-${index}`}
+                            key={`specific-${index}`}
                             className="flex items-center space-x-4 p-4 border rounded-md"
                           >
                             <div className="w-auto">
                               <Badge
                                 variant="outline"
-                                className="bg-gray-100 text-gray-700 hover:bg-gray-100 border-gray-200"
+                                className="bg-green-50 text-green-700 hover:bg-green-50 border-green-200"
                               >
-                                Định dạng cũ
+                                Ngày cụ thể
                               </Badge>
                             </div>
 
                             <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
-                              <Select
-                                value={item.day}
-                                onValueChange={(value) => {
-                                  const newItems = [...availabilityItems];
-                                  const itemIndex =
-                                    availabilityItems.indexOf(item);
-                                  if (itemIndex !== -1) {
-                                    newItems[itemIndex].day = value as any;
-                                    setAvailabilityItems(newItems);
-                                  }
-                                }}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Chọn ngày" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="monday">
-                                    {formatWeekdayWithDate("monday")}
-                                  </SelectItem>
-                                  <SelectItem value="tuesday">
-                                    {formatWeekdayWithDate("tuesday")}
-                                  </SelectItem>
-                                  <SelectItem value="wednesday">
-                                    {formatWeekdayWithDate("wednesday")}
-                                  </SelectItem>
-                                  <SelectItem value="thursday">
-                                    {formatWeekdayWithDate("thursday")}
-                                  </SelectItem>
-                                  <SelectItem value="friday">
-                                    {formatWeekdayWithDate("friday")}
-                                  </SelectItem>
-                                  <SelectItem value="saturday">
-                                    {formatWeekdayWithDate("saturday")}
-                                  </SelectItem>
-                                  <SelectItem value="sunday">
-                                    {formatWeekdayWithDate("sunday")}
-                                  </SelectItem>
-                                </SelectContent>
-                              </Select>
+                              <div className="flex items-center space-x-2">
+                                <Label>Ngày:</Label>
+                                <Input
+                                  type="date"
+                                  value={item.date}
+                                  min={format(new Date(), "yyyy-MM-dd")}
+                                  onChange={(e) => {
+                                    const newItems = [...availabilityItems];
+                                    const itemIndex =
+                                      availabilityItems.indexOf(item);
+                                    if (itemIndex !== -1) {
+                                      newItems[itemIndex].date =
+                                        e.target.value;
+                                      setAvailabilityItems(newItems);
+                                    }
+                                  }}
+                                />
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {format(
+                                    item.date
+                                      ? new Date(item.date)
+                                      : new Date(),
+                                    "EEEE",
+                                    {
+                                      locale: vi,
+                                    },
+                                  )}
+                                </p>
+                              </div>
 
                               <div className="flex items-center space-x-2">
-                                <span className="text-sm text-muted-foreground whitespace-nowrap">
-                                  Từ:
-                                </span>
+                                <Label>Bắt đầu:</Label>
                                 <Input
                                   type="time"
                                   value={item.startTime}
@@ -2051,9 +1177,7 @@ export default function TutorDashboardProfile() {
                               </div>
 
                               <div className="flex items-center space-x-2">
-                                <span className="text-sm text-muted-foreground whitespace-nowrap">
-                                  Đến:
-                                </span>
+                                <Label>Kết thúc:</Label>
                                 <Input
                                   type="time"
                                   value={item.endTime}
@@ -2073,298 +1197,149 @@ export default function TutorDashboardProfile() {
 
                             <Button
                               variant="ghost"
-                              size="icon"
+                              size="sm"
                               onClick={() =>
                                 handleRemoveAvailability(
                                   availabilityItems.indexOf(item),
                                 )
                               }
                             >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="24"
-                                height="24"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="2"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                className="w-4 h-4 text-destructive"
-                              >
-                                <path d="M3 6h18"></path>
-                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                                <line x1="10" x2="10" y1="11" y2="17"></line>
-                                <line x1="14" x2="14" y1="11" y2="17"></line>
-                              </svg>
+                              <Trash className="h-4 w-4" />
                             </Button>
                           </div>
-                        ))}
+                        );
+                      })}
                     </div>
                   ) : (
-                    <div className="text-center p-6 border border-dashed rounded-md">
-                      <CalendarDays className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
-                      <p className="text-muted-foreground">
-                        Bạn chưa thiết lập lịch trống. Chuyển sang tab "Thêm
-                        lịch trống" để bắt đầu.
+                    <div className="text-center py-8">
+                      <CalendarDays className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-lg font-medium">
+                        Chưa có lịch trống nào được thiết lập
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Thiết lập lịch trống để học viên có thể đặt lịch học với
+                        bạn
                       </p>
                     </div>
                   )}
                 </div>
               </TabsContent>
 
-              {/* Tab thêm lịch mới */}
+              {/* Tab thêm lịch trống mới */}
               <TabsContent value="add">
                 <div className="space-y-4 py-2">
-                  {/* Chọn loại lịch trống */}
-                  <Tabs
-                    value={availabilityType}
-                    onValueChange={(value) =>
-                      setAvailabilityType(value as "weekly" | "specific")
-                    }
-                  >
-                    <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger value="weekly">Lịch hàng tuần</TabsTrigger>
-                      <TabsTrigger value="specific">Ngày cụ thể</TabsTrigger>
-                    </TabsList>
-
-                    {/* Form thêm lịch hàng tuần */}
-                    <TabsContent value="weekly">
-                      <div className="p-4 border rounded-md mt-4">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div>
-                            <Label htmlFor="weekly-day">Ngày trong tuần</Label>
-                            <Select
-                              value={newAvailabilityItem.day}
-                              onValueChange={(value) =>
-                                setNewAvailabilityItem({
-                                  ...newAvailabilityItem,
-                                  day: value as
-                                    | "monday"
-                                    | "tuesday"
-                                    | "wednesday"
-                                    | "thursday"
-                                    | "friday"
-                                    | "saturday"
-                                    | "sunday",
-                                })
-                              }
-                            >
-                              <SelectTrigger id="weekly-day">
-                                <SelectValue placeholder="Chọn ngày" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="monday">Thứ Hai</SelectItem>
-                                <SelectItem value="tuesday">Thứ Ba</SelectItem>
-                                <SelectItem value="wednesday">
-                                  Thứ Tư
-                                </SelectItem>
-                                <SelectItem value="thursday">
-                                  Thứ Năm
-                                </SelectItem>
-                                <SelectItem value="friday">Thứ Sáu</SelectItem>
-                                <SelectItem value="saturday">
-                                  Thứ Bảy
-                                </SelectItem>
-                                <SelectItem value="sunday">Chủ Nhật</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {formatWeekdayWithDate(newAvailabilityItem.day)}
-                            </p>
-                          </div>
-
-                          <div>
-                            <Label htmlFor="weekly-start">
-                              Thời gian bắt đầu
-                            </Label>
-                            <Input
-                              id="weekly-start"
-                              type="time"
-                              value={newAvailabilityItem.startTime}
-                              onChange={(e) =>
-                                setNewAvailabilityItem({
-                                  ...newAvailabilityItem,
-                                  startTime: e.target.value,
-                                })
-                              }
-                            />
-                          </div>
-
-                          <div>
-                            <Label htmlFor="weekly-end">
-                              Thời gian kết thúc
-                            </Label>
-                            <Input
-                              id="weekly-end"
-                              type="time"
-                              value={newAvailabilityItem.endTime}
-                              onChange={(e) =>
-                                setNewAvailabilityItem({
-                                  ...newAvailabilityItem,
-                                  endTime: e.target.value,
-                                })
-                              }
-                            />
-                          </div>
-                        </div>
-
-                        <Button
-                          type="button"
-                          className="w-full mt-4"
-                          onClick={handleAddWeeklyAvailability}
-                        >
-                          Thêm lịch hàng tuần
-                        </Button>
+                  {/* Form thêm lịch trống ngày cụ thể */}
+                  <div className="p-4 border rounded-md mt-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <Label htmlFor="specific-date">Ngày cụ thể</Label>
+                        <Input
+                          id="specific-date"
+                          type="date"
+                          value={newAvailabilityItem.date}
+                          min={format(new Date(), "yyyy-MM-dd")}
+                          onChange={(e) =>
+                            setNewAvailabilityItem({
+                              ...newAvailabilityItem,
+                              date: e.target.value,
+                            })
+                          }
+                        />
                       </div>
-                    </TabsContent>
 
-                    {/* Form thêm lịch theo ngày cụ thể */}
-                    <TabsContent value="specific">
-                      <div className="p-4 border rounded-md mt-4">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div>
-                            <Label htmlFor="specific-date">Ngày cụ thể</Label>
-                            <Input
-                              id="specific-date"
-                              type="date"
-                              value={newSpecificDateItem.date}
-                              onChange={(e) =>
-                                setNewSpecificDateItem({
-                                  ...newSpecificDateItem,
-                                  date: e.target.value,
-                                })
-                              }
-                            />
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {format(
-                                new Date(newSpecificDateItem.date),
-                                "EEEE",
-                                { locale: vi },
-                              )}
-                            </p>
-                          </div>
-
-                          <div>
-                            <Label htmlFor="specific-start">
-                              Thời gian bắt đầu
-                            </Label>
-                            <Input
-                              id="specific-start"
-                              type="time"
-                              value={newSpecificDateItem.startTime}
-                              onChange={(e) =>
-                                setNewSpecificDateItem({
-                                  ...newSpecificDateItem,
-                                  startTime: e.target.value,
-                                })
-                              }
-                            />
-                          </div>
-
-                          <div>
-                            <Label htmlFor="specific-end">
-                              Thời gian kết thúc
-                            </Label>
-                            <Input
-                              id="specific-end"
-                              type="time"
-                              value={newSpecificDateItem.endTime}
-                              onChange={(e) =>
-                                setNewSpecificDateItem({
-                                  ...newSpecificDateItem,
-                                  endTime: e.target.value,
-                                })
-                              }
-                            />
-                          </div>
-                        </div>
-
-                        <Button
-                          type="button"
-                          className="w-full mt-4"
-                          onClick={handleAddSpecificDateAvailability}
-                        >
-                          Thêm lịch ngày cụ thể
-                        </Button>
+                      <div>
+                        <Label htmlFor="specific-start-time">
+                          Thời gian bắt đầu
+                        </Label>
+                        <Input
+                          id="specific-start-time"
+                          type="time"
+                          value={newAvailabilityItem.startTime}
+                          onChange={(e) =>
+                            setNewAvailabilityItem({
+                              ...newAvailabilityItem,
+                              startTime: e.target.value,
+                            })
+                          }
+                        />
                       </div>
-                    </TabsContent>
-                  </Tabs>
+
+                      <div>
+                        <Label htmlFor="specific-end-time">
+                          Thời gian kết thúc
+                        </Label>
+                        <Input
+                          id="specific-end-time"
+                          type="time"
+                          value={newAvailabilityItem.endTime}
+                          onChange={(e) =>
+                            setNewAvailabilityItem({
+                              ...newAvailabilityItem,
+                              endTime: e.target.value,
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    <Button
+                      className="mt-4 w-full"
+                      onClick={handleAddAvailability}
+                    >
+                      Thêm lịch trống
+                    </Button>
+                  </div>
                 </div>
               </TabsContent>
             </Tabs>
-
-            {availabilityItems.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center mt-4">
-                Thêm khung giờ trống bằng cách nhập thông tin ở trên và nhấn nút
-                +
-              </p>
-            )}
-
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setAvailabilityDialogOpen(false)}
-              >
-                Huỷ
-              </Button>
-              <Button
-                onClick={handleSubmitAvailability}
-                disabled={updateAvailabilityMutation.isPending}
-              >
-                {updateAvailabilityMutation.isPending && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
-                Lưu lịch trống
-              </Button>
-            </DialogFooter>
           </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setAvailabilityDialogOpen(false)}>
+              Hủy
+            </Button>
+            <Button onClick={handleSubmitAvailability}>Lưu thay đổi</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Profile Edit Dialog */}
+      {/* Profile Dialog */}
       <Dialog open={profileDialogOpen} onOpenChange={setProfileDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {tutorProfile ? "Edit Profile" : "Create Profile"}
+              {tutorProfile ? "Cập nhật hồ sơ" : "Tạo hồ sơ gia sư"}
             </DialogTitle>
             <DialogDescription>
-              {tutorProfile
-                ? "Update your tutor profile information"
-                : "Create your tutor profile to start receiving student inquiries"}
+              Điền thông tin dưới đây để tạo hồ sơ gia sư của bạn
             </DialogDescription>
           </DialogHeader>
 
           <Form {...profileForm}>
             <form
-              onSubmit={profileForm.handleSubmit(onSubmitProfile)}
-              className="space-y-6"
+              onSubmit={profileForm.handleSubmit(onSubmit)}
+              className="space-y-6 py-4"
             >
-              <FormField
-                control={profileForm.control}
-                name="bio"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Bio</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Tell students about yourself, your teaching style, and your areas of expertise..."
-                        className="min-h-32"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Minimum 50 characters. This is what students will see
-                      first.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="space-y-4">
+                <FormField
+                  control={profileForm.control}
+                  name="bio"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Bio</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Introduce yourself to potential students..."
+                          className="min-h-32"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>Minimum 50 characters</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                   control={profileForm.control}
                   name="education"
@@ -2373,7 +1348,7 @@ export default function TutorDashboardProfile() {
                       <FormLabel>Education</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="List your academic qualifications, degrees, and institutions..."
+                          placeholder="Describe your educational background, degrees, and institutions..."
                           className="min-h-24"
                           {...field}
                         />
@@ -2517,18 +1492,11 @@ export default function TutorDashboardProfile() {
               </div>
 
               <DialogFooter>
-                <Button
-                  type="submit"
-                  disabled={
-                    profileMutation.isPending ||
-                    selectedSubjects.length === 0 ||
-                    selectedLevels.length === 0
-                  }
-                >
-                  {profileMutation.isPending && (
+                <Button type="submit" disabled={profileForm.formState.isSubmitting}>
+                  {profileForm.formState.isSubmitting && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   )}
-                  {tutorProfile ? "Update Profile" : "Create Profile"}
+                  {tutorProfile ? "Cập nhật hồ sơ" : "Tạo hồ sơ"}
                 </Button>
               </DialogFooter>
             </form>
