@@ -21,11 +21,21 @@ import StudentDashboardMessages from "@/pages/student-dashboard-messages";
 import AdminDashboard from "@/pages/admin-dashboard";
 import BecomeTutor from "@/pages/become-tutor";
 import PrivateRoute from "@/components/auth/PrivateRoute";
-import { useEffect, useState } from "react";
+import MainLayout from "@/components/layout/MainLayout";
+import { useEffect, useState, ReactNode } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { loadUser } from "@/features/auth/authSlice";
 import { RootState } from "./store";
 import { Loader2 } from "lucide-react";
+
+// Hàm wrapper để bọc component bên trong MainLayout
+function withMainLayout(Component: React.ComponentType<any>): React.FC<any> {
+  return (props) => (
+    <MainLayout>
+      <Component {...props} />
+    </MainLayout>
+  );
+}
 
 function Router() {
   const { user, isLoading } = useSelector((state: RootState) => state.auth);
@@ -42,13 +52,13 @@ function Router() {
 
   return (
     <Switch>
-      <Route path="/" component={Home} />
+      <Route path="/" component={withMainLayout(Home)} />
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
-      <Route path="/tutors" component={TutorListing} />
-      <Route path="/tutors/:id" component={TutorProfile} />
-      <Route path="/become-tutor" component={BecomeTutor} />
-      <Route path="/courses" component={Courses} />
+      <Route path="/tutors" component={withMainLayout(TutorListing)} />
+      <Route path="/tutors/:id" component={withMainLayout(TutorProfile)} />
+      <Route path="/become-tutor" component={withMainLayout(BecomeTutor)} />
+      <Route path="/courses" component={withMainLayout(Courses)} />
       
       {/* Legacy routes - keeping for backward compatibility */}
       <Route path="/tutor-dashboard">

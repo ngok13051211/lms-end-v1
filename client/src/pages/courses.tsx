@@ -1,9 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { getQueryFn } from "@/lib/queryClient";
 import { useMobile } from "@/hooks/use-mobile";
-import MainLayout from "@/components/layout/MainLayout";
 
 // UI components
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 // Icons
 import { BookOpen, Home, Search, BookOpenCheck, Filter, SlidersHorizontal } from "lucide-react";
-import { Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 export default function Courses() {
   const isMobile = useMobile();
@@ -316,85 +315,36 @@ export default function Courses() {
   );
 
   return (
-    <MainLayout>
-      <div className="container mx-auto py-6 px-4 sm:px-6">
-        <div className="flex flex-col space-y-4 md:flex-row md:space-y-0 md:space-x-4 md:items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold">Khóa học</h1>
-            <p className="text-muted-foreground mt-1">
-              Tìm kiếm và đăng ký các khóa học phù hợp với nhu cầu của bạn
-            </p>
-          </div>
-          
-          <div className="flex space-x-2">
-            {isMobile ? (
-              <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
-                <SheetTrigger asChild>
-                  <Button variant="outline" className="flex items-center gap-2">
-                    <SlidersHorizontal className="h-4 w-4" />
-                    <span>Lọc</span>
-                  </Button>
-                </SheetTrigger>
-                <SheetContent>
-                  <SheetHeader>
-                    <SheetTitle>Lọc khóa học</SheetTitle>
-                    <SheetDescription>
-                      Tùy chỉnh kết quả tìm kiếm của bạn với các bộ lọc sau
-                    </SheetDescription>
-                  </SheetHeader>
-                  <div className="py-4">
-                    {renderFilters()}
-                  </div>
-                  <SheetFooter>
-                    <div className="flex space-x-2 w-full">
-                      <Button 
-                        variant="outline" 
-                        className="flex-1"
-                        onClick={clearFilters}
-                      >
-                        Xóa lọc
-                      </Button>
-                      <Button 
-                        className="flex-1"
-                        onClick={applyFilters}
-                      >
-                        Áp dụng
-                      </Button>
-                    </div>
-                  </SheetFooter>
-                </SheetContent>
-              </Sheet>
-            ) : null}
-          </div>
+    <div className="container mx-auto py-6 px-4 sm:px-6">
+      <div className="flex flex-col space-y-4 md:flex-row md:space-y-0 md:space-x-4 md:items-center justify-between mb-6">
+        <div>
+          <h1 className="text-3xl font-bold">Khóa học</h1>
+          <p className="text-muted-foreground mt-1">
+            Tìm kiếm và đăng ký các khóa học phù hợp với nhu cầu của bạn
+          </p>
         </div>
         
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Filters - desktop */}
-          {!isMobile && (
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-xl flex items-center">
-                    <Filter className="h-5 w-5 mr-2" />
-                    Bộ lọc
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="mb-4">
-                    <div className="relative">
-                      <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Tìm kiếm..."
-                        className="pl-8"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  
+        <div className="flex space-x-2">
+          {isMobile ? (
+            <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" className="flex items-center gap-2">
+                  <SlidersHorizontal className="h-4 w-4" />
+                  <span>Lọc</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent>
+                <SheetHeader>
+                  <SheetTitle>Lọc khóa học</SheetTitle>
+                  <SheetDescription>
+                    Tùy chỉnh kết quả tìm kiếm của bạn với các bộ lọc sau
+                  </SheetDescription>
+                </SheetHeader>
+                <div className="py-4">
                   {renderFilters()}
-                  
-                  <div className="flex space-x-2 mt-6">
+                </div>
+                <SheetFooter>
+                  <div className="flex space-x-2 w-full">
                     <Button 
                       variant="outline" 
                       className="flex-1"
@@ -409,152 +359,199 @@ export default function Courses() {
                       Áp dụng
                     </Button>
                   </div>
-                </CardContent>
-              </Card>
+                </SheetFooter>
+              </SheetContent>
+            </Sheet>
+          ) : null}
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Filters - desktop */}
+        {!isMobile && (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-xl flex items-center">
+                  <Filter className="h-5 w-5 mr-2" />
+                  Bộ lọc
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="mb-4">
+                  <div className="relative">
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Tìm kiếm..."
+                      className="pl-8"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                </div>
+                
+                {renderFilters()}
+                
+                <div className="flex space-x-2 mt-6">
+                  <Button 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={clearFilters}
+                  >
+                    Xóa lọc
+                  </Button>
+                  <Button 
+                    className="flex-1"
+                    onClick={applyFilters}
+                  >
+                    Áp dụng
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+        
+        {/* Course listings */}
+        <div className={`space-y-6 ${isMobile ? 'col-span-1' : 'col-span-3'}`}>
+          {/* Mobile search */}
+          {isMobile && (
+            <div className="relative mb-4">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Tìm kiếm khóa học..."
+                className="pl-8"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
           )}
           
-          {/* Course listings */}
-          <div className={`space-y-6 ${isMobile ? 'col-span-1' : 'col-span-3'}`}>
-            {/* Mobile search */}
-            {isMobile && (
-              <div className="relative mb-4">
-                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Tìm kiếm khóa học..."
-                  className="pl-8"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-            )}
-            
-            {isLoadingCourses ? (
-              // Loading skeleton
+          {isLoadingCourses ? (
+            // Loading skeleton
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {[1, 2, 3, 4].map((i) => (
+                <Card key={i} className="overflow-hidden">
+                  <CardHeader className="pb-0">
+                    <Skeleton className="h-6 w-3/4" />
+                  </CardHeader>
+                  <CardContent className="pb-0 pt-4">
+                    <Skeleton className="h-4 w-full mb-2" />
+                    <Skeleton className="h-4 w-2/3 mb-4" />
+                    <div className="flex space-x-2 mb-4">
+                      <Skeleton className="h-6 w-16" />
+                      <Skeleton className="h-6 w-16" />
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-10 w-32" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : coursesData?.ads && coursesData.ads.length > 0 ? (
+            <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {[1, 2, 3, 4].map((i) => (
-                  <Card key={i} className="overflow-hidden">
-                    <CardHeader className="pb-0">
-                      <Skeleton className="h-6 w-3/4" />
+                {coursesData.ads.map((ad: any) => (
+                  <Card key={ad.id} className="overflow-hidden">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg">{ad.title}</CardTitle>
                     </CardHeader>
-                    <CardContent className="pb-0 pt-4">
-                      <Skeleton className="h-4 w-full mb-2" />
-                      <Skeleton className="h-4 w-2/3 mb-4" />
-                      <div className="flex space-x-2 mb-4">
-                        <Skeleton className="h-6 w-16" />
-                        <Skeleton className="h-6 w-16" />
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <Skeleton className="h-4 w-24" />
-                        <Skeleton className="h-10 w-32" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : coursesData?.ads && coursesData.ads.length > 0 ? (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {coursesData.ads.map((ad: any) => (
-                    <Card key={ad.id} className="overflow-hidden">
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-lg">{ad.title}</CardTitle>
-                      </CardHeader>
-                      
-                      <CardContent className="pb-3">
-                        <div className="flex flex-wrap gap-2 mb-3">
-                          {ad.subject && (
-                            <Badge variant="outline" className="flex items-center">
-                              <BookOpen className="h-3 w-3 mr-1" />
-                              {ad.subject.name}
-                            </Badge>
-                          )}
-                          
-                          {ad.level && (
-                            <Badge variant="outline" className="flex items-center">
-                              <BookOpenCheck className="h-3 w-3 mr-1" />
-                              {ad.level.name}
-                            </Badge>
-                          )}
-                          
+                    
+                    <CardContent className="pb-3">
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {ad.subject && (
                           <Badge variant="outline" className="flex items-center">
-                            <Home className="h-3 w-3 mr-1" />
-                            {ad.teaching_mode === "online" ? "Trực tuyến" :
-                             ad.teaching_mode === "offline" ? "Tại chỗ" :
-                             ad.teaching_mode === "both" ? "Cả hai" : ""}
+                            <BookOpen className="h-3 w-3 mr-1" />
+                            {ad.subject.name}
                           </Badge>
-                        </div>
+                        )}
                         
-                        <p className="text-muted-foreground mb-4 line-clamp-2">
-                          {ad.description}
-                        </p>
+                        {ad.level && (
+                          <Badge variant="outline" className="flex items-center">
+                            <BookOpenCheck className="h-3 w-3 mr-1" />
+                            {ad.level.name}
+                          </Badge>
+                        )}
                         
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            {ad.tutor?.user?.avatar ? (
-                              <img 
-                                src={ad.tutor.user.avatar} 
-                                alt={`${ad.tutor.user.first_name} ${ad.tutor.user.last_name}`}
-                                className="h-8 w-8 rounded-full object-cover"
-                              />
-                            ) : (
-                              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium">
-                                {ad.tutor?.user?.first_name?.[0]}
-                              </div>
-                            )}
-                            <div>
-                              <p className="text-sm font-medium">
-                                {ad.tutor?.user?.first_name} {ad.tutor?.user?.last_name}
-                              </p>
+                        <Badge variant="outline" className="flex items-center">
+                          <Home className="h-3 w-3 mr-1" />
+                          {ad.teaching_mode === "online" ? "Trực tuyến" :
+                           ad.teaching_mode === "offline" ? "Tại chỗ" :
+                           ad.teaching_mode === "both" ? "Cả hai" : ""}
+                        </Badge>
+                      </div>
+                      
+                      <p className="text-muted-foreground mb-4 line-clamp-2">
+                        {ad.description}
+                      </p>
+                      
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          {ad.tutor?.user?.avatar ? (
+                            <img 
+                              src={ad.tutor.user.avatar} 
+                              alt={`${ad.tutor.user.first_name} ${ad.tutor.user.last_name}`}
+                              className="h-8 w-8 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium">
+                              {ad.tutor?.user?.first_name?.[0]}
                             </div>
-                          </div>
-                          
-                          <div className="text-right">
-                            <p className="text-sm text-muted-foreground">Học phí</p>
-                            <p className="font-medium">
-                              {new Intl.NumberFormat('vi-VN', { 
-                                style: 'currency', 
-                                currency: 'VND'
-                              }).format(Number(ad.hourly_rate))}<span className="text-xs">/giờ</span>
+                          )}
+                          <div>
+                            <p className="text-sm font-medium">
+                              {ad.tutor?.user?.first_name} {ad.tutor?.user?.last_name}
                             </p>
                           </div>
                         </div>
-                      </CardContent>
-                      
-                      <CardFooter className="pt-0">
-                        <Link href={`/tutors/${ad.tutor.id}`}>
-                          <Button className="w-full">
-                            Xem chi tiết
-                          </Button>
-                        </Link>
-                      </CardFooter>
-                    </Card>
-                  ))}
-                </div>
-                
-                {coursesData.pagination && coursesData.pagination.total_pages > 1 && (
-                  <Pagination className="mt-8">
-                    <PaginationContent>
-                      {renderPaginationItems()}
-                    </PaginationContent>
-                  </Pagination>
-                )}
-              </>
-            ) : (
-              <div className="text-center py-12 bg-muted/30 rounded-lg">
-                <BookOpen className="h-12 w-12 mx-auto text-muted-foreground" />
-                <h2 className="mt-4 text-xl font-medium">Không tìm thấy khóa học</h2>
-                <p className="mt-2 text-muted-foreground max-w-md mx-auto">
-                  Không có khóa học nào phù hợp với tìm kiếm của bạn. Hãy thử thay đổi các bộ lọc hoặc từ khóa tìm kiếm.
-                </p>
-                <Button className="mt-6" onClick={clearFilters}>
-                  Xóa tất cả bộ lọc
-                </Button>
+                        
+                        <div className="text-right">
+                          <p className="text-sm text-muted-foreground">Học phí</p>
+                          <p className="font-medium">
+                            {new Intl.NumberFormat('vi-VN', { 
+                              style: 'currency', 
+                              currency: 'VND'
+                            }).format(Number(ad.hourly_rate))}<span className="text-xs">/giờ</span>
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                    
+                    <CardFooter className="pt-0">
+                      <Link href={`/tutors/${ad.tutor.id}`}>
+                        <Button className="w-full">
+                          Xem chi tiết
+                        </Button>
+                      </Link>
+                    </CardFooter>
+                  </Card>
+                ))}
               </div>
-            )}
-          </div>
+              
+              {coursesData.pagination && coursesData.pagination.total_pages > 1 && (
+                <Pagination className="mt-8">
+                  <PaginationContent>
+                    {renderPaginationItems()}
+                  </PaginationContent>
+                </Pagination>
+              )}
+            </>
+          ) : (
+            <div className="text-center py-12 bg-muted/30 rounded-lg">
+              <BookOpen className="h-12 w-12 mx-auto text-muted-foreground" />
+              <h2 className="mt-4 text-xl font-medium">Không tìm thấy khóa học</h2>
+              <p className="mt-2 text-muted-foreground max-w-md mx-auto">
+                Không có khóa học nào phù hợp với tìm kiếm của bạn. Hãy thử thay đổi các bộ lọc hoặc từ khóa tìm kiếm.
+              </p>
+              <Button className="mt-6" onClick={clearFilters}>
+                Xóa tất cả bộ lọc
+              </Button>
+            </div>
+          )}
         </div>
       </div>
-    </MainLayout>
+    </div>
   );
 }
