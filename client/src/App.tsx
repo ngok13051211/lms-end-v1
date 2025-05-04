@@ -20,7 +20,7 @@ import StudentDashboardTutors from "@/pages/student-dashboard-tutors";
 import StudentDashboardMessages from "@/pages/student-dashboard-messages";
 import AdminDashboard from "@/pages/admin-dashboard";
 import BecomeTutor from "@/pages/become-tutor";
-import BookingFormV2 from "@/pages/booking-form-v2";
+import BookingForm from "@/pages/booking-form";
 import PrivateRoute from "@/components/auth/PrivateRoute";
 import MainLayout from "@/components/layout/MainLayout";
 import { useEffect, useState, ReactNode } from "react";
@@ -60,8 +60,8 @@ function Router() {
       <Route path="/tutors/:id" component={withMainLayout(TutorProfile)} />
       <Route path="/become-tutor" component={withMainLayout(BecomeTutor)} />
       <Route path="/courses" component={withMainLayout(Courses)} />
-      <Route path="/book/:tutorId" component={withMainLayout(BookingFormV2)} />
-      <Route path="/book/:tutorId/:adId" component={withMainLayout(BookingFormV2)} />
+      <Route path="/book/:tutorId" component={withMainLayout(BookingForm)} />
+      <Route path="/book/:tutorId/:adId" component={withMainLayout(BookingForm)} />
       
       {/* Legacy routes - keeping for backward compatibility */}
       <Route path="/tutor-dashboard">

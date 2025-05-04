@@ -1,823 +1,350 @@
 import { useState, useEffect } from "react";
+import { useLocation, useParams } from "wouter";
+import { useQuery } from "@tanstack/react-query";
+import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { useParams, useLocation } from "wouter";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useSelector } from "react-redux";
-import { RootState } from "../store";
-import { addDays, format, parse, isSameDay } from "date-fns";
+import { RootState } from "@/store";
+import { CalendarIcon, Loader2, InfoIcon } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
-// UI Components
 import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
-import { ArrowLeft, Calendar as CalendarIcon, Loader2, Search } from "lucide-react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
+import { vi } from "date-fns/locale";
 
-// Validation schema
+// Schema xác thực cho form đặt lịch
 const bookingFormSchema = z.object({
-  title: z.string().min(5, "Tiêu đề phải có ít nhất 5 ký tự"),
-  description: z.string().optional(),
+  title: z.string().min(5, "Tiêu đề cần ít nhất 5 ký tự"),
+  description: z.string().min(10, "Mô tả cần ít nhất 10 ký tự"),
+  teaching_mode: z.enum(["online", "offline", "both"], {
+    required_error: "Vui lòng chọn hình thức dạy",
+  }),
   date: z.date({
     required_error: "Vui lòng chọn ngày học",
   }),
-  start_time: z.string({
-    required_error: "Vui lòng chọn giờ bắt đầu",
-  }),
-  end_time: z.string({
-    required_error: "Vui lòng chọn giờ kết thúc",
-  }),
+  start_time: z.string().min(1, "Vui lòng chọn giờ bắt đầu"),
+  end_time: z.string().min(1, "Giờ kết thúc là bắt buộc"),
   location: z.string().optional(),
-  meeting_url: z.string().url().optional(),
-  teaching_mode: z.enum(["online", "offline", "both"]),
+  online_meeting_url: z.string().optional(),
+  notes: z.string().optional(),
 });
 
 type BookingFormValues = z.infer<typeof bookingFormSchema>;
 
-export default function BookingForm() {
-  const { tutorId, adId } = useParams();
-  const [, navigate] = useLocation();
-  const { user } = useSelector((state: RootState) => state.auth);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+// Định nghĩa kiểu dữ liệu cho khoảng thời gian
+interface TimeSlot {
+  startTime: string;
+  endTime: string;
+}
 
-  // Thông tin gia sư
+interface AvailabilityItem {
+  type: "specific";
+  date: string;
+  startTime: string;
+  endTime: string;
+}
+
+export default function BookingFormV2() {
+  const [location, navigate] = useLocation();
+  const { tutorId, adId } = useParams<{ tutorId?: string; adId?: string }>();
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [availableDates, setAvailableDates] = useState<Date[]>([]);
+  const [availableTimeSlots, setAvailableTimeSlots] = useState<Record<string, TimeSlot[]>>({});
+  const { user } = useSelector((state: RootState) => state.auth);
+
+  // Fetch thông tin gia sư
+  const tutorIdNum = parseInt(tutorId || "0");
   const {
     data: tutorData,
     isLoading: tutorLoading,
     error: tutorError,
   } = useQuery({
-    queryKey: ["/api/v1/tutors", tutorId],
-    queryFn: () => fetch(`/api/v1/tutors/${tutorId}`).then((res) => res.json()),
-    enabled: !!tutorId,
+    queryKey: ["/api/v1/tutors", tutorIdNum],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/v1/tutors/${tutorIdNum}`);
+      return res.json();
+    },
+    enabled: !!tutorIdNum && tutorIdNum > 0,
   });
 
-  // Thông tin quảng cáo (nếu có)
+  // Fetch thông tin quảng cáo nếu có
+  const adIdNum = adId ? parseInt(adId) : null;
   const {
     data: adData,
     isLoading: adLoading,
+    error: adError,
   } = useQuery({
-    queryKey: ["/api/v1/ads", adId],
-    queryFn: () => fetch(`/api/v1/tutors/ads/${adId}`).then((res) => res.json()),
-    enabled: !!adId,
+    queryKey: ["/api/v1/ads", adIdNum],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/v1/ads/${adIdNum}`);
+      return res.json();
+    },
+    enabled: !!adIdNum && adIdNum > 0,
   });
 
-  // Chuyển tiếng việt thành tiếng anh cho teaching mode
-  const getTeachingModeInEnglish = (mode: string) => {
-    switch (mode) {
-      case "Trực tuyến":
-        return "online";
-      case "Trực tiếp":
-        return "offline";
-      case "Cả hai":
-        return "both";
-      default:
-        return mode.toLowerCase();
-    }
-  };
-
-  // Form setup
+  // Khởi tạo form
   const form = useForm<BookingFormValues>({
     resolver: zodResolver(bookingFormSchema),
     defaultValues: {
-      title: adData?.title || "",
-      description: adData?.description || "",
-      date: undefined, // Không đặt ngày mặc định để bắt buộc người dùng chọn
-      start_time: "",  // Không đặt giờ mặc định
-      end_time: "",    // Không đặt giờ mặc định
-      location: adData?.location || "",
-      meeting_url: "",
-      teaching_mode: (adData?.teaching_mode 
-        ? getTeachingModeInEnglish(adData.teaching_mode)
-        : "both") as "online" | "offline" | "both",
+      title: "",
+      description: "",
+      teaching_mode: "online",
+      start_time: "",
+      end_time: "",
+      location: "",
+      online_meeting_url: "",
+      notes: "",
     },
   });
 
-  // Tạo booking mới
-  const createBookingMutation = useMutation({
-    mutationFn: async (bookingData: any) => {
-      const response = await apiRequest("POST", "/api/v1/bookings", bookingData);
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/v1/student/bookings"] });
-      navigate("/student-dashboard?tab=bookings");
-    },
-    onError: (error: any) => {
-      console.error("Booking error:", error);
-      setIsSubmitting(false);
-    },
-  });
-
+  // Xử lý khi submit form
   const onSubmit = async (values: BookingFormValues) => {
-    if (!user || !tutorData) {
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    // Tính toán thời gian bắt đầu và kết thúc
-    const datePart = format(values.date, "yyyy-MM-dd");
-    const startDateTime = parse(
-      `${datePart} ${values.start_time}`,
-      "yyyy-MM-dd HH:mm",
-      new Date()
-    );
-    const endDateTime = parse(
-      `${datePart} ${values.end_time}`,
-      "yyyy-MM-dd HH:mm",
-      new Date()
-    );
-
-    // Tính toán giá
-    const hourlyRate = adData?.hourly_rate || tutorData.hourly_rate || 0;
-
-    // Prepare booking data
-    const bookingData = {
-      tutor_id: parseInt(tutorId!),
-      ad_id: adId ? parseInt(adId) : undefined,
-      title: values.title,
-      description: values.description || "",
-      start_time: startDateTime.toISOString(),
-      end_time: endDateTime.toISOString(),
-      location: values.location || "",
-      meeting_url: values.meeting_url || "",
-      hourly_rate: hourlyRate,
-      teaching_mode: values.teaching_mode,
-    };
-
     try {
-      await createBookingMutation.mutateAsync(bookingData);
-    } catch (error) {
-      console.error("Error creating booking:", error);
+      setIsSubmitting(true);
+
+      // Định dạng ngày và giờ cho API
+      const datePart = format(values.date, "yyyy-MM-dd");
+      const startDateTime = new Date(`${datePart}T${values.start_time}:00`);
+      const endDateTime = new Date(`${datePart}T${values.end_time}:00`);
+
+      // Tạo dữ liệu đặt lịch
+      const bookingData = {
+        tutor_id: tutorIdNum,
+        title: values.title,
+        description: values.description,
+        teaching_mode: values.teaching_mode,
+        location: values.teaching_mode === "online" ? "" : values.location,
+        online_meeting_url: values.teaching_mode === "offline" ? "" : values.online_meeting_url,
+        start_time: startDateTime.toISOString(),
+        end_time: endDateTime.toISOString(),
+        ad_id: adIdNum,
+        notes: values.notes || "",
+      };
+
+      console.log("Dữ liệu đặt lịch gửi đi:", bookingData);
+
+      // Gửi yêu cầu tạo booking đến API
+      const response = await apiRequest("POST", "/api/v1/bookings", bookingData);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Có lỗi xảy ra khi đặt lịch");
+      }
+
+      const result = await response.json();
+      
+      toast({
+        title: "Đặt lịch thành công",
+        description: "Bạn sẽ được chuyển hướng đến trang thanh toán",
+        duration: 5000,
+      });
+
+      // Chuyển hướng đến trang thanh toán nếu có
+      if (result.payment_url) {
+        window.location.href = result.payment_url;
+      } else {
+        navigate("/dashboard/student");
+      }
+    } catch (error: any) {
+      console.error("Lỗi khi đặt lịch:", error);
+      toast({
+        title: "Đặt lịch thất bại",
+        description: error.message || "Vui lòng thử lại sau",
+        variant: "destructive",
+      });
+    } finally {
       setIsSubmitting(false);
     }
   };
 
-  // State mở rộng với các trường metadata bổ sung
-  type AvailabilityState = {
-    [key: string]: any;
-    _timeRanges?: {[key: string]: Array<{startTime: string, endTime: string}>};
-    _specificDates?: {[key: string]: boolean};
-    _hasSpecificDates?: boolean;
-    _empty?: boolean;
-  }
-  
-  // Khung giờ trống của gia sư (trong thực tế, bạn sẽ cần lấy dữ liệu này từ API)
-  const [availableTimeSlots, setAvailableTimeSlots] = useState<AvailabilityState>({});
-  
-  // Test hàm getDayOfWeekNumber
+  // Xử lý dữ liệu lịch trống từ gia sư
   useEffect(() => {
-    console.log("TEST getDayOfWeekNumber:");
-    console.log("sunday ->", getDayOfWeekNumber("sunday"), "JS getDay():", 0);
-    console.log("monday ->", getDayOfWeekNumber("monday"), "JS getDay():", 1);
-    console.log("tuesday ->", getDayOfWeekNumber("tuesday"), "JS getDay():", 2);
-    console.log("wednesday ->", getDayOfWeekNumber("wednesday"), "JS getDay():", 3);
-    console.log("thursday ->", getDayOfWeekNumber("thursday"), "JS getDay():", 4);
-    console.log("friday ->", getDayOfWeekNumber("friday"), "JS getDay():", 5);
-    console.log("saturday ->", getDayOfWeekNumber("saturday"), "JS getDay():", 6);
-    
-    // Test how JavaScript handles dates
-    const today = new Date(); // Today
-    for (let i = 0; i < 7; i++) {
-      const testDate = new Date(today);
-      testDate.setDate(today.getDate() + i);
-      console.log(`Date: ${testDate.toISOString().split('T')[0]}, Day of week: ${testDate.getDay()}, Day: ${testDate.toLocaleDateString('en-US', { weekday: 'long' })}`);
-    }
-  }, []);
-  
-  // Định nghĩa hàm ánh xạ tên ngày sang số thứ tự ngày trong tuần
-  // ĐÃ SỬA: Cần phải chính xác trả về giá trị getDay() đúng của JavaScript
-  // 0 = Chủ nhật, 1 = Thứ Hai, 2 = Thứ Ba, 3 = Thứ Tư, 4 = Thứ Năm, 5 = Thứ Sáu, 6 = Thứ Bảy
-  const getDayOfWeekNumber = (day: string): number => {
-    // Sử dụng chính xác cùng cách ánh xạ như trong tutor-dashboard-profile.tsx
-    const dayMap: { [key: string]: number } = {
-      sunday: 0,
-      monday: 1,
-      tuesday: 2,
-      wednesday: 3,
-      thursday: 4,
-      friday: 5,
-      saturday: 6,
-    };
-    
-    // Chuyển đổi string về lowercase và loại bỏ khoảng trắng đầu/cuối
-    let formattedDay = day.toLowerCase().trim();
-    
-    console.log(`Xử lý tên ngày: "${formattedDay}"`);
-    
-    // Đối với các giá trị tiếng Việt hoặc viết tắt, chuyển đổi sang tiếng Anh
-    if (formattedDay === 'chủ nhật' || formattedDay === 'chu nhat' || formattedDay === 'cn') {
-      formattedDay = 'sunday';
-    } else if (formattedDay === 'thứ hai' || formattedDay === 'thu hai' || formattedDay === 't2' || formattedDay === 'th2' || formattedDay === 'thu-2') {
-      formattedDay = 'monday';
-    } else if (formattedDay === 'thứ ba' || formattedDay === 'thu ba' || formattedDay === 't3' || formattedDay === 'th3' || formattedDay === 'thu-3') {
-      formattedDay = 'tuesday';
-    } else if (formattedDay === 'thứ tư' || formattedDay === 'thu tu' || formattedDay === 't4' || formattedDay === 'th4' || formattedDay === 'thu-4') {
-      formattedDay = 'wednesday';
-    } else if (formattedDay === 'thứ năm' || formattedDay === 'thu nam' || formattedDay === 't5' || formattedDay === 'th5' || formattedDay === 'thu-5') {
-      formattedDay = 'thursday';
-    } else if (formattedDay === 'thứ sáu' || formattedDay === 'thu sau' || formattedDay === 't6' || formattedDay === 'th6' || formattedDay === 'thu-6') {
-      formattedDay = 'friday';
-    } else if (formattedDay === 'thứ bảy' || formattedDay === 'thu bay' || formattedDay === 't7' || formattedDay === 'th7' || formattedDay === 'thu-7') {
-      formattedDay = 'saturday';
-    }
-    
-    const result = dayMap[formattedDay];
-    
-    if (result === undefined) {
-      console.warn(`Không nhận dạng được ngày trong tuần: '${day}' (đã chuẩn hóa thành '${formattedDay}')`);
-    } else {
-      console.log(`Ngày "${day}" được ánh xạ thành chỉ số ngày JavaScript: ${result}`);
-    }
-    
-    return result;
-  };
+    if (!tutorData || !tutorData.availability) return;
 
-  // Hàm tìm ngày tiếp theo tính từ ngày hiện tại có thứ tương ứng
-  const getNextWeekdayDate = (weekday: string): Date => {
-    const dayNumber = getDayOfWeekNumber(weekday);
-    if (dayNumber === undefined) {
-      console.error(`Không thể tìm ngày tiếp theo cho thứ: ${weekday}, không nhận dạng được số thứ tự ngày trong tuần`);
-      return new Date(); // Trả về ngày hiện tại nếu không tìm thấy
-    }
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    console.log(`Tìm ngày tiếp theo cho thứ '${weekday}' (số ${dayNumber}), ngày hiện tại: ${today.toISOString().split('T')[0]} (thứ ${today.getDay()})`);
-    
-    // Công thức tính số ngày cần cộng thêm để có được thứ trong tuần tiếp theo
-    // Ví dụ: Tìm thứ 4 (3) từ ngày thứ 2 (1) => cần cộng: (3 + 7 - 1) % 7 = 2 ngày
-    const daysUntilNext = (dayNumber + 7 - today.getDay()) % 7;
-    
-    console.log(`Cần thêm ${daysUntilNext === 0 ? 7 : daysUntilNext} ngày để đến ${weekday} tiếp theo`);
-    
-    const nextDate = new Date(today);
-    nextDate.setDate(today.getDate() + (daysUntilNext === 0 ? 7 : daysUntilNext));
-    
-    console.log(`Ngày ${weekday} tiếp theo là: ${nextDate.toISOString().split('T')[0]} (thứ ${nextDate.getDay()})`);
-    
-    return nextDate;
-  };
-
-  // Xử lý dữ liệu availability từ profile của gia sư
-  useEffect(() => {
     try {
-      // Kiểm tra nếu có dữ liệu về lịch trống của gia sư
-      if (tutorData && tutorData.availability) {
-        console.log("Đang xử lý dữ liệu lịch trống:", tutorData.availability);
-        
-        // Parse dữ liệu lịch trống từ JSON
-        let availabilityData;
-        try {
-          availabilityData = typeof tutorData.availability === 'string' 
-            ? JSON.parse(tutorData.availability) 
-            : tutorData.availability;
-          
-          console.log("Dữ liệu lịch trống sau khi parse:", JSON.stringify(availabilityData, null, 2));
-        } catch (error) {
-          console.error("Lỗi khi parse dữ liệu lịch trống:", error);
-          const emptyState: AvailabilityState = {};
-          emptyState._timeRanges = {};
-          emptyState._specificDates = {};
-          emptyState._hasSpecificDates = false;
-          emptyState._empty = true;
-          setAvailableTimeSlots(emptyState);
-          return;
-        }
-        
-        if (!availabilityData || !Array.isArray(availabilityData) || availabilityData.length === 0) {
-          console.log("Dữ liệu lịch trống không hợp lệ hoặc rỗng");
-          const emptyState: AvailabilityState = {};
-          emptyState._timeRanges = {};
-          emptyState._specificDates = {};
-          emptyState._hasSpecificDates = false;
-          emptyState._empty = true;
-          setAvailableTimeSlots(emptyState);
-          return;
-        }
-        
-        console.log("Kiểm tra dữ liệu lịch trống chi tiết:", availabilityData);
+      // Parse dữ liệu lịch trống từ string JSON (nếu cần)
+      const availabilityData = typeof tutorData.availability === 'string'
+        ? JSON.parse(tutorData.availability)
+        : tutorData.availability;
 
-        // Reset form values để đảm bảo không có giá trị mặc định
-        form.setValue("start_time", "");
-        form.setValue("end_time", "");
-        
-        // Chuẩn bị cấu trúc dữ liệu
-        // - daySlots: lưu trữ thời gian có thể đặt lịch theo định dạng YYYY-MM-DD cho mỗi ngày
-        // - timeRanges: lưu trữ các khoảng thời gian đầy đủ (start+end) cho mỗi ngày
-        // - specificDates: đánh dấu các ngày cụ thể đã có trong lịch
-        const daySlots: {[key: string]: string[]} = {};
-        const timeRanges: {[key: string]: Array<{startTime: string, endTime: string}>} = {};
-        const specificDates: {[key: string]: boolean} = {};
-        
-        // Ngày hiện tại (đặt về 00:00:00)
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        // Xử lý từng mục trong dữ liệu lịch trống
-        availabilityData.forEach((slot: any) => {
-          console.log("Đang xử lý slot:", slot);
-          
-          // Kiểm tra nếu là loại "specific" (ngày cụ thể)
-          if (slot.type === "specific" && slot.date && slot.startTime && slot.endTime) {
-            // Xử lý lịch theo ngày cụ thể
-            console.log("Xử lý lịch ngày cụ thể:", slot.date);
-            
-            // Chuyển đổi chuỗi ngày thành đối tượng Date
-            const specificDate = new Date(slot.date);
-            
-            // Kiểm tra ngày hợp lệ và không trong quá khứ
-            if (!isNaN(specificDate.getTime()) && specificDate >= today) {
-              // Lấy và kiểm tra thời gian
-              const [startHour, startMin] = slot.startTime.split(':').map(Number);
-              const [endHour, endMin] = slot.endTime.split(':').map(Number);
-              
-              if (isNaN(startHour) || isNaN(startMin) || isNaN(endHour) || isNaN(endMin)) {
-                console.warn("Định dạng thời gian không hợp lệ:", slot);
-                return;
-              }
-              
-              // Chuyển định dạng ngày thành YYYY-MM-DD
-              const dateStr = specificDate.toISOString().split('T')[0];
-              
-              // Thêm vào danh sách khoảng thời gian
-              if (!timeRanges[dateStr]) {
-                timeRanges[dateStr] = [];
-              }
-              timeRanges[dateStr].push({
-                startTime: slot.startTime,
-                endTime: slot.endTime
-              });
-              
-              // Thêm vào danh sách thời điểm có thể bắt đầu
-              if (!daySlots[dateStr]) {
-                daySlots[dateStr] = [];
-              }
-              
-              // Tạo các mốc thời gian 30 phút
-              const startMinutes = startHour * 60 + startMin;
-              const endMinutes = endHour * 60 + endMin;
-              
-              // Thêm thời gian bắt đầu chính xác
-              if (startHour >= 6 && startHour < 22) {
-                daySlots[dateStr].push(slot.startTime);
-              }
-              
-              // Thêm các mốc thời gian 30 phút
-              const roundedStart = Math.ceil(startMinutes / 30) * 30;
-              const maxStartMinutes = endMinutes - 60; // Đảm bảo buổi học có ít nhất 60 phút
-              
-              for (let minute = roundedStart; minute <= maxStartMinutes; minute += 30) {
-                const hour = Math.floor(minute / 60);
-                const min = minute % 60;
-                
-                // Chỉ xem xét các thời gian từ 6h sáng đến 22h tối
-                if (hour < 6 || hour >= 22) continue;
-                
-                const timeStr = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
-                daySlots[dateStr].push(timeStr);
-              }
-              
-              // Đánh dấu đây là ngày có lịch trống
-              specificDates[dateStr] = true;
-            }
-          }
-          // Kiểm tra slot có đầy đủ thông tin về thời gian cho trường hợp weekly hoặc legacy (không có type)
-          else if ((slot.type === "weekly" || !slot.type) && slot.startTime && slot.endTime && slot.day) {
-            // Lấy và kiểm tra thời gian
-            const [startHour, startMin] = slot.startTime.split(':').map(Number);
-            const [endHour, endMin] = slot.endTime.split(':').map(Number);
-            
-            if (isNaN(startHour) || isNaN(startMin) || isNaN(endHour) || isNaN(endMin)) {
-              console.warn("Định dạng thời gian không hợp lệ:", slot);
-              return;
-            }
-            
-            // Xử lý trường hợp ngày trong tuần (monday, tuesday, etc.)
-            console.log("Xử lý lịch hàng tuần với ngày:", slot.day);
-            const dayOfWeek = getDayOfWeekNumber(slot.day);
-            console.log("Số thứ tự ngày trong tuần:", dayOfWeek, "cho ngày", slot.day);
-            if (dayOfWeek === undefined) {
-              console.warn(`Không nhận dạng được ngày trong tuần: ${slot.day}`);
-              return;
-            }
-            
-            // Sử dụng getNextWeekdayDate để tìm các ngày tiếp theo một cách nhất quán
-            // Phù hợp với cách tutor tạo lịch trống trong dashboard
-            
-            console.log(`Xử lý ngày trong tuần: ${slot.day}`);
-            
-            // Lấy ngày đầu tiên trong tháng cho ngày trong tuần này
-            const dates: Date[] = [];
-            
-            // Sử dụng hàm getDayOfWeekNumber đã chuẩn hóa
-            const dayNumber = dayOfWeek; // dayOfWeek đã được tính từ getDayOfWeekNumber(slot.day) ở dòng 430
-            
-            if (dayNumber === undefined) {
-              console.error(`Không nhận dạng được ngày trong tuần: ${slot.day}`);
-              return;
-            }
-            
-            console.log(`Ngày ${slot.day} có chỉ số JavaScript: ${dayNumber}`);
-            
-            // Tạo các ngày tiếp theo
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            
-            // Tính số ngày cần thêm để tìm được ngày đầu tiên
-            const daysUntilNext = (dayNumber + 7 - today.getDay()) % 7;
-            const firstDate = new Date(today);
-            firstDate.setDate(today.getDate() + (daysUntilNext === 0 ? 7 : daysUntilNext));
-            
-            console.log(`Ngày ${slot.day} đầu tiên: ${firstDate.toISOString().split('T')[0]}, getDay(): ${firstDate.getDay()}`);
-            dates.push(firstDate);
-            
-            // Tạo thêm 3 tuần tiếp theo
-            for (let i = 1; i < 4; i++) {
-              const nextDate = new Date(firstDate);
-              nextDate.setDate(firstDate.getDate() + (i * 7));
-              console.log(`Thêm ngày tiếp theo: ${nextDate.toISOString().split('T')[0]}, thứ = ${nextDate.getDay()}`);
-              dates.push(nextDate);
-            }
-            
-            // Xử lý mỗi ngày tìm được
-            dates.forEach(date => {
-              const dateStr = date.toISOString().split('T')[0];
-              
-              // Thêm vào danh sách khoảng thời gian
-              if (!timeRanges[dateStr]) {
-                timeRanges[dateStr] = [];
-              }
-              timeRanges[dateStr].push({
-                startTime: slot.startTime,
-                endTime: slot.endTime
-              });
-              
-              // Thêm vào danh sách thời điểm có thể bắt đầu
-              if (!daySlots[dateStr]) {
-                daySlots[dateStr] = [];
-              }
-              
-              // Tạo các mốc thời gian 30 phút
-              const startMinutes = startHour * 60 + startMin;
-              const endMinutes = endHour * 60 + endMin;
-              
-              // Thêm thời gian bắt đầu chính xác
-              if (startHour >= 6 && startHour < 22) {
-                daySlots[dateStr].push(slot.startTime);
-              }
-              
-              // Thêm các mốc thời gian 30 phút
-              const roundedStart = Math.ceil(startMinutes / 30) * 30;
-              const maxStartMinutes = endMinutes - 60; // Đảm bảo buổi học có ít nhất 60 phút
-              
-              for (let minute = roundedStart; minute <= maxStartMinutes; minute += 30) {
-                const hour = Math.floor(minute / 60);
-                const min = minute % 60;
-                
-                // Chỉ xem xét các thời gian từ 6h sáng đến 22h tối
-                if (hour < 6 || hour >= 22) continue;
-                
-                const timeStr = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
-                daySlots[dateStr].push(timeStr);
-              }
-              
-              // Đánh dấu đây là ngày có lịch trống
-              specificDates[dateStr] = true;
-            });
-          } else {
-            console.warn("Slot không có đủ thông tin cần thiết:", slot);
-          }
-        });
-        
-        // Loại bỏ trùng lặp và sắp xếp các thời điểm cho mỗi ngày
-        for (const dateStr in daySlots) {
-          daySlots[dateStr] = Array.from(new Set(daySlots[dateStr])).sort();
-        }
-        
-        console.log("Các ngày và khung giờ đã xử lý:", daySlots);
-        console.log("Các khoảng thời gian đầy đủ:", timeRanges);
-        console.log("Các ngày có lịch:", Object.keys(specificDates));
-        
-        // Lưu thông tin khoảng thời gian để sử dụng khi tính toán
-        setAvailableTimeSlots({
-          ...daySlots,
-          _timeRanges: timeRanges,
-          _specificDates: specificDates,
-          _hasSpecificDates: true,
-          _empty: Object.keys(daySlots).length === 0
-        });
-      } else {
-        // Nếu không có dữ liệu lịch trống
-        console.log("Không có dữ liệu lịch trống cho gia sư này.");
-        const emptyState: AvailabilityState = {};
-        emptyState._timeRanges = {};
-        emptyState._specificDates = {};
-        emptyState._hasSpecificDates = false;
-        emptyState._empty = true;
-        setAvailableTimeSlots(emptyState);
+      if (!Array.isArray(availabilityData) || availabilityData.length === 0) {
+        console.log("Không có dữ liệu lịch trống hoặc dữ liệu không đúng định dạng");
+        return;
       }
+
+      console.log("Dữ liệu lịch trống gốc:", availabilityData);
+
+      // Lọc chỉ lấy các mục có type là "specific" (ngày cụ thể)
+      const specificSlots = availabilityData.filter(
+        (slot: any) => slot.type === "specific" && slot.date && slot.startTime && slot.endTime
+      ) as AvailabilityItem[];
+
+      console.log("Các khoảng thời gian cụ thể:", specificSlots);
+
+      // Tổ chức dữ liệu theo ngày
+      const slotsByDate: Record<string, TimeSlot[]> = {};
+      const dates: Date[] = [];
+
+      // Chỉ xem xét các ngày từ hôm nay trở đi
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      specificSlots.forEach(slot => {
+        const dateObj = new Date(slot.date);
+        
+        // Chỉ xem xét ngày hợp lệ và trong tương lai
+        if (!isNaN(dateObj.getTime()) && dateObj >= today) {
+          const dateStr = dateObj.toISOString().split('T')[0];
+          
+          // Thêm khoảng thời gian vào ngày
+          if (!slotsByDate[dateStr]) {
+            slotsByDate[dateStr] = [];
+            dates.push(dateObj);
+          }
+          
+          slotsByDate[dateStr].push({
+            startTime: slot.startTime,
+            endTime: slot.endTime
+          });
+        }
+      });
+
+      console.log("Dữ liệu lịch trống đã xử lý:", slotsByDate);
+      console.log("Các ngày có lịch trống:", dates);
+      
+      setAvailableDates(dates);
+      setAvailableTimeSlots(slotsByDate);
+
     } catch (error) {
-      console.error("Lỗi khi xử lý dữ liệu lịch trống:", error);
-      // Đảm bảo luôn có giá trị mặc định
-      const emptyState: AvailabilityState = {};
-      emptyState._timeRanges = {};
-      emptyState._specificDates = {};
-      emptyState._hasSpecificDates = false;
-      emptyState._empty = true;
-      setAvailableTimeSlots(emptyState);
+      console.error("Lỗi khi xử lý dữ liệu lịch trống của gia sư:", error);
     }
   }, [tutorData]);
-  
 
-  
-  // Lấy danh sách các ngày có lịch trống
-  const getAvailableDays = () => {
-    const result: Date[] = [];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Thiết lập về 00:00:00
+  // Lấy danh sách giờ bắt đầu có sẵn cho ngày đã chọn
+  const getAvailableStartTimes = (selectedDate: Date | undefined): string[] => {
+    if (!selectedDate) return [];
 
-    try {
-      // Kiểm tra nếu không có dữ liệu lịch trống hoặc đã đánh dấu là rỗng
-      // @ts-ignore - Truy cập thuộc tính động
-      if (availableTimeSlots._empty) {
-        console.log("Không có ngày nào có lịch trống");
-        return result;
-      }
-
-      // Lặp qua tất cả các ngày có lịch trống
-      for (const dateStr in availableTimeSlots) {
-        // Bỏ qua các thuộc tính metadata (bắt đầu bằng dấu gạch dưới)
-        if (dateStr.startsWith('_')) continue;
-
-        // Chuyển đổi chuỗi ngày thành đối tượng Date
-        const date = new Date(dateStr);
-        
-        // Kiểm tra ngày hợp lệ và không trong quá khứ
-        if (!isNaN(date.getTime()) && date >= today) {
-          // Kiểm tra nếu có các time slots cho ngày này
-          if (Array.isArray(availableTimeSlots[dateStr]) && availableTimeSlots[dateStr].length > 0) {
-            result.push(date);
-          }
-        }
-      }
-
-      // Log kết quả danh sách ngày
-      if (result.length > 0) {
-        console.log("Các ngày có lịch trống:", result.map(d => d.toISOString().split('T')[0]));
-      } else {
-        console.log("Không tìm thấy ngày nào có lịch trống sau khi xử lý");
-      }
-
-      // Sắp xếp theo thứ tự ngày tăng dần
-      return result.sort((a, b) => a.getTime() - b.getTime());
-    } catch (error) {
-      console.error("Lỗi khi lấy danh sách ngày có lịch trống:", error);
-      return [];
-    }
-  };
-  
-  // Hiển thị thời gian trống cho ngày đã chọn
-  const getAvailableTimesForSelectedDate = () => {
-    if (!form.watch("date")) {
-      return [];
-    }
+    const dateStr = selectedDate.toISOString().split('T')[0];
+    const slots = availableTimeSlots[dateStr] || [];
     
-    try {
-      console.log("Kiểm tra lịch trống cho ngày:", form.watch("date"));
-      console.log("Dữ liệu lịch trống hiện tại:", availableTimeSlots);
-      
-      // Kiểm tra nếu không có dữ liệu lịch trống hoặc đánh dấu là rỗng
-      // @ts-ignore - Truy cập thuộc tính động
-      if (availableTimeSlots._empty) {
-        console.log("Không có thời gian khả dụng (lịch trống rỗng)");
-        return []; 
-      }
-      
-      const selectedDate = form.watch("date");
-      
-      // Format ngày thành chuỗi YYYY-MM-DD để tìm trong object
-      const dateStr = selectedDate.toISOString().split('T')[0];
-      console.log(`Tìm lịch trống cho ngày: ${dateStr}`);
-      
-      // Lấy các khoảng thời gian cho ngày đã chọn
-      // @ts-ignore - Truy cập thuộc tính động
-      const timeRanges = availableTimeSlots._timeRanges?.[dateStr] || [];
-      console.log(`Tìm thấy ${timeRanges.length} khoảng thời gian cho ngày ${dateStr}:`, timeRanges);
-      
-      if (timeRanges.length === 0) {
-        console.log(`Không tìm thấy thời gian khả dụng cho ngày ${dateStr}`);
-        return [];
-      }
-      
-      // Trích xuất giờ bắt đầu từ các khoảng thời gian
-      const startTimes = timeRanges.map(range => range.startTime);
-      console.log(`Các giờ bắt đầu: ${startTimes.join(', ')}`);
-      
-      return startTimes.sort();
-    } catch (error) {
-      console.error("Lỗi khi lấy thời gian khả dụng:", error);
+    if (slots.length === 0) {
+      console.log(`Không có khoảng thời gian nào cho ngày ${dateStr}`);
       return [];
     }
+
+    // Trả về danh sách giờ bắt đầu đã sắp xếp
+    return slots.map(slot => slot.startTime).sort();
   };
-  
-  // Cập nhật giờ kết thúc tự động dựa trên giờ bắt đầu
-  const updateEndTimeBasedOnStartTime = (startTime: string) => {
-    if (!startTime || !form.watch("date")) {
-      return;
-    }
+
+  // Cập nhật giờ kết thúc dựa trên giờ bắt đầu
+  const updateEndTime = (startTime: string) => {
+    const selectedDate = form.getValues("date");
+    if (!selectedDate || !startTime) return;
+
+    const dateStr = selectedDate.toISOString().split('T')[0];
+    const slots = availableTimeSlots[dateStr] || [];
     
-    try {
-      // Kiểm tra dữ liệu có hợp lệ không
-      // @ts-ignore - Truy cập thuộc tính động
-      if (availableTimeSlots._empty) {
-        console.log("Không có dữ liệu lịch trống");
-        return;
-      }
+    // Tìm khoảng thời gian tương ứng với giờ bắt đầu
+    const matchedSlot = slots.find(slot => slot.startTime === startTime);
+    
+    if (matchedSlot) {
+      console.log(`Tìm thấy khoảng thời gian: ${startTime} - ${matchedSlot.endTime}`);
+      form.setValue("end_time", matchedSlot.endTime);
+    } else {
+      console.log(`Không tìm thấy khoảng thời gian cho giờ bắt đầu ${startTime}`);
       
-      // Lấy ngày đã chọn và chuyển về định dạng YYYY-MM-DD
-      const selectedDate = form.watch("date");
-      const dateStr = selectedDate.toISOString().split('T')[0];
+      // Tính giờ kết thúc mặc định (1 giờ sau giờ bắt đầu)
+      const [hour, minute] = startTime.split(":").map(Number);
+      let endHour = hour + 1;
+      if (endHour > 23) endHour = 23;
       
-      // Lấy danh sách các khoảng thời gian cho ngày đã chọn
-      // @ts-ignore - Truy cập thuộc tính động
-      const timeRanges = availableTimeSlots._timeRanges?.[dateStr] || [];
-      
-      if (timeRanges.length === 0) {
-        console.log(`Không tìm thấy khoảng thời gian nào cho ngày ${dateStr}`);
-        return;
-      }
-      
-      console.log(`Tìm giờ kết thúc cho lịch: Ngày ${dateStr}, Giờ bắt đầu ${startTime}`);
-      console.log(`Danh sách khoảng thời gian:`, timeRanges);
-      
-      // Tìm khoảng thời gian có giờ bắt đầu CHÍNH XÁC khớp với startTime đã chọn
-      const exactMatchRange = timeRanges.find(range => range.startTime === startTime);
-      
-      if (exactMatchRange) {
-        console.log(`Tìm thấy khoảng thời gian khớp chính xác: ${exactMatchRange.startTime}-${exactMatchRange.endTime}`);
-        
-        // Sử dụng giờ kết thúc chính xác từ khoảng thời gian này
-        form.setValue("end_time", exactMatchRange.endTime);
-        
-        console.log(`Đã đặt giờ kết thúc: ${exactMatchRange.endTime} (từ khoảng thời gian khớp chính xác)`);
-        return;
-      }
-      
-      // Nếu không tìm thấy khoảng thời gian khớp chính xác, thử tìm khoảng thời gian chứa startTime
-      // Chuyển đổi giờ bắt đầu thành phút
-      const [startHour, startMin] = startTime.split(':').map(Number);
-      const startMinutes = startHour * 60 + startMin;
-      
-      // Tìm khoảng thời gian phù hợp chứa thời gian bắt đầu
-      const matchedRange = timeRanges.find(range => {
-        const [rangeStartHour, rangeStartMin] = range.startTime.split(':').map(Number);
-        const [rangeEndHour, rangeEndMin] = range.endTime.split(':').map(Number);
-        
-        const rangeStartMinutes = rangeStartHour * 60 + rangeStartMin;
-        const rangeEndMinutes = rangeEndHour * 60 + rangeEndMin;
-        
-        // Thời gian bắt đầu phải nằm trong khoảng thời gian
-        return startMinutes >= rangeStartMinutes && startMinutes < rangeEndMinutes;
-      });
-      
-      if (matchedRange) {
-        // Nếu tìm thấy khoảng thời gian phù hợp
-        const [endHour, endMin] = matchedRange.endTime.split(':').map(Number);
-        const endMinutes = endHour * 60 + endMin;
-        
-        // Tính thời gian kết thúc:
-        // 1. Lý tưởng: 60 phút sau thời gian bắt đầu
-        // 2. Không vượt quá thời gian kết thúc của khoảng thời gian
-        const idealEndMinutes = startMinutes + 60;
-        const actualEndMinutes = Math.min(idealEndMinutes, endMinutes);
-        
-        // Định dạng thời gian kết thúc
-        const finalEndHour = Math.floor(actualEndMinutes / 60);
-        const finalEndMin = actualEndMinutes % 60;
-        const endTime = `${finalEndHour.toString().padStart(2, '0')}:${finalEndMin.toString().padStart(2, '0')}`;
-        
-        // Cập nhật form
-        form.setValue("end_time", endTime);
-        
-        console.log(`Đã cập nhật giờ kết thúc: ${endTime} (dựa trên khoảng ${matchedRange.startTime}-${matchedRange.endTime})`);
-      } else {
-        // Nếu không tìm thấy khoảng thời gian phù hợp
-        console.log(`Không tìm được khoảng thời gian chứa ${startTime}`);
-        
-        // Đặt thời gian kết thúc là 60 phút sau (hoặc tối đa 22:00)
-        const idealEndMinutes = startMinutes + 60;
-        const maxEndMinutes = 22 * 60;
-        const actualEndMinutes = Math.min(idealEndMinutes, maxEndMinutes);
-        
-        const endHour = Math.floor(actualEndMinutes / 60);
-        const endMin = actualEndMinutes % 60;
-        const endTime = `${endHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}`;
-        
-        form.setValue("end_time", endTime);
-        console.log(`Đặt giờ kết thúc mặc định: ${endTime} (60 phút sau giờ bắt đầu)`);
-      }
-    } catch (error) {
-      console.error("Lỗi khi cập nhật giờ kết thúc:", error);
+      const endTime = `${endHour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+      form.setValue("end_time", endTime);
     }
   };
-  
-  // Cập nhật danh sách thời gian trống khi ngày thay đổi
+
+  // Theo dõi thay đổi của ngày và cập nhật giờ bắt đầu/kết thúc
   useEffect(() => {
-    if (form.watch("date")) {
-      const availableTimes = getAvailableTimesForSelectedDate();
+    const date = form.watch("date");
+    
+    if (date) {
+      // Reset giờ bắt đầu và kết thúc
+      form.setValue("start_time", "");
+      form.setValue("end_time", "");
       
-      // Nếu có thời gian trống và thời gian bắt đầu hiện tại không có trong danh sách
+      // Kiểm tra nếu có giờ trống cho ngày đã chọn
+      const availableTimes = getAvailableStartTimes(date);
+      
       if (availableTimes.length > 0) {
-        // Cập nhật thời gian bắt đầu
-        if (!availableTimes.includes(form.watch("start_time"))) {
-          form.setValue("start_time", availableTimes[0]);
-          updateEndTimeBasedOnStartTime(availableTimes[0]);
-        } else {
-          // Nếu thời gian bắt đầu vẫn hợp lệ, cập nhật thời gian kết thúc
-          updateEndTimeBasedOnStartTime(form.watch("start_time"));
-        }
+        // Tự động chọn giờ bắt đầu đầu tiên
+        form.setValue("start_time", availableTimes[0]);
+        // Cập nhật giờ kết thúc tương ứng
+        updateEndTime(availableTimes[0]);
       }
     }
   }, [form.watch("date")]);
-  
-  // Cập nhật thời gian kết thúc khi thời gian bắt đầu thay đổi
+
+  // Theo dõi thay đổi của giờ bắt đầu và cập nhật giờ kết thúc
   useEffect(() => {
-    if (form.watch("start_time")) {
-      updateEndTimeBasedOnStartTime(form.watch("start_time"));
+    const startTime = form.watch("start_time");
+    if (startTime) {
+      updateEndTime(startTime);
     }
   }, [form.watch("start_time")]);
-  
-  // Danh sách các ngày có lịch trống
-  const availableDays = getAvailableDays();
 
-  // Chọn giờ
-  const timeOptions: string[] = [];
-  for (let hour = 6; hour < 22; hour++) {
-    for (let min = 0; min < 60; min += 30) {
-      const time = `${hour.toString().padStart(2, "0")}:${min
-        .toString()
-        .padStart(2, "0")}`;
-      timeOptions.push(time);
+  // Theo dõi thay đổi của hình thức dạy
+  useEffect(() => {
+    const teachingMode = form.watch("teaching_mode");
+    
+    if (teachingMode === "online") {
+      form.setValue("location", "");
+    } else if (teachingMode === "offline") {
+      form.setValue("online_meeting_url", "");
     }
-  }
+  }, [form.watch("teaching_mode")]);
 
+  // Hiển thị loading
   if (tutorLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2">Đang tải thông tin...</span>
       </div>
     );
   }
 
+  // Hiển thị lỗi
   if (tutorError) {
     return (
       <div className="container max-w-4xl mx-auto py-8 px-4">
-        <Card>
+        <Card className="border-red-200">
           <CardHeader>
             <CardTitle className="text-red-500">Lỗi</CardTitle>
             <CardDescription>
               Không thể tải thông tin gia sư. Vui lòng thử lại sau.
             </CardDescription>
           </CardHeader>
+          <CardFooter>
+            <Button onClick={() => window.history.back()} variant="outline">Quay lại</Button>
+          </CardFooter>
         </Card>
       </div>
     );
   }
 
+  // Hiển thị form khi đã tải dữ liệu thành công
+  // Kiểm tra xem người dùng đã đăng nhập chưa
   if (!user) {
     return (
       <div className="container max-w-4xl mx-auto py-8 px-4">
@@ -836,6 +363,7 @@ export default function BookingForm() {
     );
   }
 
+  // Kiểm tra vai trò người dùng
   if (user.role !== "student") {
     return (
       <div className="container max-w-4xl mx-auto py-8 px-4">
@@ -847,14 +375,17 @@ export default function BookingForm() {
             </CardDescription>
           </CardHeader>
           <CardFooter>
-            <Button onClick={() => navigate("/")}>Quay lại trang chủ</Button>
+            <Button onClick={() => window.history.back()} variant="outline">Quay lại</Button>
           </CardFooter>
         </Card>
       </div>
     );
   }
 
-  const tutorName = tutorData?.user?.first_name + " " + tutorData?.user?.last_name;
+  // Lấy tên gia sư để hiển thị
+  const tutorName = tutorData?.user?.first_name && tutorData?.user?.last_name 
+    ? `${tutorData.user.first_name} ${tutorData.user.last_name}`
+    : "gia sư này";
 
   return (
     <div className="container max-w-4xl mx-auto py-8 px-4">
@@ -871,8 +402,8 @@ export default function BookingForm() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
-                  {/* Hiển thị thông báo khi gia sư chưa thiết lập lịch trống */}
-                  {availableTimeSlots._empty && (
+                  {/* Thông báo khi gia sư chưa có lịch trống */}
+                  {availableDates.length === 0 && (
                     <Card className="bg-amber-50 border-amber-200 mb-4">
                       <CardContent className="p-4">
                         <div className="flex items-start gap-2">
@@ -888,7 +419,7 @@ export default function BookingForm() {
                       </CardContent>
                     </Card>
                   )}
-                
+
                   <FormField
                     control={form.control}
                     name="title"
@@ -948,80 +479,101 @@ export default function BookingForm() {
                     )}
                   />
 
-                  {(form.watch("teaching_mode") === "offline" ||
-                    form.watch("teaching_mode") === "both") && (
+                  {/* Địa điểm (cho hình thức offline/both) */}
+                  {(form.watch("teaching_mode") === "offline" || form.watch("teaching_mode") === "both") && (
                     <FormField
                       control={form.control}
                       name="location"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Địa điểm</FormLabel>
+                          <FormLabel>Địa điểm học</FormLabel>
                           <FormControl>
                             <Input
-                              placeholder="Nhập địa chỉ học"
+                              placeholder="Ví dụ: 123 Nguyễn Huệ, Quận 1, TP.HCM"
                               {...field}
                             />
                           </FormControl>
+                          <FormDescription>
+                            Nhập địa chỉ cụ thể nơi bạn muốn học trực tiếp với gia sư
+                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
                   )}
 
-                  {(form.watch("teaching_mode") === "online" ||
-                    form.watch("teaching_mode") === "both") && (
+                  {/* URL học trực tuyến (cho hình thức online/both) */}
+                  {(form.watch("teaching_mode") === "online" || form.watch("teaching_mode") === "both") && (
                     <FormField
                       control={form.control}
-                      name="meeting_url"
+                      name="online_meeting_url"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Link học trực tuyến (nếu có)</FormLabel>
+                          <FormLabel>URL phòng học trực tuyến (không bắt buộc)</FormLabel>
                           <FormControl>
                             <Input
-                              placeholder="Ví dụ: https://meet.google.com/..."
+                              placeholder="Ví dụ: https://meet.google.com/xyz-abcd-123"
                               {...field}
                             />
                           </FormControl>
+                          <FormDescription>
+                            Bạn có thể để trống để gia sư tạo phòng học
+                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
                   )}
+
+                  <FormField
+                    control={form.control}
+                    name="notes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Ghi chú thêm (không bắt buộc)</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Ví dụ: Em cần gia sư mang theo tài liệu"
+                            className="h-20"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
 
                 <div className="space-y-4">
+                  <div className="bg-muted p-4 rounded-lg mb-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <InfoIcon className="w-5 h-5 text-blue-500" />
+                      <h3 className="font-medium">Thông tin buổi học</h3>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Để đặt lịch học, vui lòng chọn một ngày và giờ mà gia sư có sẵn lịch trống. 
+                      Chỉ những ngày và giờ gia sư đã đăng ký lịch trống mới được hiển thị.
+                    </p>
+                  </div>
+
                   <FormField
                     control={form.control}
                     name="date"
                     render={({ field }) => (
                       <FormItem className="flex flex-col">
                         <FormLabel>Ngày học</FormLabel>
-                        {Object.keys(availableTimeSlots).length > 0 ? (
-                          <div className="text-xs mb-2 text-muted-foreground">
-                            {tutorData?.availability && JSON.parse(tutorData.availability).some((slot: any) => slot.day === "tuesday") ? 
-                              "(Chỉ hiển thị những ngày Thứ Ba mà gia sư có lịch trống)" :
-                              "(Chỉ hiển thị những ngày mà gia sư có lịch trống)"
-                            }
-                          </div>
-                        ) : (
-                          <div className="text-xs text-amber-600 mb-2">
-                            Đang đồng bộ lịch với gia sư...
-                          </div>
-                        )}
                         <Popover>
                           <PopoverTrigger asChild>
                             <FormControl>
                               <Button
                                 variant={"outline"}
-                                className={cn(
-                                  "w-full pl-3 text-left font-normal",
-                                  !field.value && "text-muted-foreground"
-                                )}
+                                className={`w-full pl-3 text-left font-normal ${!field.value && "text-muted-foreground"}`}
+                                disabled={availableDates.length === 0}
                               >
                                 {field.value ? (
-                                  format(field.value, "dd/MM/yyyy")
+                                  format(field.value, "EEEE, dd/MM/yyyy", { locale: vi })
                                 ) : (
-                                  <span>Chọn ngày</span>
+                                  <span>Chọn ngày học</span>
                                 )}
                                 <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                               </Button>
@@ -1031,39 +583,25 @@ export default function BookingForm() {
                             <Calendar
                               mode="single"
                               selected={field.value}
-                              onSelect={field.onChange}
-                              disabled={(date) =>
-                                date < new Date() || 
-                                date > addDays(new Date(), 60) ||
-                                !availableDays.some(d => isSameDay(d, date))
-                              }
+                              onSelect={(date) => {
+                                if (date) field.onChange(date);
+                              }}
+                              disabled={(date) => {
+                                // Chỉ cho phép chọn ngày trong availableDates
+                                const dateStr = date.toISOString().split('T')[0];
+                                return !availableTimeSlots[dateStr];
+                              }}
                               initialFocus
-                              className="rounded-md border"
+                              locale={vi}
                               weekStartsOn={1}
-                              showOutsideDays={false}
-                              today={new Date()}
-                              modifiersStyles={{
-                                today: { fontWeight: 'bold', color: 'var(--primary)' },
-                                outside: { color: 'var(--muted-foreground)' }
-                              }}
-                              modifiers={{
-                                available: availableDays
-                              }}
-                              modifiersClassNames={{
-                                available: "bg-primary/10 font-medium"
-                              }}
-                              footer={
-                                <div className="p-3 border-t border-border/50 text-xs text-center text-muted-foreground space-y-1">
-                                  <div className="flex items-center justify-center gap-2">
-                                    <div className="w-3 h-3 rounded-sm bg-primary/10"></div>
-                                    <span>Ngày có lịch trống</span>
-                                  </div>
-                                  <div>Chỉ hiển thị các ngày gia sư có thể dạy</div>
-                                </div>
-                              }
                             />
                           </PopoverContent>
                         </Popover>
+                        {availableDates.length === 0 && (
+                          <p className="text-xs text-amber-600">
+                            Gia sư chưa thiết lập lịch trống
+                          </p>
+                        )}
                         <FormMessage />
                       </FormItem>
                     )}
@@ -1076,23 +614,13 @@ export default function BookingForm() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Giờ bắt đầu</FormLabel>
-                          {getAvailableTimesForSelectedDate().length > 0 ? (
-                            <div className="text-xs mb-2 text-muted-foreground">
-                              (Hiển thị các giờ gia sư có lịch trống trong ngày đã chọn)
-                            </div>
-                          ) : (
-                            <div className="text-xs mb-2 text-amber-600">
-                              Vui lòng chọn ngày có lịch trống để xem giờ trống
-                            </div>
-                          )}
                           <Select
                             onValueChange={(value) => {
                               field.onChange(value);
-                              // Cập nhật giờ kết thúc dựa trên giờ bắt đầu
-                              updateEndTimeBasedOnStartTime(value);
+                              updateEndTime(value);
                             }}
                             value={field.value}
-                            disabled={!form.watch("date") || getAvailableTimesForSelectedDate().length === 0}
+                            disabled={!form.watch("date") || getAvailableStartTimes(form.watch("date")).length === 0}
                           >
                             <FormControl>
                               <SelectTrigger>
@@ -1100,23 +628,23 @@ export default function BookingForm() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {form.watch("date") && getAvailableTimesForSelectedDate().length > 0 ? (
-                                getAvailableTimesForSelectedDate().map((time: string) => {
+                              {form.watch("date") && getAvailableStartTimes(form.watch("date")).length > 0 ? (
+                                getAvailableStartTimes(form.watch("date")).map((time: string) => {
                                   // Tìm khoảng thời gian tương ứng để hiển thị giờ kết thúc
-                                  // @ts-ignore - Truy cập thuộc tính động
-                                  const timeRanges = availableTimeSlots._timeRanges?.[form.watch("date").toISOString().split('T')[0]] || [];
-                                  const matchedRange = timeRanges.find(range => range.startTime === time);
+                                  const dateStr = form.watch("date").toISOString().split('T')[0];
+                                  const slots = availableTimeSlots[dateStr] || [];
+                                  const matchedSlot = slots.find(slot => slot.startTime === time);
                                   
                                   return (
                                     <SelectItem key={time} value={time}>
-                                      {time} {matchedRange ? `→ ${matchedRange.endTime}` : ''}
+                                      {time} {matchedSlot ? `→ ${matchedSlot.endTime}` : ''}
                                     </SelectItem>
                                   );
                                 })
                               ) : (
-                                <div className="px-2 py-1 text-sm text-muted-foreground">
-                                  Vui lòng chọn ngày có lịch trống
-                                </div>
+                                <SelectItem value="no-slots" disabled>
+                                  Không có giờ trống
+                                </SelectItem>
                               )}
                             </SelectContent>
                           </Select>
@@ -1131,49 +659,23 @@ export default function BookingForm() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Giờ kết thúc</FormLabel>
-                          {form.watch("start_time") ? (
-                            <div className="text-xs mb-2 text-muted-foreground">
-                              (Thời gian kết thúc được tính từ giờ bắt đầu đến hết khung giờ trống của gia sư)
-                            </div>
-                          ) : (
-                            <div className="text-xs mb-2 text-amber-600">
-                              Vui lòng chọn ngày và giờ bắt đầu trước
-                            </div>
-                          )}
-                          <div className="relative">
-                            <Select
-                              onValueChange={field.onChange}
-                              value={field.value}
-                              disabled={true} // Tự động tính giờ kết thúc, không cho chọn thủ công
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Chọn giờ kết thúc" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {field.value ? (
-                                  <SelectItem value={field.value}>{field.value}</SelectItem>
-                                ) : (
-                                  <div className="px-2 py-1 text-sm text-muted-foreground">
-                                    Tự động tính toán khi chọn giờ bắt đầu
-                                  </div>
-                                )}
-                              </SelectContent>
-                            </Select>
-                            {form.watch("start_time") && (
-                              <div className="absolute top-0 right-0 bottom-0 flex items-center pr-3 pointer-events-none">
-                                <span className="text-xs text-muted-foreground">(Tự động)</span>
-                              </div>
-                            )}
-                          </div>
+                          <FormControl>
+                            <Input 
+                              value={field.value} 
+                              readOnly 
+                              className="bg-muted cursor-not-allowed" 
+                            />
+                          </FormControl>
+                          <p className="text-xs text-muted-foreground">
+                            Tự động tính toán dựa trên lịch của gia sư
+                          </p>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
                   </div>
 
-                  <div className="mt-4">
+                  <div className="mt-6">
                     <h3 className="text-lg font-medium mb-2">Thông tin thanh toán</h3>
                     <Separator className="mb-4" />
                     <div className="space-y-2">
@@ -1285,7 +787,11 @@ export default function BookingForm() {
                 >
                   Hủy
                 </Button>
-                <Button type="submit" disabled={isSubmitting} className="bg-primary hover:bg-primary/90">
+                <Button 
+                  type="submit" 
+                  disabled={isSubmitting || availableDates.length === 0} 
+                  className="bg-primary hover:bg-primary/90"
+                >
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
