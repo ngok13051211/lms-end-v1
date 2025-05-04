@@ -696,12 +696,46 @@ export default function BookingForm() {
                               mode="single"
                               selected={field.value}
                               onSelect={(date) => {
-                                if (date) field.onChange(date);
+                                if (date) {
+                                  // Tạo một đối tượng Date mới với giờ địa phương đúng
+                                  const safeDate = new Date(
+                                    date.getFullYear(),
+                                    date.getMonth(),
+                                    date.getDate(),
+                                    0, 0, 0
+                                  );
+                                  console.log("Ngày được chọn trên calendar:", date);
+                                  console.log("Ngày sau khi xử lý:", safeDate);
+                                  field.onChange(safeDate);
+                                }
                               }}
                               disabled={(date) => {
-                                // Chỉ cho phép chọn ngày trong availableDates
-                                const dateStr = date.toISOString().split('T')[0];
-                                return !availableTimeSlots[dateStr];
+                                // Xử lý lại ngày để tìm trong availableTimeSlots
+                                const year = date.getFullYear();
+                                const month = date.getMonth() + 1;
+                                const day = date.getDate();
+                                const dateStr = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+                                
+                                // Kiểm tra xem ngày có trong danh sách availableDates không
+                                let exists = false;
+                                
+                                // Kiểm tra trực tiếp trong availableTimeSlots
+                                if (availableTimeSlots[dateStr] && availableTimeSlots[dateStr].length > 0) {
+                                  exists = true;
+                                }
+                                
+                                // Tìm kiếm chính xác theo năm/tháng/ngày
+                                if (!exists) {
+                                  for (const key in availableTimeSlots) {
+                                    const [keyYear, keyMonth, keyDay] = key.split("-").map(Number);
+                                    if (year === keyYear && month === keyMonth && day === keyDay) {
+                                      exists = true;
+                                      break;
+                                    }
+                                  }
+                                }
+                                
+                                return !exists;
                               }}
                               initialFocus
                               locale={vi}
@@ -742,8 +776,26 @@ export default function BookingForm() {
                             {form.watch("date") && getAvailableStartTimes(form.watch("date")).length > 0 ? (
                               getAvailableStartTimes(form.watch("date")).map((time: string) => {
                                 // Tìm khoảng thời gian tương ứng để hiển thị giờ kết thúc
-                                const dateStr = form.watch("date").toISOString().split('T')[0];
-                                const slots = availableTimeSlots[dateStr] || [];
+                                const selectedDate = form.watch("date");
+                                const year = selectedDate.getFullYear();
+                                const month = selectedDate.getMonth() + 1;
+                                const day = selectedDate.getDate();
+                                const dateStr = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+                                
+                                // Tìm slots từ cả hai nguồn
+                                let slots = availableTimeSlots[dateStr] || [];
+                                
+                                // Nếu không tìm thấy, thử tìm với cùng năm/tháng/ngày
+                                if (slots.length === 0) {
+                                  for (const key in availableTimeSlots) {
+                                    const [keyYear, keyMonth, keyDay] = key.split("-").map(Number);
+                                    if (year === keyYear && month === keyMonth && day === keyDay) {
+                                      slots = availableTimeSlots[key];
+                                      break;
+                                    }
+                                  }
+                                }
+                                
                                 const matchedSlot = slots.find(slot => slot.startTime === time);
                                 
                                 if (!matchedSlot) return null;
