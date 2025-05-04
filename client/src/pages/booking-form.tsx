@@ -205,7 +205,7 @@ export default function BookingForm() {
         console.log("Đang xử lý dữ liệu lịch trống:", tutorData.availability);
         
         // Parse dữ liệu lịch trống từ JSON
-        const availabilityData = typeof tutorData.availability === 'string' 
+        let availabilityData = typeof tutorData.availability === 'string' 
           ? JSON.parse(tutorData.availability) 
           : tutorData.availability;
           
@@ -232,6 +232,10 @@ export default function BookingForm() {
         const timeRanges: {[key: string]: Array<{startTime: string, endTime: string}>} = {};
         const specificDates: {[key: string]: boolean} = {};
         
+        // Lấy ngày hiện tại và đặt về 00:00:00
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
         // Ánh xạ tên ngày sang số thứ tự ngày trong tuần
         const dayMap: {[key: string]: number} = {
           'sunday': 0,
@@ -243,20 +247,13 @@ export default function BookingForm() {
           'saturday': 6
         };
         
-        // Lấy ngày hiện tại và đặt về 00:00:00
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        // Tính toán 4 tuần kể từ ngày hiện tại (28 ngày)
+        // Tạo một mảng các ngày từ ngày hiện tại đến 28 ngày tới
         const nextFourWeeks: Date[] = [];
         for (let i = 0; i < 28; i++) {
           const date = new Date(today);
           date.setDate(today.getDate() + i);
           nextFourWeeks.push(date);
         }
-        
-        // Kiểm tra nếu có bất kỳ ngày cụ thể nào trong dữ liệu
-        const hasAnySpecificDate = availabilityData.some((slot: any) => slot.specificDate);
         
         // Xử lý từng mục trong dữ liệu lịch trống
         availabilityData.forEach((slot: any) => {
@@ -283,25 +280,53 @@ export default function BookingForm() {
             return;
           }
           
-          if (slot.specificDate) {
-            // TRƯỜNG HỢP 1: Có ngày cụ thể (YYYY-MM-DD)
-            processSpecificDateSlot(
-              slot, specificDates, timeRanges, daySlots, 
-              startHour, startMin, endHour, endMin, today
-            );
-          } else if (slot.day) {
-            // TRƯỜNG HỢP 2: Có ngày trong tuần (monday, tuesday, ...)
-            if (hasAnySpecificDate) {
-              // Nếu có bất kỳ ngày cụ thể nào, bỏ qua các ngày trong tuần 
-              // để ưu tiên hiển thị chỉ những ngày cụ thể
-              console.log("Bỏ qua ngày trong tuần do đã có ngày cụ thể:", slot.day);
+          // Xác định ngày cho khung giờ này - 
+          // Slot chỉ có thuộc tính 'day' đại diện cho thứ trong tuần (monday, tuesday, etc.)
+          if (slot.day) {
+            // Lấy số ngày trong tuần từ tên
+            const dayNumber = dayMap[slot.day.toLowerCase()];
+            if (dayNumber === undefined) {
+              console.warn("Không nhận dạng được ngày trong tuần:", slot.day);
               return;
             }
             
-            processWeekdaySlot(
-              slot, dayMap, nextFourWeeks, timeRanges, daySlots,
-              startHour, startMin, endHour, endMin, specificDates
-            );
+            // Tìm ngày tiếp theo từ ngày hiện tại có thứ tương ứng
+            let matchingDate = null;
+            for (const date of nextFourWeeks) {
+              if (date.getDay() === dayNumber) {
+                matchingDate = date;
+                break;
+              }
+            }
+            
+            if (!matchingDate) {
+              console.warn("Không thể tìm ngày phù hợp cho:", slot.day);
+              return;
+            }
+            
+            // Chuyển đổi thành chuỗi YYYY-MM-DD
+            const dateStr = matchingDate.toISOString().split('T')[0];
+            console.log(`Đã chuyển đổi ${slot.day} thành ngày ${dateStr}`);
+            
+            // Thêm vào danh sách khoảng thời gian
+            if (!timeRanges[dateStr]) {
+              timeRanges[dateStr] = [];
+            }
+            timeRanges[dateStr].push({
+              startTime: slot.startTime,
+              endTime: slot.endTime
+            });
+            
+            // Thêm vào danh sách thời điểm có thể bắt đầu
+            if (!daySlots[dateStr]) {
+              daySlots[dateStr] = [];
+            }
+            
+            // Tạo các mốc thời gian 30 phút
+            addTimeSlots(startHour, startMin, endHour, endMin, daySlots[dateStr]);
+            
+            // Đánh dấu đây là ngày cụ thể (đã được chuyển đổi từ thứ)
+            specificDates[dateStr] = true;
           } else {
             console.warn("Slot không có thông tin về ngày:", slot);
           }
@@ -312,10 +337,9 @@ export default function BookingForm() {
           daySlots[dateStr] = Array.from(new Set(daySlots[dateStr])).sort();
         }
         
-        // Ghi log thông tin
-        console.log("Ngày và khoảng thời gian đã xử lý:", daySlots);
+        console.log("Khoảng thời gian đã xử lý:", daySlots);
         console.log("Khoảng thời gian đầy đủ:", timeRanges);
-        console.log("Các ngày cụ thể:", specificDates);
+        console.log("Các ngày có lịch:", specificDates);
         
         // Lưu thông tin khoảng thời gian để sử dụng khi tính toán
         // @ts-ignore - Thêm thuộc tính tạm cho state
@@ -323,8 +347,8 @@ export default function BookingForm() {
           ...daySlots,
           _timeRanges: timeRanges,
           _specificDates: specificDates,
-          _hasSpecificDates: true, // Luôn đánh dấu là có ngày cụ thể (vì đã chuyển đổi hết)
-          _empty: Object.keys(daySlots).length === 0 // Đánh dấu nếu không có slots nào
+          _hasSpecificDates: true,
+          _empty: Object.keys(daySlots).length === 0
         });
       } else {
         // Nếu không có dữ liệu lịch trống
@@ -513,6 +537,13 @@ export default function BookingForm() {
             result.push(date);
           }
         }
+      }
+
+      // Log kết quả danh sách ngày
+      if (result.length > 0) {
+        console.log("Các ngày có lịch trống:", result.map(d => d.toISOString().split('T')[0]));
+      } else {
+        console.log("Không tìm thấy ngày nào có lịch trống sau khi xử lý");
       }
 
       // Sắp xếp theo thứ tự ngày tăng dần
