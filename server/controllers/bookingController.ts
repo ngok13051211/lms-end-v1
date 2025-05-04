@@ -46,10 +46,22 @@ export const createBooking = async (req: Request, res: Response) => {
     // Tính toán tổng thời gian
     // Đảm bảo xử lý thời gian đúng cách bằng cách thêm thông tin múi giờ
     // Sử dụng 'T' như một phần của chuỗi ISO để đảm bảo JavaScript xử lý đúng múi giờ địa phương
-    const bookingDate = validatedData.date;
-    const startTimeStr = validatedData.start_time.padStart(5, '0');
-    const endTimeStr = validatedData.end_time.padStart(5, '0');
+    const bookingDate = validatedData.date as string;
     
+    // Chuẩn hóa định dạng giờ HH:MM
+    let startTimeStr = typeof validatedData.start_time === 'string' ? validatedData.start_time : validatedData.start_time.toString();
+    let endTimeStr = typeof validatedData.end_time === 'string' ? validatedData.end_time : validatedData.end_time.toString();
+    
+    // Đảm bảo định dạng giờ có đầy đủ 2 chữ số ở phần giờ (HH:MM)
+    if (startTimeStr.length === 4) {
+      startTimeStr = "0" + startTimeStr;
+    }
+    
+    if (endTimeStr.length === 4) {
+      endTimeStr = "0" + endTimeStr;
+    }
+    
+    // Tạo đối tượng Date với định dạng chuẩn ISO 8601 (YYYY-MM-DDThh:mm:ss)
     const startTime = new Date(`${bookingDate}T${startTimeStr}:00`);
     const endTime = new Date(`${bookingDate}T${endTimeStr}:00`);
     
