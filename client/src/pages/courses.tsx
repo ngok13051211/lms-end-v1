@@ -19,7 +19,7 @@ import { BookOpen, Home, Search, BookOpenCheck, Filter, SlidersHorizontal } from
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 export default function Courses() {
-  const { isMobile } = useMobile();
+  const isMobile = useMobile();
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSubject, setSelectedSubject] = useState("");
@@ -27,20 +27,69 @@ export default function Courses() {
   const [teachingMode, setTeachingMode] = useState("");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   
+  // Define types for subjects and education levels
+  interface Subject {
+    id: number;
+    name: string;
+    description?: string;
+  }
+  
+  interface EducationLevel {
+    id: number;
+    name: string;
+    description?: string;
+  }
+
   // Fetch subjects
-  const { data: subjects } = useQuery({
+  const { data: subjects } = useQuery<Subject[]>({
     queryKey: ["/api/v1/subjects"],
     queryFn: getQueryFn({ on401: "throw" }),
   });
   
   // Fetch education levels
-  const { data: educationLevels } = useQuery({
+  const { data: educationLevels } = useQuery<EducationLevel[]>({
     queryKey: ["/api/v1/education-levels"],
     queryFn: getQueryFn({ on401: "throw" }),
   });
   
+  // Define types for API response
+  interface Ad {
+    id: number;
+    tutor_id: number;
+    title: string;
+    description: string;
+    subject_id?: number;
+    level_id?: number;
+    hourly_rate: string | number;
+    teaching_mode: "online" | "offline" | "both";
+    status: string;
+    created_at: string;
+    updated_at: string;
+    subject?: { id: number; name: string };
+    level?: { id: number; name: string };
+    tutor?: {
+      id: number;
+      user: {
+        id: number;
+        first_name: string;
+        last_name: string;
+        avatar?: string;
+      }
+    };
+  }
+
+  interface CoursesResponse {
+    ads: Ad[];
+    pagination: {
+      total: number;
+      page: number;
+      limit: number;
+      total_pages: number;
+    };
+  }
+
   // Fetch courses (ads)
-  const { data: coursesData, isLoading: isLoadingCourses } = useQuery({
+  const { data: coursesData, isLoading: isLoadingCourses } = useQuery<CoursesResponse>({
     queryKey: ["/api/v1/courses", currentPage, searchTerm, selectedSubject, selectedLevel, teachingMode],
     queryFn: getQueryFn({ on401: "throw" }),
   });
@@ -212,7 +261,7 @@ export default function Courses() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="">Tất cả các môn</SelectItem>
-            {subjects?.map((subject: any) => (
+            {subjects && subjects.length > 0 && subjects.map((subject) => (
               <SelectItem key={subject.id} value={subject.id.toString()}>
                 {subject.name}
               </SelectItem>
@@ -229,7 +278,7 @@ export default function Courses() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="">Tất cả các cấp độ</SelectItem>
-            {educationLevels?.map((level: any) => (
+            {educationLevels && educationLevels.length > 0 && educationLevels.map((level) => (
               <SelectItem key={level.id} value={level.id.toString()}>
                 {level.name}
               </SelectItem>
@@ -418,11 +467,9 @@ export default function Courses() {
                         
                         <Badge variant="outline" className="flex items-center">
                           <Home className="h-3 w-3 mr-1" />
-                          {{
-                            online: "Trực tuyến",
-                            offline: "Tại chỗ",
-                            both: "Cả hai"
-                          }[ad.teaching_mode]}
+                          {ad.teaching_mode === "online" ? "Trực tuyến" :
+                           ad.teaching_mode === "offline" ? "Tại chỗ" :
+                           ad.teaching_mode === "both" ? "Cả hai" : ""}
                         </Badge>
                       </div>
                       
@@ -463,12 +510,11 @@ export default function Courses() {
                     </CardContent>
                     
                     <CardFooter className="pt-0">
-                      <Button 
-                        className="w-full"
-                        onClick={() => window.location.href = `/tutors/${ad.tutor.id}`}
-                      >
-                        Xem chi tiết
-                      </Button>
+                      <Link href={`/tutors/${ad.tutor.id}`}>
+                        <Button className="w-full">
+                          Xem chi tiết
+                        </Button>
+                      </Link>
                     </CardFooter>
                   </Card>
                 ))}

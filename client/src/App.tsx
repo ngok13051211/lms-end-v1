@@ -48,6 +48,7 @@ function Router() {
       <Route path="/tutors" component={TutorListing} />
       <Route path="/tutors/:id" component={TutorProfile} />
       <Route path="/become-tutor" component={BecomeTutor} />
+      <Route path="/courses" component={Courses} />
       
       {/* Legacy routes - keeping for backward compatibility */}
       <Route path="/tutor-dashboard">
