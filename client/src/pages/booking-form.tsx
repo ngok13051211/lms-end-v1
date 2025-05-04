@@ -214,9 +214,21 @@ export default function BookingForm() {
             dates.push(dateObj);
           }
           
+          // Chuẩn hóa giờ bắt đầu, đảm bảo định dạng HH:MM
+          let startTime = slot.startTime || "08:00";
+          if (startTime.length === 4) {
+            startTime = "0" + startTime;
+          }
+          
+          // Chuẩn hóa giờ kết thúc, đảm bảo định dạng HH:MM
+          let endTime = slot.endTime || "17:00";
+          if (endTime.length === 4) {
+            endTime = "0" + endTime;
+          }
+          
           slotsByDate[dateStr].push({
-            startTime: slot.startTime,
-            endTime: slot.endTime
+            startTime: startTime,
+            endTime: endTime
           });
         }
       });
