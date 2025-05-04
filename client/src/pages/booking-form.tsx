@@ -205,10 +205,24 @@ export default function BookingForm() {
         console.log("Đang xử lý dữ liệu lịch trống:", tutorData.availability);
         
         // Parse dữ liệu lịch trống từ JSON
-        let availabilityData = typeof tutorData.availability === 'string' 
-          ? JSON.parse(tutorData.availability) 
-          : tutorData.availability;
+        let availabilityData;
+        try {
+          availabilityData = typeof tutorData.availability === 'string' 
+            ? JSON.parse(tutorData.availability) 
+            : tutorData.availability;
           
+          console.log("Dữ liệu lịch trống sau khi parse:", JSON.stringify(availabilityData, null, 2));
+        } catch (error) {
+          console.error("Lỗi khi parse dữ liệu lịch trống:", error);
+          const emptyState: AvailabilityState = {};
+          emptyState._timeRanges = {};
+          emptyState._specificDates = {};
+          emptyState._hasSpecificDates = false;
+          emptyState._empty = true;
+          setAvailableTimeSlots(emptyState);
+          return;
+        }
+        
         if (!availabilityData || !Array.isArray(availabilityData) || availabilityData.length === 0) {
           console.log("Dữ liệu lịch trống không hợp lệ hoặc rỗng");
           const emptyState: AvailabilityState = {};
@@ -257,6 +271,8 @@ export default function BookingForm() {
         
         // Xử lý từng mục trong dữ liệu lịch trống
         availabilityData.forEach((slot: any) => {
+          console.log("Đang xử lý slot:", slot);
+          
           // Kiểm tra slot có đầy đủ thông tin về thời gian không
           if (!slot.startTime || !slot.endTime) {
             console.warn("Slot thiếu thông tin thời gian:", slot);
@@ -284,49 +300,58 @@ export default function BookingForm() {
           // Slot chỉ có thuộc tính 'day' đại diện cho thứ trong tuần (monday, tuesday, etc.)
           if (slot.day) {
             // Lấy số ngày trong tuần từ tên
-            const dayNumber = dayMap[slot.day.toLowerCase()];
+            const dayLower = slot.day.toLowerCase();
+            console.log("Tên ngày được chuyển thành chữ thường:", dayLower);
+            
+            const dayNumber = dayMap[dayLower];
             if (dayNumber === undefined) {
               console.warn("Không nhận dạng được ngày trong tuần:", slot.day);
               return;
             }
             
-            // Tìm ngày tiếp theo từ ngày hiện tại có thứ tương ứng
-            let matchingDate = null;
+            console.log(`Đã tìm thấy số thứ tự ngày trong tuần cho ${slot.day}: ${dayNumber}`);
+            
+            // Tìm tất cả các ngày tương ứng trong 4 tuần tới
+            const matchingDates: Date[] = [];
             for (const date of nextFourWeeks) {
               if (date.getDay() === dayNumber) {
-                matchingDate = date;
-                break;
+                matchingDates.push(date);
               }
             }
             
-            if (!matchingDate) {
+            console.log(`Tìm thấy ${matchingDates.length} ngày phù hợp với thứ ${slot.day}`);
+            
+            if (matchingDates.length === 0) {
               console.warn("Không thể tìm ngày phù hợp cho:", slot.day);
               return;
             }
             
-            // Chuyển đổi thành chuỗi YYYY-MM-DD
-            const dateStr = matchingDate.toISOString().split('T')[0];
-            console.log(`Đã chuyển đổi ${slot.day} thành ngày ${dateStr}`);
-            
-            // Thêm vào danh sách khoảng thời gian
-            if (!timeRanges[dateStr]) {
-              timeRanges[dateStr] = [];
-            }
-            timeRanges[dateStr].push({
-              startTime: slot.startTime,
-              endTime: slot.endTime
+            // Thêm tất cả các ngày trong 4 tuần tới có thứ tương ứng
+            matchingDates.forEach(matchingDate => {
+              // Chuyển đổi thành chuỗi YYYY-MM-DD
+              const dateStr = matchingDate.toISOString().split('T')[0];
+              console.log(`Đã chuyển đổi ${slot.day} thành ngày ${dateStr}`);
+              
+              // Thêm vào danh sách khoảng thời gian
+              if (!timeRanges[dateStr]) {
+                timeRanges[dateStr] = [];
+              }
+              timeRanges[dateStr].push({
+                startTime: slot.startTime,
+                endTime: slot.endTime
+              });
+              
+              // Thêm vào danh sách thời điểm có thể bắt đầu
+              if (!daySlots[dateStr]) {
+                daySlots[dateStr] = [];
+              }
+              
+              // Tạo các mốc thời gian 30 phút
+              addTimeSlots(startHour, startMin, endHour, endMin, daySlots[dateStr]);
+              
+              // Đánh dấu đây là ngày cụ thể (đã được chuyển đổi từ thứ)
+              specificDates[dateStr] = true;
             });
-            
-            // Thêm vào danh sách thời điểm có thể bắt đầu
-            if (!daySlots[dateStr]) {
-              daySlots[dateStr] = [];
-            }
-            
-            // Tạo các mốc thời gian 30 phút
-            addTimeSlots(startHour, startMin, endHour, endMin, daySlots[dateStr]);
-            
-            // Đánh dấu đây là ngày cụ thể (đã được chuyển đổi từ thứ)
-            specificDates[dateStr] = true;
           } else {
             console.warn("Slot không có thông tin về ngày:", slot);
           }
