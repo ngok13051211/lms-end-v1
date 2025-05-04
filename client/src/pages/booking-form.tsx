@@ -270,14 +270,26 @@ export default function BookingForm() {
   // Hàm tìm ngày tiếp theo tính từ ngày hiện tại có thứ tương ứng
   const getNextWeekdayDate = (weekday: string): Date => {
     const dayNumber = getDayOfWeekNumber(weekday);
-    if (dayNumber === undefined) return new Date(); // Trả về ngày hiện tại nếu không tìm thấy
+    if (dayNumber === undefined) {
+      console.error(`Không thể tìm ngày tiếp theo cho thứ: ${weekday}, không nhận dạng được số thứ tự ngày trong tuần`);
+      return new Date(); // Trả về ngày hiện tại nếu không tìm thấy
+    }
     
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
+    console.log(`Tìm ngày tiếp theo cho thứ '${weekday}' (số ${dayNumber}), ngày hiện tại: ${today.toISOString().split('T')[0]} (thứ ${today.getDay()})`);
+    
+    // Công thức tính số ngày cần cộng thêm để có được thứ trong tuần tiếp theo
+    // Ví dụ: Tìm thứ 4 (3) từ ngày thứ 2 (1) => cần cộng: (3 + 7 - 1) % 7 = 2 ngày
     const daysUntilNext = (dayNumber + 7 - today.getDay()) % 7;
+    
+    console.log(`Cần thêm ${daysUntilNext === 0 ? 7 : daysUntilNext} ngày để đến ${weekday} tiếp theo`);
+    
     const nextDate = new Date(today);
     nextDate.setDate(today.getDate() + (daysUntilNext === 0 ? 7 : daysUntilNext));
+    
+    console.log(`Ngày ${weekday} tiếp theo là: ${nextDate.toISOString().split('T')[0]} (thứ ${nextDate.getDay()})`);
     
     return nextDate;
   };
@@ -423,20 +435,22 @@ export default function BookingForm() {
               return;
             }
             
-            // Tạo mảng các ngày từ hôm nay đến 4 tuần tới
+            // Phương pháp mới: sử dụng getNextWeekdayDate
             const dates: Date[] = [];
-            for (let i = 0; i < 28; i++) {
-              const date = new Date(today);
-              date.setDate(today.getDate() + i);
-              
-              // So sánh ngày trong tuần
-              const currentDayOfWeek = date.getDay();
-              console.log(`So sánh ngày: ${date.toISOString().split('T')[0]}, day.getDay()=${currentDayOfWeek}, dayOfWeek từ slot=${dayOfWeek}, isMatch=${currentDayOfWeek === dayOfWeek}`);
-              
-              if (currentDayOfWeek === dayOfWeek) {
-                dates.push(date);
-                console.log(`Thêm ngày ${date.toISOString().split('T')[0]} vào lịch vì ngày trong tuần=${currentDayOfWeek}`);
-              }
+            
+            // Tạo ngày đầu tiên (thứ trong tuần tiếp theo)
+            console.log(`Tìm ngày ${slot.day} tiếp theo từ ngày hiện tại`);
+            
+            const firstDate = getNextWeekdayDate(slot.day);
+            console.log(`Ngày ${slot.day} đầu tiên là: ${firstDate.toISOString().split('T')[0]}, thứ = ${firstDate.getDay()}`);
+            dates.push(firstDate);
+            
+            // Tạo thêm 3 ngày tiếp theo (mỗi ngày cách nhau 7 ngày)
+            for (let i = 1; i < 4; i++) {
+              const nextDate = new Date(firstDate);
+              nextDate.setDate(firstDate.getDate() + (i * 7));
+              console.log(`Thêm ngày tiếp theo: ${nextDate.toISOString().split('T')[0]}, thứ = ${nextDate.getDay()}`);
+              dates.push(nextDate);
             }
             
             // Xử lý mỗi ngày tìm được
