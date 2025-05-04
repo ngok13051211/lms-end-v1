@@ -10,6 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -845,7 +847,6 @@ export default function TutorDashboardProfile() {
     }
     
     // Kiểm tra trùng lặp (chỉ đối với weekly, specific sẽ kiểm tra riêng)
-    // Phải update isTimeSlotOverlapping để hỗ trợ kiểu mới
     const weeklyItems = availabilityItems.filter(item => item.type === "weekly") as WeeklyAvailabilityItem[];
     const isOverlapping = weeklyItems.some(existingSlot => {
       if (existingSlot.day === newAvailabilityItem.day) {
@@ -960,8 +961,28 @@ export default function TutorDashboardProfile() {
   
   // Xóa lịch trùng lặp trước khi lưu
   const removeDuplicateTimeSlots = (slots: AvailabilityItem[]): AvailabilityItem[] => {
-    // Sử dụng Map để lọc các khung giờ trùng lặp theo ngày
-    const dayMaps: Record<string, AvailabilityItem[]> = {};
+    // Tách thành hai mảng: lịch hàng tuần và lịch theo ngày cụ thể
+    const weeklySlots = slots.filter(slot => slot.type === "weekly") as WeeklyAvailabilityItem[];
+    const specificSlots = slots.filter(slot => slot.type === "specific") as SpecificDateAvailabilityItem[];
+    const legacySlots = slots.filter(slot => !slot.type && 'day' in slot) as any[];
+    
+    // Xử lý khung giờ lịch hàng tuần
+    const weeklyResult = processWeeklySlots(weeklySlots);
+    
+    // Xử lý khung giờ lịch theo ngày cụ thể
+    const specificResult = processSpecificSlots(specificSlots);
+    
+    // Xử lý khung giờ cũ
+    const legacyResult = processLegacySlots(legacySlots);
+    
+    // Hợp nhất kết quả
+    return [...weeklyResult, ...specificResult, ...legacyResult];
+  };
+  
+  // Xử lý lịch hàng tuần
+  const processWeeklySlots = (slots: WeeklyAvailabilityItem[]): WeeklyAvailabilityItem[] => {
+    // Sử dụng Map để lọc các khung giờ trùng lặp theo ngày trong tuần
+    const dayMaps: Record<string, WeeklyAvailabilityItem[]> = {};
     
     // Nhóm các khung giờ theo ngày
     slots.forEach(slot => {
@@ -972,7 +993,7 @@ export default function TutorDashboardProfile() {
     });
     
     // Kết quả cuối cùng
-    const result: AvailabilityItem[] = [];
+    const result: WeeklyAvailabilityItem[] = [];
     
     // Xử lý cho từng ngày
     Object.entries(dayMaps).forEach(([day, daySlots]) => {
@@ -988,7 +1009,153 @@ export default function TutorDashboardProfile() {
       });
       
       // Kết hợp các khung giờ chồng lấp
-      const mergedSlots: AvailabilityItem[] = [];
+      const mergedSlots: WeeklyAvailabilityItem[] = [];
+      
+      for (const slot of daySlots) {
+        if (mergedSlots.length === 0) {
+          mergedSlots.push(slot);
+          continue;
+        }
+        
+        const lastSlot = mergedSlots[mergedSlots.length - 1];
+        
+        // Chuyển đổi giờ:phút thành số phút
+        const [lastStartHour, lastStartMin] = lastSlot.startTime.split(':').map(Number);
+        const [lastEndHour, lastEndMin] = lastSlot.endTime.split(':').map(Number);
+        const [currStartHour, currStartMin] = slot.startTime.split(':').map(Number);
+        const [currEndHour, currEndMin] = slot.endTime.split(':').map(Number);
+        
+        const lastStartMinutes = lastStartHour * 60 + lastStartMin;
+        const lastEndMinutes = lastEndHour * 60 + lastEndMin;
+        const currStartMinutes = currStartHour * 60 + currStartMin;
+        const currEndMinutes = currEndHour * 60 + currEndMin;
+        
+        // Nếu khung giờ hiện tại chồng lấp với khung giờ trước đó, hợp nhất chúng
+        if (currStartMinutes <= lastEndMinutes) {
+          // Cập nhật thời gian kết thúc của khung giờ cuối nếu cần
+          if (currEndMinutes > lastEndMinutes) {
+            // Chuyển số phút thành giờ:phút
+            const newEndHour = Math.floor(currEndMinutes / 60);
+            const newEndMin = currEndMinutes % 60;
+            lastSlot.endTime = `${newEndHour.toString().padStart(2, '0')}:${newEndMin.toString().padStart(2, '0')}`;
+          }
+        } else {
+          // Nếu không chồng lấp, thêm khung giờ mới
+          mergedSlots.push(slot);
+        }
+      }
+      
+      // Thêm các khung giờ đã hợp nhất vào kết quả
+      result.push(...mergedSlots);
+    });
+    
+    return result;
+  };
+  
+  // Xử lý lịch theo ngày cụ thể
+  const processSpecificSlots = (slots: SpecificDateAvailabilityItem[]): SpecificDateAvailabilityItem[] => {
+    // Sử dụng Map để lọc các khung giờ trùng lặp theo ngày cụ thể
+    const dateMaps: Record<string, SpecificDateAvailabilityItem[]> = {};
+    
+    // Nhóm các khung giờ theo ngày
+    slots.forEach(slot => {
+      if (!dateMaps[slot.date]) {
+        dateMaps[slot.date] = [];
+      }
+      dateMaps[slot.date].push(slot);
+    });
+    
+    // Kết quả cuối cùng
+    const result: SpecificDateAvailabilityItem[] = [];
+    
+    // Xử lý cho từng ngày
+    Object.entries(dateMaps).forEach(([date, dateSlots]) => {
+      // Sắp xếp các slot theo thời gian bắt đầu
+      dateSlots.sort((a, b) => {
+        const [aHour, aMin] = a.startTime.split(':').map(Number);
+        const [bHour, bMin] = b.startTime.split(':').map(Number);
+        
+        const aMinutes = aHour * 60 + aMin;
+        const bMinutes = bHour * 60 + bMin;
+        
+        return aMinutes - bMinutes;
+      });
+      
+      // Kết hợp các khung giờ chồng lấp
+      const mergedSlots: SpecificDateAvailabilityItem[] = [];
+      
+      for (const slot of dateSlots) {
+        if (mergedSlots.length === 0) {
+          mergedSlots.push(slot);
+          continue;
+        }
+        
+        const lastSlot = mergedSlots[mergedSlots.length - 1];
+        
+        // Chuyển đổi giờ:phút thành số phút
+        const [lastStartHour, lastStartMin] = lastSlot.startTime.split(':').map(Number);
+        const [lastEndHour, lastEndMin] = lastSlot.endTime.split(':').map(Number);
+        const [currStartHour, currStartMin] = slot.startTime.split(':').map(Number);
+        const [currEndHour, currEndMin] = slot.endTime.split(':').map(Number);
+        
+        const lastStartMinutes = lastStartHour * 60 + lastStartMin;
+        const lastEndMinutes = lastEndHour * 60 + lastEndMin;
+        const currStartMinutes = currStartHour * 60 + currStartMin;
+        const currEndMinutes = currEndHour * 60 + currEndMin;
+        
+        // Nếu khung giờ hiện tại chồng lấp với khung giờ trước đó, hợp nhất chúng
+        if (currStartMinutes <= lastEndMinutes) {
+          // Cập nhật thời gian kết thúc của khung giờ cuối nếu cần
+          if (currEndMinutes > lastEndMinutes) {
+            // Chuyển số phút thành giờ:phút
+            const newEndHour = Math.floor(currEndMinutes / 60);
+            const newEndMin = currEndMinutes % 60;
+            lastSlot.endTime = `${newEndHour.toString().padStart(2, '0')}:${newEndMin.toString().padStart(2, '0')}`;
+          }
+        } else {
+          // Nếu không chồng lấp, thêm khung giờ mới
+          mergedSlots.push(slot);
+        }
+      }
+      
+      // Thêm các khung giờ đã hợp nhất vào kết quả
+      result.push(...mergedSlots);
+    });
+    
+    return result;
+  };
+  
+  // Xử lý lịch cũ (không có trường type)
+  const processLegacySlots = (slots: any[]): AvailabilityItem[] => {
+    // Tương tự cách xử lý lịch hàng tuần
+    const dayMaps: Record<string, any[]> = {};
+    
+    // Nhóm các khung giờ theo ngày
+    slots.forEach(slot => {
+      if (!dayMaps[slot.day]) {
+        dayMaps[slot.day] = [];
+      }
+      dayMaps[slot.day].push(slot);
+    });
+    
+    // Kết quả cuối cùng
+    const result: any[] = [];
+    
+    // Xử lý cho từng ngày
+    Object.entries(dayMaps).forEach(([day, daySlots]) => {
+      // Sắp xếp các slot theo thời gian bắt đầu
+      daySlots.sort((a, b) => {
+        const [aHour, aMin] = a.startTime.split(':').map(Number);
+        const [bHour, bMin] = b.startTime.split(':').map(Number);
+        
+        const aMinutes = aHour * 60 + aMin;
+        const bMinutes = bHour * 60 + bMin;
+        
+        return aMinutes - bMinutes;
+      });
+      
+      // Kết hợp các khung giờ chồng lấp
+      const mergedSlots: any[] = [];
       
       for (const slot of daySlots) {
         if (mergedSlots.length === 0) {
