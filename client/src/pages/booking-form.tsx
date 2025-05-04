@@ -218,53 +218,51 @@ export default function BookingForm() {
   }, []);
   
   // Định nghĩa hàm ánh xạ tên ngày sang số thứ tự ngày trong tuần
-  // Điều quan trọng: JavaScript Date.getDay() trả về:
+  // ĐÃ SỬA: Cần phải chính xác trả về giá trị getDay() đúng của JavaScript
   // 0 = Chủ nhật, 1 = Thứ Hai, 2 = Thứ Ba, 3 = Thứ Tư, 4 = Thứ Năm, 5 = Thứ Sáu, 6 = Thứ Bảy
   const getDayOfWeekNumber = (day: string): number => {
+    // Sử dụng chính xác cùng cách ánh xạ như trong tutor-dashboard-profile.tsx
+    const dayMap: { [key: string]: number } = {
+      sunday: 0,
+      monday: 1,
+      tuesday: 2,
+      wednesday: 3,
+      thursday: 4,
+      friday: 5,
+      saturday: 6,
+    };
+    
     // Chuyển đổi string về lowercase và loại bỏ khoảng trắng đầu/cuối
-    const formattedDay = day.toLowerCase().trim();
+    let formattedDay = day.toLowerCase().trim();
     
     console.log(`Xử lý tên ngày: "${formattedDay}"`);
     
-    // Đầu tiên kiểm tra tên ngày đầy đủ tiếng Anh
-    if (formattedDay === 'sunday') return 0;
-    if (formattedDay === 'monday') return 1;
-    if (formattedDay === 'tuesday') return 2;
-    if (formattedDay === 'wednesday') return 3;
-    if (formattedDay === 'thursday') return 4;
-    if (formattedDay === 'friday') return 5;
-    if (formattedDay === 'saturday') return 6;
+    // Đối với các giá trị tiếng Việt hoặc viết tắt, chuyển đổi sang tiếng Anh
+    if (formattedDay === 'chủ nhật' || formattedDay === 'chu nhat' || formattedDay === 'cn') {
+      formattedDay = 'sunday';
+    } else if (formattedDay === 'thứ hai' || formattedDay === 'thu hai' || formattedDay === 't2' || formattedDay === 'th2' || formattedDay === 'thu-2') {
+      formattedDay = 'monday';
+    } else if (formattedDay === 'thứ ba' || formattedDay === 'thu ba' || formattedDay === 't3' || formattedDay === 'th3' || formattedDay === 'thu-3') {
+      formattedDay = 'tuesday';
+    } else if (formattedDay === 'thứ tư' || formattedDay === 'thu tu' || formattedDay === 't4' || formattedDay === 'th4' || formattedDay === 'thu-4') {
+      formattedDay = 'wednesday';
+    } else if (formattedDay === 'thứ năm' || formattedDay === 'thu nam' || formattedDay === 't5' || formattedDay === 'th5' || formattedDay === 'thu-5') {
+      formattedDay = 'thursday';
+    } else if (formattedDay === 'thứ sáu' || formattedDay === 'thu sau' || formattedDay === 't6' || formattedDay === 'th6' || formattedDay === 'thu-6') {
+      formattedDay = 'friday';
+    } else if (formattedDay === 'thứ bảy' || formattedDay === 'thu bay' || formattedDay === 't7' || formattedDay === 'th7' || formattedDay === 'thu-7') {
+      formattedDay = 'saturday';
+    }
     
-    // Kiểm tra tiếng Việt có dấu
-    if (formattedDay === 'chủ nhật') return 0;
-    if (formattedDay === 'thứ hai') return 1;
-    if (formattedDay === 'thứ ba') return 2;
-    if (formattedDay === 'thứ tư') return 3;
-    if (formattedDay === 'thứ năm') return 4;
-    if (formattedDay === 'thứ sáu') return 5;
-    if (formattedDay === 'thứ bảy') return 6;
+    const result = dayMap[formattedDay];
     
-    // Kiểm tra tiếng Việt không dấu
-    if (formattedDay === 'chu nhat') return 0;
-    if (formattedDay === 'thu hai') return 1;
-    if (formattedDay === 'thu ba') return 2;
-    if (formattedDay === 'thu tu') return 3;
-    if (formattedDay === 'thu nam') return 4;
-    if (formattedDay === 'thu sau') return 5;
-    if (formattedDay === 'thu bay') return 6;
+    if (result === undefined) {
+      console.warn(`Không nhận dạng được ngày trong tuần: '${day}' (đã chuẩn hóa thành '${formattedDay}')`);
+    } else {
+      console.log(`Ngày "${day}" được ánh xạ thành chỉ số ngày JavaScript: ${result}`);
+    }
     
-    // Kiểm tra rút gọn cho trường hợp tuần tự (thu-2, thu-7,...)
-    if (formattedDay === 't2' || formattedDay === 'th2' || formattedDay === 'thu-2') return 1;
-    if (formattedDay === 't3' || formattedDay === 'th3' || formattedDay === 'thu-3') return 2;
-    if (formattedDay === 't4' || formattedDay === 'th4' || formattedDay === 'thu-4') return 3;
-    if (formattedDay === 't5' || formattedDay === 'th5' || formattedDay === 'thu-5') return 4;
-    if (formattedDay === 't6' || formattedDay === 'th6' || formattedDay === 'thu-6') return 5;
-    if (formattedDay === 't7' || formattedDay === 'th7' || formattedDay === 'thu-7') return 6;
-    if (formattedDay === 'cn') return 0;
-    
-    // Nếu không nhận dạng được thì in log và trả về undefined
-    console.warn(`Không nhận dạng được ngày trong tuần: '${formattedDay}'`);
-    return undefined as any;
+    return result;
   };
 
   // Hàm tìm ngày tiếp theo tính từ ngày hiện tại có thứ tương ứng
@@ -443,20 +441,8 @@ export default function BookingForm() {
             // Lấy ngày đầu tiên trong tháng cho ngày trong tuần này
             const dates: Date[] = [];
             
-            // Sử dụng hàm getDayOfWeekNumber từ tutor-dashboard-profile để đảm bảo tính nhất quán
-            const dayNumber = (() => {
-              const day = slot.day.toLowerCase().trim();
-              const dayMap: { [key: string]: number } = {
-                sunday: 0,
-                monday: 1,
-                tuesday: 2,
-                wednesday: 3,
-                thursday: 4,
-                friday: 5,
-                saturday: 6,
-              };
-              return dayMap[day];
-            })();
+            // Sử dụng hàm getDayOfWeekNumber đã chuẩn hóa
+            const dayNumber = dayOfWeek; // dayOfWeek đã được tính từ getDayOfWeekNumber(slot.day) ở dòng 430
             
             if (dayNumber === undefined) {
               console.error(`Không nhận dạng được ngày trong tuần: ${slot.day}`);
