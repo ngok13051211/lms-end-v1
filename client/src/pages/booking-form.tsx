@@ -113,9 +113,9 @@ export default function BookingForm() {
     defaultValues: {
       title: adData?.title || "",
       description: adData?.description || "",
-      date: new Date(),
-      start_time: "09:00",
-      end_time: "10:00",
+      date: undefined, // Không đặt ngày mặc định để bắt buộc người dùng chọn
+      start_time: "",  // Không đặt giờ mặc định
+      end_time: "",    // Không đặt giờ mặc định
       location: adData?.location || "",
       meeting_url: "",
       teaching_mode: (adData?.teaching_mode 
@@ -202,7 +202,7 @@ export default function BookingForm() {
         // Tạo object mới để lưu trữ thời gian trống theo ngày trong tuần
         const slots: {[key: string]: string[]} = {};
         
-        // Ánh xạ tên ngày sang số ngày trong tuần
+        // Ánh xạ tên ngày sang số ngày trong tuần (JavaScript getDay trả về 0 = Sunday, 1 = Monday, ...)
         const dayMap: {[key: string]: string} = {
           'sunday': '0',
           'monday': '1',
@@ -691,10 +691,13 @@ export default function BookingForm() {
                             </div>
                           )}
                           <Select
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
+                            onValueChange={(value) => {
+                              field.onChange(value);
+                              // Reset giờ kết thúc khi đổi giờ bắt đầu
+                              form.setValue("end_time", "");
+                            }}
                             value={field.value}
-                            disabled={getAvailableTimesForSelectedDate().length === 0}
+                            disabled={!form.watch("date") || getAvailableTimesForSelectedDate().length === 0}
                           >
                             <FormControl>
                               <SelectTrigger>
@@ -702,7 +705,7 @@ export default function BookingForm() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {getAvailableTimesForSelectedDate().length > 0 ? (
+                              {form.watch("date") && getAvailableTimesForSelectedDate().length > 0 ? (
                                 getAvailableTimesForSelectedDate().map((time) => (
                                   <SelectItem key={time} value={time}>
                                     {time}
