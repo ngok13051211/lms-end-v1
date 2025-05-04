@@ -139,17 +139,19 @@ export default function BookingForm() {
       const bookingData = {
         tutor_id: tutorIdNum,
         title: values.title,
-        description: values.description,
+        description: values.description || "",
         teaching_mode: values.teaching_mode,
-        location: values.teaching_mode === "online" ? "" : values.location,
-        meeting_url: values.teaching_mode === "offline" ? "" : values.online_meeting_url,
+        location: values.teaching_mode === "online" ? "" : values.location || "",
+        meeting_url: values.teaching_mode === "offline" ? "" : values.online_meeting_url || "",
         // Gửi ngày và giờ riêng biệt thay vì dạng ISO string
         date: datePart,
         start_time: startTimeStr,
         end_time: endTimeStr,
-        ad_id: adIdNum,
+        // Đảm bảo ad_id là số hoặc undefined (không phải null)
+        ...(adIdNum ? { ad_id: adIdNum } : {}),
         notes: values.notes || "",
-        hourly_rate: tutorData?.hourly_rate || 0,
+        // Đảm bảo hourly_rate là số
+        hourly_rate: Number(tutorData?.hourly_rate || 0),
       };
 
       console.log("Dữ liệu đặt lịch gửi đi:", bookingData);
