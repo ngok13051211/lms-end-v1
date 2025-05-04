@@ -680,6 +680,24 @@ export default function BookingForm() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
+                  {/* Hiển thị thông báo khi gia sư chưa thiết lập lịch trống */}
+                  {availableTimeSlots._empty && (
+                    <Card className="bg-amber-50 border-amber-200 mb-4">
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-2">
+                          <CalendarIcon className="w-5 h-5 text-amber-500 mt-0.5" />
+                          <div>
+                            <p className="font-medium text-amber-800">Gia sư chưa thiết lập lịch trống</p>
+                            <p className="text-sm text-amber-700 mt-1">
+                              Gia sư {tutorName} chưa cập nhật lịch trống. Vui lòng liên hệ trực tiếp với gia sư 
+                              hoặc quay lại sau.
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                
                   <FormField
                     control={form.control}
                     name="title"
@@ -889,7 +907,7 @@ export default function BookingForm() {
                             </FormControl>
                             <SelectContent>
                               {form.watch("date") && getAvailableTimesForSelectedDate().length > 0 ? (
-                                getAvailableTimesForSelectedDate().map((time) => (
+                                getAvailableTimesForSelectedDate().map((time: string) => (
                                   <SelectItem key={time} value={time}>
                                     {time}
                                   </SelectItem>
