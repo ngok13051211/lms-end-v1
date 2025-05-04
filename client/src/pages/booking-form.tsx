@@ -208,8 +208,8 @@ export default function BookingForm() {
         
         console.log("Dữ liệu lịch trống nhận được:", JSON.stringify(availabilityData));
         
-        // Kiểm tra nếu availabilityData là mảng rỗng hoặc không phải là mảng
-        if (!Array.isArray(availabilityData) || availabilityData.length === 0) {
+        // Kiểm tra nếu availabilityData là null, mảng rỗng hoặc không phải là mảng
+        if (!availabilityData || !Array.isArray(availabilityData) || availabilityData.length === 0) {
           console.log("Gia sư chưa thiết lập lịch trống hoặc có lỗi dữ liệu.");
           // Thiết lập state rỗng nhưng vẫn có cấu trúc cần thiết
           const emptyState: AvailabilityState = {};
@@ -404,6 +404,13 @@ export default function BookingForm() {
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Bắt đầu từ thời điểm 00:00:00 của ngày hôm nay
     
+    // Kiểm tra nếu không có dữ liệu lịch trống hoặc đánh dấu là rỗng
+    // @ts-ignore - Truy cập thuộc tính động
+    if (availableTimeSlots._empty) {
+      console.log("availableTimeSlots đang rỗng, không có ngày nào khả dụng");
+      return result; // Trả về mảng rỗng nếu không có dữ liệu
+    }
+    
     // @ts-ignore - Truy cập thuộc tính động
     const hasSpecificDates = availableTimeSlots._hasSpecificDates;
     
@@ -440,6 +447,13 @@ export default function BookingForm() {
   const getAvailableTimesForSelectedDate = () => {
     if (!form.watch("date")) return [];
     
+    // Kiểm tra nếu không có dữ liệu lịch trống hoặc đánh dấu là rỗng
+    // @ts-ignore - Truy cập thuộc tính động
+    if (availableTimeSlots._empty) {
+      console.log("availableTimeSlots đang rỗng, không có thời gian khả dụng");
+      return []; // Trả về mảng rỗng nếu không có dữ liệu
+    }
+    
     const selectedDate = form.watch("date");
     
     // @ts-ignore - Truy cập thuộc tính động
@@ -463,6 +477,13 @@ export default function BookingForm() {
     const selectedDate = form.watch("date");
     if (!selectedDate) return;
     
+    // Kiểm tra nếu không có dữ liệu lịch trống hoặc đánh dấu là rỗng
+    // @ts-ignore - Truy cập thuộc tính động
+    if (availableTimeSlots._empty) {
+      console.log("availableTimeSlots đang rỗng, không thể cập nhật thời gian kết thúc");
+      return;
+    }
+    
     // @ts-ignore - Truy cập thuộc tính động
     const hasSpecificDates = availableTimeSlots._hasSpecificDates;
     
@@ -478,8 +499,14 @@ export default function BookingForm() {
     }
     
     // @ts-ignore - Truy cập thuộc tính động
-    const timeRanges = availableTimeSlots._timeRanges?.[timeRangeKey] || [];
-    if (timeRanges.length === 0) return;
+    const timeRanges = availableTimeSlots._timeRanges && 
+                      availableTimeSlots._timeRanges[timeRangeKey] ? 
+                      availableTimeSlots._timeRanges[timeRangeKey] : [];
+    
+    if (!timeRanges || timeRanges.length === 0) {
+      console.log(`Không tìm thấy khung giờ cho ngày ${timeRangeKey}`);
+      return;
+    }
     
     // Chuyển đổi startTime sang số phút từ nửa đêm
     const [startHour, startMin] = startTime.split(':').map(Number);
