@@ -185,8 +185,17 @@ export default function BookingForm() {
     }
   };
 
+  // State mở rộng với các trường metadata bổ sung
+  type AvailabilityState = {
+    [key: string]: any;
+    _timeRanges?: {[key: string]: Array<{startTime: string, endTime: string}>};
+    _specificDates?: {[key: string]: boolean};
+    _hasSpecificDates?: boolean;
+    _empty?: boolean;
+  }
+  
   // Khung giờ trống của gia sư (trong thực tế, bạn sẽ cần lấy dữ liệu này từ API)
-  const [availableTimeSlots, setAvailableTimeSlots] = useState<{[key: string]: string[]}>({});
+  const [availableTimeSlots, setAvailableTimeSlots] = useState<AvailabilityState>({});
   
   // Xử lý dữ liệu availability từ profile của gia sư
   useEffect(() => {
@@ -203,12 +212,12 @@ export default function BookingForm() {
         if (!Array.isArray(availabilityData) || availabilityData.length === 0) {
           console.log("Gia sư chưa thiết lập lịch trống hoặc có lỗi dữ liệu.");
           // Thiết lập state rỗng nhưng vẫn có cấu trúc cần thiết
-          setAvailableTimeSlots({
-            _timeRanges: {},
-            _specificDates: {},
-            _hasSpecificDates: false,
-            _empty: true // Đánh dấu là không có lịch trống
-          });
+          const emptyState: AvailabilityState = {};
+          emptyState._timeRanges = {};
+          emptyState._specificDates = {};
+          emptyState._hasSpecificDates = false;
+          emptyState._empty = true; // Đánh dấu là không có lịch trống
+          setAvailableTimeSlots(emptyState);
           return;
         }
         
@@ -369,22 +378,22 @@ export default function BookingForm() {
       } else {
         // Nếu không có dữ liệu lịch trống
         console.log("Không có dữ liệu lịch trống cho gia sư này.");
-        setAvailableTimeSlots({
-          _timeRanges: {},
-          _specificDates: {},
-          _hasSpecificDates: false,
-          _empty: true
-        });
+        const emptyState: AvailabilityState = {};
+        emptyState._timeRanges = {};
+        emptyState._specificDates = {};
+        emptyState._hasSpecificDates = false;
+        emptyState._empty = true;
+        setAvailableTimeSlots(emptyState);
       }
     } catch (error) {
       console.error("Lỗi khi xử lý dữ liệu lịch trống:", error);
       // Đảm bảo luôn có giá trị mặc định
-      setAvailableTimeSlots({
-        _timeRanges: {},
-        _specificDates: {},
-        _hasSpecificDates: false,
-        _empty: true
-      });
+      const emptyState: AvailabilityState = {};
+      emptyState._timeRanges = {};
+      emptyState._specificDates = {};
+      emptyState._hasSpecificDates = false;
+      emptyState._empty = true;
+      setAvailableTimeSlots(emptyState);
     }
   }, [tutorData]);
   
