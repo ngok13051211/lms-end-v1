@@ -116,12 +116,15 @@ export default function StudentDashboardTutors() {
             {filteredTutors.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredTutors.map((tutor: any) => (
-                  <div key={tutor.id} className="relative">
-                    <TutorCard 
-                      tutor={tutor} 
-                      isFavorite={true}
-                      onRemoveFromFavorites={removeFavorite}
-                    />
+                  <div key={tutor.id} className="relative flex h-full w-full">
+                    <div className="w-full">
+                      <TutorCard 
+                        tutor={tutor} 
+                        isFavorite={true}
+                        onRemoveFromFavorites={removeFavorite}
+                        compact={true}
+                      />
+                    </div>
                   </div>
                 ))}
               </div>

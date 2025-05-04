@@ -109,8 +109,8 @@ export default function TutorCard({ tutor, compact = false, isFavorite = false, 
 
   if (compact) {
     return (
-      <Card className="hover-rise">
-        <div className="p-4 flex items-center gap-4">
+      <Card className="hover-rise h-full">
+        <div className="p-4 flex items-center gap-4 h-full max-w-full">
           <Avatar className="h-12 w-12">
             <AvatarImage
               src={getTutorAvatar()}
@@ -133,12 +133,12 @@ export default function TutorCard({ tutor, compact = false, isFavorite = false, 
             <p className="text-sm text-muted-foreground truncate">
               {tutor.education || ''}
             </p>
-            <div className="flex items-center justify-between mt-1">
-              <p className="text-secondary font-medium text-sm">
+            <div className="flex items-center justify-between mt-1 flex-wrap">
+              <p className="text-secondary font-medium text-sm mr-2">
                 {formatPrice(tutor.hourly_rate)}
                 <span className="text-xs text-muted-foreground">/giờ</span>
               </p>
-              <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="flex items-center gap-1 flex-shrink-0 ml-auto">
                 {isFavorite && onRemoveFromFavorites && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
