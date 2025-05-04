@@ -10,6 +10,8 @@ import * as authController from "./controllers/authController";
 import * as tutorController from "./controllers/tutorController";
 import * as adController from "./controllers/adController";
 import * as conversationController from "./controllers/conversationController";
+import * as bookingController from "./controllers/bookingController";
+import * as paymentController from "./controllers/paymentController";
 
 // Import middlewares
 import { authMiddleware, roleMiddleware } from "./middlewares/authMiddleware";
@@ -127,6 +129,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch(`${apiPrefix}/admin/tutors/:id/approve`, authMiddleware, roleMiddleware(["admin"]), tutorController.approveTutor);
   app.patch(`${apiPrefix}/admin/tutors/:id/reject`, authMiddleware, roleMiddleware(["admin"]), tutorController.rejectTutor);
   app.get(`${apiPrefix}/admin/stats`, authMiddleware, roleMiddleware(["admin"]), authController.getAdminStats);
+
+  // Booking routes
+  app.post(`${apiPrefix}/bookings`, authMiddleware, roleMiddleware(["student"]), bookingController.createBooking);
+  app.get(`${apiPrefix}/student/bookings`, authMiddleware, roleMiddleware(["student"]), bookingController.getStudentBookings);
+  app.get(`${apiPrefix}/tutor/bookings`, authMiddleware, roleMiddleware(["tutor"]), bookingController.getTutorBookings);
+  app.get(`${apiPrefix}/bookings/:id`, authMiddleware, bookingController.getBookingById);
+  app.patch(`${apiPrefix}/bookings/:id/status`, authMiddleware, bookingController.updateBookingStatus);
+  app.post(`${apiPrefix}/bookings/:id/notes`, authMiddleware, bookingController.addSessionNotes);
+
+  // Payment routes
+  app.post(`${apiPrefix}/payments`, authMiddleware, roleMiddleware(["student"]), paymentController.createPayment);
+  app.get(`${apiPrefix}/payments/callback`, paymentController.handlePaymentCallback); // Public route for VNPay callback
+  app.get(`${apiPrefix}/payments/:id`, authMiddleware, paymentController.getPaymentById);
+  app.get(`${apiPrefix}/user/payments`, authMiddleware, paymentController.getUserPayments);
+  app.patch(`${apiPrefix}/admin/payments/:id/approve`, authMiddleware, roleMiddleware(["admin"]), paymentController.approvePaymentToTutor);
 
   return httpServer;
 }

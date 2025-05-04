@@ -425,19 +425,45 @@ export const sessionNotesRelations = relations(sessionNotes, ({ one }) => ({
 }));
 
 // Schemas
-export const bookingInsertSchema = createInsertSchema(bookings, {
-  title: (schema) => schema.min(3, "Tiêu đề phải có ít nhất 3 ký tự"),
-  start_time: (schema) => schema.refine(val => new Date(val) > new Date(), {
+export const bookingInsertSchema = createInsertSchema(bookings);
+// Bổ sung validation riêng
+export const bookingValidationSchema = z.object({
+  title: z.string().min(3, "Tiêu đề phải có ít nhất 3 ký tự"),
+  start_time: z.string().or(z.date()).refine(val => new Date(val) > new Date(), {
     message: "Thời gian bắt đầu phải là trong tương lai"
   }),
-  end_time: (schema) => schema.refine(val => new Date(val) > new Date(), {
+  end_time: z.string().or(z.date()).refine(val => new Date(val) > new Date(), {
     message: "Thời gian kết thúc phải là trong tương lai"
-  })
+  }),
+  student_id: z.number(),
+  tutor_id: z.number(),
+  ad_id: z.number().optional(),
+  description: z.string().optional(),
+  location: z.string().optional(),
+  meeting_url: z.string().optional(),
+  hourly_rate: z.number().or(z.string().transform(val => parseFloat(val))),
+  total_hours: z.number().or(z.string().transform(val => parseFloat(val))),
+  total_amount: z.number().or(z.string().transform(val => parseFloat(val))),
+  status: z.string().default("pending")
 });
 export const bookingSelectSchema = createSelectSchema(bookings);
 
 export const paymentInsertSchema = createInsertSchema(payments);
 export const paymentSelectSchema = createSelectSchema(payments);
+
+// Validation schema cho thanh toán
+export const paymentValidationSchema = z.object({
+  booking_id: z.number(),
+  transaction_id: z.string().optional(),
+  amount: z.number().or(z.string().transform(val => parseFloat(val))),
+  fee: z.number().or(z.string().transform(val => parseFloat(val))).optional(),
+  net_amount: z.number().or(z.string().transform(val => parseFloat(val))),
+  payer_id: z.number(),
+  payee_id: z.number(),
+  status: z.string().default("pending"),
+  payment_method: z.string(),
+  payment_data: z.any().optional()
+});
 
 export const sessionNoteInsertSchema = createInsertSchema(sessionNotes);
 export const sessionNoteSelectSchema = createSelectSchema(sessionNotes);
