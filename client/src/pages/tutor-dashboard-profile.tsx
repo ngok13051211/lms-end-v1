@@ -599,11 +599,30 @@ export default function TutorDashboardProfile() {
 
   // Thêm lịch trống theo ngày cụ thể
   const handleAddAvailability = () => {
+    // Chuẩn hóa định dạng giờ bắt đầu
+    let startTime = newAvailabilityItem.startTime;
+    if (startTime && startTime.length === 4) {
+      startTime = "0" + startTime;
+    }
+    
+    // Chuẩn hóa định dạng giờ kết thúc
+    let endTime = newAvailabilityItem.endTime;
+    if (endTime && endTime.length === 4) {
+      endTime = "0" + endTime;
+    }
+    
+    // Cập nhật giá trị đã chuẩn hóa
+    const normalizedItem = {
+      ...newAvailabilityItem,
+      startTime,
+      endTime
+    };
+    
     // Kiểm tra nếu thời gian kết thúc <= thời gian bắt đầu
     if (
       !validateTimeRange(
-        newAvailabilityItem.startTime,
-        newAvailabilityItem.endTime,
+        normalizedItem.startTime,
+        normalizedItem.endTime,
       )
     ) {
       toast({
@@ -615,7 +634,7 @@ export default function TutorDashboardProfile() {
     }
 
     // Kiểm tra xem đã có lịch trống cho ngày này chưa và có trùng lấp không
-    if (checkTimeSlotOverlapping(newAvailabilityItem)) {
+    if (checkTimeSlotOverlapping(normalizedItem)) {
       toast({
         title: "Lịch trùng lặp",
         description:
@@ -625,8 +644,8 @@ export default function TutorDashboardProfile() {
       return;
     }
 
-    // Nếu không có vấn đề gì, thêm khung giờ mới
-    setAvailabilityItems([...availabilityItems, { ...newAvailabilityItem }]);
+    // Nếu không có vấn đề gì, thêm khung giờ mới với giá trị đã chuẩn hóa
+    setAvailabilityItems([...availabilityItems, normalizedItem]);
 
     // Reset form nhưng giữ lại date hiện tại và đặt thời gian mặc định
     const tomorrow = new Date();
@@ -656,10 +675,27 @@ export default function TutorDashboardProfile() {
 
     // Lọc tất cả các slot là ngày cụ thể và nhóm chúng theo ngày
     slots.forEach((slot) => {
+      // Chuẩn hóa định dạng thời gian để đảm bảo thống nhất (HH:MM)
+      let startTime = slot.startTime;
+      if (startTime && startTime.length === 4) {
+        startTime = "0" + startTime;
+      }
+      
+      let endTime = slot.endTime;
+      if (endTime && endTime.length === 4) {
+        endTime = "0" + endTime;
+      }
+      
+      const normalizedSlot = {
+        ...slot,
+        startTime: startTime,
+        endTime: endTime
+      };
+      
       if (!dateMaps[slot.date]) {
         dateMaps[slot.date] = [];
       }
-      dateMaps[slot.date].push(slot);
+      dateMaps[slot.date].push(normalizedSlot);
     });
 
     // Kết quả cuối cùng
