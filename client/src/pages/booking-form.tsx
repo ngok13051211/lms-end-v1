@@ -627,15 +627,22 @@ export default function BookingForm() {
       // Format ngày thành chuỗi YYYY-MM-DD để tìm trong object
       const dateStr = selectedDate.toISOString().split('T')[0];
       
-      // Lấy danh sách thời gian có sẵn cho ngày này
-      const timesForDate = availableTimeSlots[dateStr];
+      // Lấy các khoảng thời gian cho ngày đã chọn
+      // @ts-ignore - Truy cập thuộc tính động
+      const timeRanges = availableTimeSlots._timeRanges?.[dateStr] || [];
       
-      if (Array.isArray(timesForDate) && timesForDate.length > 0) {
-        return timesForDate;
-      } else {
+      if (timeRanges.length === 0) {
         console.log(`Không tìm thấy thời gian khả dụng cho ngày ${dateStr}`);
         return [];
       }
+      
+      console.log(`Dữ liệu khoảng thời gian cho ngày ${dateStr}:`, timeRanges);
+      
+      // Trích xuất giờ bắt đầu từ các khoảng thời gian
+      const startTimes = timeRanges.map(range => range.startTime);
+      console.log(`Các giờ bắt đầu: ${startTimes.join(', ')}`);
+      
+      return startTimes.sort();
     } catch (error) {
       console.error("Lỗi khi lấy thời gian khả dụng:", error);
       return [];
@@ -669,6 +676,23 @@ export default function BookingForm() {
         return;
       }
       
+      console.log(`Tìm giờ kết thúc cho lịch: Ngày ${dateStr}, Giờ bắt đầu ${startTime}`);
+      console.log(`Danh sách khoảng thời gian:`, timeRanges);
+      
+      // Tìm khoảng thời gian có giờ bắt đầu CHÍNH XÁC khớp với startTime đã chọn
+      const exactMatchRange = timeRanges.find(range => range.startTime === startTime);
+      
+      if (exactMatchRange) {
+        console.log(`Tìm thấy khoảng thời gian khớp chính xác: ${exactMatchRange.startTime}-${exactMatchRange.endTime}`);
+        
+        // Sử dụng giờ kết thúc chính xác từ khoảng thời gian này
+        form.setValue("end_time", exactMatchRange.endTime);
+        
+        console.log(`Đã đặt giờ kết thúc: ${exactMatchRange.endTime} (từ khoảng thời gian khớp chính xác)`);
+        return;
+      }
+      
+      // Nếu không tìm thấy khoảng thời gian khớp chính xác, thử tìm khoảng thời gian chứa startTime
       // Chuyển đổi giờ bắt đầu thành phút
       const [startHour, startMin] = startTime.split(':').map(Number);
       const startMinutes = startHour * 60 + startMin;
