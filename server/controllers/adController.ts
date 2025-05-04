@@ -35,8 +35,8 @@ export const createAd = async (req: Request, res: Response) => {
         tutor_id: tutorProfile.id,
         title: adData.title,
         description: adData.description,
-        subject_id: adData.subject_id !== undefined ? parseInt(adData.subject_id as string) : undefined,
-        level_id: adData.level_id !== undefined ? parseInt(adData.level_id as string) : undefined,
+        subject_id: adData.subject_id !== undefined ? (typeof adData.subject_id === 'string' ? parseInt(adData.subject_id) : adData.subject_id) : undefined,
+        level_id: adData.level_id !== undefined ? (typeof adData.level_id === 'string' ? parseInt(adData.level_id) : adData.level_id) : undefined,
         hourly_rate: adData.hourly_rate,
         teaching_mode: adData.teaching_mode,
         status: "active",
@@ -187,8 +187,8 @@ export const updateAd = async (req: Request, res: Response) => {
       .set({
         title: adData.title !== undefined ? adData.title : existingAd.title,
         description: adData.description !== undefined ? adData.description : existingAd.description,
-        subject_id: adData.subject_id !== undefined ? parseInt(adData.subject_id as string) : existingAd.subject_id,
-        level_id: adData.level_id !== undefined ? parseInt(adData.level_id as string) : existingAd.level_id,
+        subject_id: adData.subject_id !== undefined ? (typeof adData.subject_id === 'string' ? parseInt(adData.subject_id) : adData.subject_id) : existingAd.subject_id,
+        level_id: adData.level_id !== undefined ? (typeof adData.level_id === 'string' ? parseInt(adData.level_id) : adData.level_id) : existingAd.level_id,
         hourly_rate: adData.hourly_rate !== undefined ? adData.hourly_rate : existingAd.hourly_rate,
         teaching_mode: adData.teaching_mode !== undefined ? adData.teaching_mode : existingAd.teaching_mode,
         status: adData.status !== undefined ? adData.status : existingAd.status,
@@ -272,14 +272,45 @@ export const deleteAd = async (req: Request, res: Response) => {
 export const getAllAds = async (req: Request, res: Response) => {
   try {
     // Parse query params for filtering
-    const { subject, level, teaching_mode, min_price, max_price, page = 1, limit = 10 } = req.query;
+    const { subject, level, teaching_mode, searchTerm, page = 1, limit = 10 } = req.query;
     const pageNumber = parseInt(page as string) || 1;
     const pageSize = parseInt(limit as string) || 10;
     const offset = (pageNumber - 1) * pageSize;
     
-    // Build base query for active ads
-    let queryBuilder = db.query.ads.findMany({
-      where: eq(schema.ads.status, "active"),
+    // Build conditions array for the where clause
+    const conditions = [];
+    
+    // Always show only active ads
+    conditions.push(eq(schema.ads.status, "active"));
+    
+    // Add filters if they exist
+    if (subject && subject !== '') {
+      const subjectId = parseInt(subject as string);
+      if (!isNaN(subjectId)) {
+        conditions.push(eq(schema.ads.subject_id, subjectId));
+      }
+    }
+    
+    if (level && level !== '') {
+      const levelId = parseInt(level as string);
+      if (!isNaN(levelId)) {
+        conditions.push(eq(schema.ads.level_id, levelId));
+      }
+    }
+    
+    if (teaching_mode && teaching_mode !== '') {
+      conditions.push(eq(schema.ads.teaching_mode, teaching_mode as string));
+    }
+    
+    // If we have only one condition, use it directly
+    // If we have multiple conditions, combine them with AND
+    const whereCondition = conditions.length === 1 
+      ? conditions[0] 
+      : and(...conditions);
+    
+    // Execute query with filters
+    const ads = await db.query.ads.findMany({
+      where: whereCondition,
       with: {
         subject: true,
         level: true,
@@ -294,12 +325,9 @@ export const getAllAds = async (req: Request, res: Response) => {
       orderBy: [desc(schema.ads.created_at)]
     });
     
-    // Extract results
-    const ads = await queryBuilder;
-    
-    // Get total count for pagination
+    // Get total count for pagination with the same filters (except pagination)
     const totalAdsCount = await db.query.ads.findMany({
-      where: eq(schema.ads.status, "active")
+      where: whereCondition
     });
     
     const total = totalAdsCount.length;

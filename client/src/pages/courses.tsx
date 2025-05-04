@@ -91,7 +91,17 @@ export default function Courses() {
   // Fetch courses (ads)
   const { data: coursesData, isLoading: isLoadingCourses } = useQuery<CoursesResponse>({
     queryKey: ["/api/v1/courses", currentPage, searchTerm, selectedSubject, selectedLevel, teachingMode],
-    queryFn: getQueryFn({ on401: "throw" }),
+    queryFn: getQueryFn({ 
+      on401: "throw",
+      params: {
+        page: currentPage,
+        limit: 8,
+        searchTerm: searchTerm || undefined,
+        subject: selectedSubject || undefined,
+        level: selectedLevel || undefined,
+        teaching_mode: teachingMode || undefined
+      }
+    }),
   });
 
   // Handle filter submission
