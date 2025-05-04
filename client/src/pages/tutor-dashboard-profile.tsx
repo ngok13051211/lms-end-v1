@@ -47,19 +47,33 @@ const tutorProfileSchema = z.object({
   // Trường availability là tùy chọn, sẽ được xử lý riêng
 });
 
+// Hàm ánh xạ tên ngày sang số thứ tự ngày trong tuần
+const getDayOfWeekNumber = (day: string): number => {
+  const dayMap: {[key: string]: number} = {
+    'sunday': 0,
+    'monday': 1,
+    'tuesday': 2,
+    'wednesday': 3,
+    'thursday': 4,
+    'friday': 5,
+    'saturday': 6
+  };
+  return dayMap[day.toLowerCase()];
+};
+
 // Hàm tiện ích để lấy ngày trong tuần tới dựa trên tên ngày trong tuần
 const getNextWeekdayDate = (weekday: string): Date => {
+  const dayNumber = getDayOfWeekNumber(weekday);
+  if (dayNumber === undefined) return new Date(); // Trả về ngày hiện tại nếu không tìm thấy
+  
   const today = new Date();
-  switch (weekday) {
-    case "monday": return nextMonday(today);
-    case "tuesday": return nextTuesday(today);
-    case "wednesday": return nextWednesday(today);
-    case "thursday": return nextThursday(today);
-    case "friday": return nextFriday(today);
-    case "saturday": return nextSaturday(today);
-    case "sunday": return nextSunday(today);
-    default: return today;
-  }
+  today.setHours(0, 0, 0, 0);
+  
+  const daysUntilNext = (dayNumber + 7 - today.getDay()) % 7;
+  const nextDate = new Date(today);
+  nextDate.setDate(today.getDate() + (daysUntilNext === 0 ? 7 : daysUntilNext));
+  
+  return nextDate;
 };
 
 // Hàm chuyển đổi tên ngày trong tuần tiếng Anh sang tiếng Việt và thêm ngày/tháng/năm
@@ -555,9 +569,55 @@ export default function TutorDashboardProfile() {
       // Cập nhật lịch trống từ dữ liệu tutorProfile
       if (tutorProfile.availability) {
         try {
-          const parsedAvailability = JSON.parse(tutorProfile.availability);
+          let parsedAvailability;
+          
+          // Hỗ trợ cả chuỗi JSON và mảng đã parse
+          if (typeof tutorProfile.availability === 'string') {
+            parsedAvailability = JSON.parse(tutorProfile.availability);
+          } else if (Array.isArray(tutorProfile.availability)) {
+            parsedAvailability = tutorProfile.availability;
+          } else {
+            console.warn("Dữ liệu lịch trống không đúng định dạng:", tutorProfile.availability);
+            parsedAvailability = [];
+          }
+          
+          // Đảm bảo dữ liệu đúng định dạng
           if (Array.isArray(parsedAvailability)) {
-            setAvailabilityItems(parsedAvailability);
+            // Chuẩn hóa dữ liệu trước khi lưu vào state
+            const normalizedData = parsedAvailability.map(item => {
+              // Đảm bảo có đầy đủ các trường
+              if (!item.day || !item.startTime || !item.endTime) {
+                console.warn("Thiếu thông tin trong item lịch trống:", item);
+                return null;
+              }
+              
+              // Chuẩn hóa tên ngày
+              const day = item.day.toLowerCase();
+              
+              // Chuẩn hóa thời gian bắt đầu
+              let startTime = item.startTime;
+              if (startTime.length === 4) { // Nếu là H:MM
+                startTime = "0" + startTime;
+              }
+              
+              // Chuẩn hóa thời gian kết thúc
+              let endTime = item.endTime;
+              if (endTime.length === 4) { // Nếu là H:MM
+                endTime = "0" + endTime;
+              }
+              
+              return {
+                day,
+                startTime,
+                endTime
+              };
+            }).filter(Boolean) as AvailabilityItem[]; // Loại bỏ các giá trị null
+            
+            console.log("Dữ liệu lịch trống đã chuẩn hóa:", normalizedData);
+            setAvailabilityItems(normalizedData);
+          } else {
+            console.warn("Dữ liệu lịch trống không phải mảng:", parsedAvailability);
+            setAvailabilityItems([]);
           }
         } catch (error) {
           console.error("Lỗi khi parse availability:", error);
@@ -577,8 +637,34 @@ export default function TutorDashboardProfile() {
   // Hàm xử lý cập nhật lịch trống
   const updateAvailabilityMutation = useMutation({
     mutationFn: async (availabilityData: AvailabilityItem[]) => {
+      // Chuẩn hóa dữ liệu:
+      // 1. Đảm bảo các giá trị day đều ở dạng lowercase
+      // 2. Đảm bảo các giá trị startTime và endTime đều ở định dạng HH:MM
+      const normalizedData = availabilityData.map(item => {
+        // Chuẩn hóa tên ngày
+        const day = item.day.toLowerCase();
+        
+        // Chuẩn hóa thời gian bắt đầu
+        let startTime = item.startTime;
+        if (startTime.length === 4) { // Nếu là H:MM
+          startTime = "0" + startTime;
+        }
+        
+        // Chuẩn hóa thời gian kết thúc
+        let endTime = item.endTime;
+        if (endTime.length === 4) { // Nếu là H:MM
+          endTime = "0" + endTime;
+        }
+        
+        return {
+          day,
+          startTime,
+          endTime
+        };
+      });
+      
       // Chuyển danh sách availability thành chuỗi JSON
-      const availabilityJson = JSON.stringify(availabilityData);
+      const availabilityJson = JSON.stringify(normalizedData);
       
       console.log("Cập nhật lịch trống:", availabilityJson);
       
