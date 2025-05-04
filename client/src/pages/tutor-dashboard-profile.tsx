@@ -58,6 +58,7 @@ import {
   FileText,
   ExternalLink,
   Trash,
+  Calendar as CalendarIcon,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -66,8 +67,14 @@ import { CheckboxGroup, CheckboxItem } from "@/components/ui/checkbox-group";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import TutorDashboardLayout from "@/components/layout/TutorDashboardLayout";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { vi } from "date-fns/locale";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 
 // Định nghĩa cấu trúc cho khung giờ trống theo ngày cụ thể
 const specificDateAvailabilityItemSchema = z.object({
@@ -1258,7 +1265,7 @@ export default function TutorDashboardProfile() {
                               <Calendar
                                 mode="single"
                                 selected={newAvailabilityItem.date ? parseISO(newAvailabilityItem.date) : undefined}
-                                onSelect={(date) => {
+                                onSelect={(date: Date | undefined) => {
                                   if (date) {
                                     setNewAvailabilityItem({
                                       ...newAvailabilityItem,
@@ -1266,7 +1273,7 @@ export default function TutorDashboardProfile() {
                                     });
                                   }
                                 }}
-                                disabled={(date) => {
+                                disabled={(date: Date) => {
                                   // Chỉ cho phép chọn ngày từ hôm nay trở đi
                                   return date < new Date();
                                 }}
