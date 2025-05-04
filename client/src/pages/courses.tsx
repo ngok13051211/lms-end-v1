@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { getQueryFn } from "@/lib/queryClient";
 import { useMobile } from "@/hooks/use-mobile";
+import { useSelector } from "react-redux";
+import { RootState } from "../store";
 
 // UI components
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +22,7 @@ import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetT
 
 export default function Courses() {
   const isMobile = useMobile();
+  const { user } = useSelector((state: RootState) => state.auth);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSubject, setSelectedSubject] = useState("all_subjects");

@@ -560,7 +560,7 @@ export default function BookingForm() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => navigate(-1)}
+                  onClick={() => window.history.back()}
                 >
                   Hủy
                 </Button>
