@@ -997,16 +997,31 @@ export default function TutorDashboardProfile() {
                       <div key={index} className="border rounded-md p-4 flex flex-col">
                         <div className="font-medium mb-2">
                           {(() => {
+                            // Lấy ngày tương ứng
+                            const weekdayDate = getNextWeekdayDate(item.day);
+                            const formattedDate = format(weekdayDate, 'dd/MM/yyyy', { locale: vi });
+                            
+                            // Hiển thị tên ngày trong tuần kèm ngày/tháng/năm
+                            let dayName = '';
                             switch(item.day) {
-                              case 'monday': return 'Thứ Hai';
-                              case 'tuesday': return 'Thứ Ba';
-                              case 'wednesday': return 'Thứ Tư';
-                              case 'thursday': return 'Thứ Năm';
-                              case 'friday': return 'Thứ Sáu';
-                              case 'saturday': return 'Thứ Bảy';
-                              case 'sunday': return 'Chủ Nhật';
-                              default: return item.day;
+                              case 'monday': dayName = 'Thứ Hai'; break;
+                              case 'tuesday': dayName = 'Thứ Ba'; break;
+                              case 'wednesday': dayName = 'Thứ Tư'; break;
+                              case 'thursday': dayName = 'Thứ Năm'; break;
+                              case 'friday': dayName = 'Thứ Sáu'; break;
+                              case 'saturday': dayName = 'Thứ Bảy'; break;
+                              case 'sunday': dayName = 'Chủ Nhật'; break;
+                              default: dayName = item.day;
                             }
+                            
+                            return (
+                              <>
+                                {dayName}
+                                <span className="text-sm font-normal text-muted-foreground ml-1">
+                                  ({formattedDate})
+                                </span>
+                              </>
+                            );
                           })()}
                         </div>
                         <div className="flex items-center">
