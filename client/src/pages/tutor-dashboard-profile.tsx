@@ -695,9 +695,9 @@ export default function TutorDashboardProfile() {
 
             // Xử lý dữ liệu lịch trống cũ (không có trường type)
             for (const item of parsedAvailability) {
-              // Nếu đã có trường type, giữ nguyên
-              if (item.type === "weekly" || item.type === "specific") {
-                // Chỉ cần chuẩn hóa thời gian
+              // Nếu là lịch trống theo ngày cụ thể, giữ lại
+              if (item.type === "specific") {
+                // Chuẩn hóa thời gian
                 const newItem = { ...item };
 
                 // Chuẩn hóa thời gian bắt đầu
@@ -713,36 +713,17 @@ export default function TutorDashboardProfile() {
                 convertedItems.push(newItem as AvailabilityItem);
                 continue;
               }
+              
+              // Bỏ qua lịch trống theo tuần
+              if (item.type === "weekly") {
+                console.log("Bỏ qua lịch trống theo tuần:", item);
+                continue;
+              }
 
-              // Đối với data cũ không có type, nếu có day thì chuyển thành weekly
+              // Đối với data cũ không có type, nếu có day thì bỏ qua (vì không sử dụng lịch theo tuần nữa)
               if (item.day) {
-                const day = item.day.toLowerCase() as
-                  | "monday"
-                  | "tuesday"
-                  | "wednesday"
-                  | "thursday"
-                  | "friday"
-                  | "saturday"
-                  | "sunday";
-
-                // Chuẩn hóa thời gian bắt đầu
-                let startTime = item.startTime || "08:00";
-                if (startTime.length === 4) {
-                  startTime = "0" + startTime;
-                }
-
-                // Chuẩn hóa thời gian kết thúc
-                let endTime = item.endTime || "17:00";
-                if (endTime.length === 4) {
-                  endTime = "0" + endTime;
-                }
-
-                convertedItems.push({
-                  type: "weekly",
-                  day,
-                  startTime,
-                  endTime,
-                });
+                console.log("Bỏ qua lịch trống theo tuần (dữ liệu cũ):", item);
+                continue;
               }
               // Nếu có date thì chuyển thành specific
               else if (item.date) {
@@ -784,69 +765,33 @@ export default function TutorDashboardProfile() {
   // Hàm xử lý cập nhật lịch trống
   const updateAvailabilityMutation = useMutation({
     mutationFn: async (availabilityData: AvailabilityItem[]) => {
-      // Sử dụng kiểu AvailabilityItem mới với discriminated union
+      // Sử dụng kiểu AvailabilityItem mới (chỉ ngày cụ thể)
       // Tuy nhiên vẫn chuẩn hóa để tương thích với backend cũ
       const normalizedData = availabilityData
         .map((item) => {
-          if (item.type === "weekly") {
-            // Weekly availability - compatibile with old format
-            const day = item.day.toLowerCase() as
-              | "monday"
-              | "tuesday"
-              | "wednesday"
-              | "thursday"
-              | "friday"
-              | "saturday"
-              | "sunday";
-
-            // Chuẩn hóa thời gian
-            let startTime = item.startTime;
-            if (startTime.length === 4) {
-              // Nếu là H:MM
-              startTime = "0" + startTime;
-            }
-
-            let endTime = item.endTime;
-            if (endTime.length === 4) {
-              // Nếu là H:MM
-              endTime = "0" + endTime;
-            }
-
-            // Convert to old data format for backward compatibility
-            return {
-              day: day,
-              startTime: startTime,
-              endTime: endTime,
-            };
-          } else if (item.type === "specific") {
-            // Lưu định dạng mới hỗ trợ ngày cụ thể đồng thời tương thích với cũ
-            // Chuẩn hóa thời gian
-            let startTime = item.startTime;
-            if (startTime.length === 4) {
-              // Nếu là H:MM
-              startTime = "0" + startTime;
-            }
-
-            let endTime = item.endTime;
-            if (endTime.length === 4) {
-              // Nếu là H:MM
-              endTime = "0" + endTime;
-            }
-
-            // Đảm bảo định dạng ngày
-            let date = item.date;
-
-            // Trả về object với cả type để phân biệt
-            return {
-              type: "specific", // Lưu loại lịch
-              date,
-              startTime,
-              endTime,
-            };
-          } else {
-            console.warn("Không nhận ra loại lịch trống:", item);
-            return null;
+          // Chuẩn hóa thời gian
+          let startTime = item.startTime;
+          if (startTime.length === 4) {
+            // Nếu là H:MM
+            startTime = "0" + startTime;
           }
+
+          let endTime = item.endTime;
+          if (endTime.length === 4) {
+            // Nếu là H:MM
+            endTime = "0" + endTime;
+          }
+
+          // Đảm bảo định dạng ngày
+          let date = item.date;
+
+          // Trả về object với cả type để phân biệt
+          return {
+            type: "specific", // Lưu loại lịch
+            date,
+            startTime,
+            endTime,
+          };
         })
         .filter(Boolean); // Remove any null values
 
@@ -883,51 +828,39 @@ export default function TutorDashboardProfile() {
     },
   });
 
-  // Hàm này chỉ để hỗ trợ các code cũ, hiện tại đã thay thế bằng
-  // isWeeklyTimeSlotOverlapping và isSpecificDateTimeSlotOverlapping
-  const isTimeSlotOverlapping = (newSlot: any) => {
-    // Tùy thuộc vào loại lịch trống mà gọi hàm kiểm tra phù hợp
-    if (newSlot.type === "weekly") {
-      return isWeeklyTimeSlotOverlapping(newSlot as WeeklyAvailabilityItem);
-    } else if (newSlot.type === "specific") {
-      return isSpecificDateTimeSlotOverlapping(
-        newSlot as SpecificDateAvailabilityItem,
-      );
-    } else if ("day" in newSlot) {
-      // Legacy code cho các lịch không có trường type
-      return availabilityItems.some((existingSlot) => {
-        if ("day" in existingSlot && existingSlot.day === newSlot.day) {
-          // Chuyển đổi giờ:phút thành số phút để dễ so sánh
-          const [existingStartHour, existingStartMin] = existingSlot.startTime
-            .split(":")
-            .map(Number);
-          const [existingEndHour, existingEndMin] = existingSlot.endTime
-            .split(":")
-            .map(Number);
-          const [newStartHour, newStartMin] = newSlot.startTime
-            .split(":")
-            .map(Number);
-          const [newEndHour, newEndMin] = newSlot.endTime
-            .split(":")
-            .map(Number);
+  // Kiểm tra khung giờ trùng lặp (chỉ dùng cho ngày cụ thể)
+  const isTimeSlotOverlapping = (newSlot: AvailabilityItem) => {
+    // Chỉ kiểm tra trùng lặp cho các lịch trống cùng ngày
+    return availabilityItems.some((existingSlot) => {
+      if (existingSlot.date === newSlot.date) {
+        // Chuyển đổi giờ:phút thành số phút để dễ so sánh
+        const [existingStartHour, existingStartMin] = existingSlot.startTime
+          .split(":")
+          .map(Number);
+        const [existingEndHour, existingEndMin] = existingSlot.endTime
+          .split(":")
+          .map(Number);
+        const [newStartHour, newStartMin] = newSlot.startTime
+          .split(":")
+          .map(Number);
+        const [newEndHour, newEndMin] = newSlot.endTime
+          .split(":")
+          .map(Number);
 
-          const existingStartMinutes =
-            existingStartHour * 60 + existingStartMin;
-          const existingEndMinutes = existingEndHour * 60 + existingEndMin;
-          const newStartMinutes = newStartHour * 60 + newStartMin;
-          const newEndMinutes = newEndHour * 60 + newEndMin;
+        const existingStartMinutes =
+          existingStartHour * 60 + existingStartMin;
+        const existingEndMinutes = existingEndHour * 60 + existingEndMin;
+        const newStartMinutes = newStartHour * 60 + newStartMin;
+        const newEndMinutes = newEndHour * 60 + newEndMin;
 
-          // Kiểm tra xem hai khoảng thời gian có giao nhau không
-          return (
-            newStartMinutes < existingEndMinutes &&
-            newEndMinutes > existingStartMinutes
-          );
-        }
-        return false;
-      });
-    }
-
-    return false;
+        // Kiểm tra xem hai khoảng thời gian có giao nhau không
+        return (
+          newStartMinutes < existingEndMinutes &&
+          newEndMinutes > existingStartMinutes
+        );
+      }
+      return false;
+    });
   };
 
   // Kiểm tra thời gian (cả hàng tuần và ngày cụ thể)
@@ -941,8 +874,8 @@ export default function TutorDashboardProfile() {
     return endMinutes > startMinutes;
   };
 
-  // Thêm lịch trống hàng tuần
-  const handleAddWeeklyAvailability = () => {
+  // Thêm lịch trống theo ngày cụ thể
+  const handleAddAvailability = () => {
     // Kiểm tra nếu thời gian kết thúc <= thời gian bắt đầu
     if (
       !validateTimeRange(
@@ -958,111 +891,8 @@ export default function TutorDashboardProfile() {
       return;
     }
 
-    // Kiểm tra trùng lặp (chỉ đối với weekly, specific sẽ kiểm tra riêng)
-    const weeklyItems = availabilityItems.filter(
-      (item) => item.type === "weekly",
-    ) as WeeklyAvailabilityItem[];
-    const isOverlapping = weeklyItems.some((existingSlot) => {
-      if (existingSlot.day === newAvailabilityItem.day) {
-        const [existingStartHour, existingStartMin] = existingSlot.startTime
-          .split(":")
-          .map(Number);
-        const [existingEndHour, existingEndMin] = existingSlot.endTime
-          .split(":")
-          .map(Number);
-        const [newStartHour, newStartMin] = newAvailabilityItem.startTime
-          .split(":")
-          .map(Number);
-        const [newEndHour, newEndMin] = newAvailabilityItem.endTime
-          .split(":")
-          .map(Number);
-
-        const existingStartMinutes = existingStartHour * 60 + existingStartMin;
-        const existingEndMinutes = existingEndHour * 60 + existingEndMin;
-        const newStartMinutes = newStartHour * 60 + newStartMin;
-        const newEndMinutes = newEndHour * 60 + newEndMin;
-
-        return (
-          newStartMinutes < existingEndMinutes &&
-          newEndMinutes > existingStartMinutes
-        );
-      }
-      return false;
-    });
-
-    if (isOverlapping) {
-      toast({
-        title: "Lịch trùng lặp",
-        description:
-          "Khung giờ này trùng với một khung giờ đã tồn tại. Vui lòng chọn thời gian khác.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Nếu không có vấn đề gì, thêm khung giờ mới
-    setAvailabilityItems([...availabilityItems, { ...newAvailabilityItem }]);
-
-    // Reset form
-    setNewAvailabilityItem({
-      type: "weekly",
-      day: "monday",
-      startTime: "08:00",
-      endTime: "17:00",
-    });
-  };
-
-  // Thêm lịch trống ngày cụ thể
-  const handleAddSpecificDateAvailability = () => {
-    // Kiểm tra nếu thời gian kết thúc <= thời gian bắt đầu
-    if (
-      !validateTimeRange(
-        newSpecificDateItem.startTime,
-        newSpecificDateItem.endTime,
-      )
-    ) {
-      toast({
-        title: "Lỗi thời gian",
-        description: "Thời gian kết thúc phải sau thời gian bắt đầu.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Kiểm tra xem đã có lịch trống cho ngày này chưa
-    const specificItems = availabilityItems.filter(
-      (item) => item.type === "specific",
-    ) as SpecificDateAvailabilityItem[];
-
-    const isOverlapping = specificItems.some((existingSlot) => {
-      if (existingSlot.date === newSpecificDateItem.date) {
-        const [existingStartHour, existingStartMin] = existingSlot.startTime
-          .split(":")
-          .map(Number);
-        const [existingEndHour, existingEndMin] = existingSlot.endTime
-          .split(":")
-          .map(Number);
-        const [newStartHour, newStartMin] = newSpecificDateItem.startTime
-          .split(":")
-          .map(Number);
-        const [newEndHour, newEndMin] = newSpecificDateItem.endTime
-          .split(":")
-          .map(Number);
-
-        const existingStartMinutes = existingStartHour * 60 + existingStartMin;
-        const existingEndMinutes = existingEndHour * 60 + existingEndMin;
-        const newStartMinutes = newStartHour * 60 + newStartMin;
-        const newEndMinutes = newEndHour * 60 + newEndMin;
-
-        return (
-          newStartMinutes < existingEndMinutes &&
-          newEndMinutes > existingStartMinutes
-        );
-      }
-      return false;
-    });
-
-    if (isOverlapping) {
+    // Kiểm tra xem đã có lịch trống cho ngày này chưa và có trùng lấp không
+    if (isTimeSlotOverlapping(newAvailabilityItem)) {
       toast({
         title: "Lịch trùng lặp",
         description:
@@ -1073,27 +903,18 @@ export default function TutorDashboardProfile() {
     }
 
     // Nếu không có vấn đề gì, thêm khung giờ mới
-    setAvailabilityItems([...availabilityItems, { ...newSpecificDateItem }]);
+    setAvailabilityItems([...availabilityItems, { ...newAvailabilityItem }]);
 
-    // Reset form nhưng giữ lại date (ngày mai)
+    // Reset form nhưng giữ lại date hiện tại và đặt thời gian mặc định
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    setNewSpecificDateItem({
+    setNewAvailabilityItem({
       type: "specific",
       date: format(tomorrow, "yyyy-MM-dd"),
       startTime: "08:00",
       endTime: "17:00",
     });
-  };
-
-  // Hàm xử lý thêm lịch trống dựa trên loại lịch đang được chọn
-  const handleAddAvailability = () => {
-    if (availabilityType === "weekly") {
-      handleAddWeeklyAvailability();
-    } else {
-      handleAddSpecificDateAvailability();
-    }
   };
 
   // Xóa một khung giờ trống
