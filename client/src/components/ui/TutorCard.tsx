@@ -109,8 +109,8 @@ export default function TutorCard({ tutor, compact = false, isFavorite = false, 
 
   if (compact) {
     return (
-      <Card className="hover-rise h-full">
-        <div className="p-4 flex items-center gap-4 h-full max-w-full">
+      <Card className="hover-rise h-full overflow-hidden">
+        <div className="p-4 flex items-center gap-4 h-full w-full">
           <Avatar className="h-12 w-12">
             <AvatarImage
               src={getTutorAvatar()}
@@ -145,7 +145,7 @@ export default function TutorCard({ tutor, compact = false, isFavorite = false, 
                       <Button
                         variant="outline"
                         size="sm"
-                        className="flex items-center text-red-500 border-red-200 hover:bg-red-50 h-7 px-2 whitespace-nowrap"
+                        className="flex items-center text-red-500 border-red-200 hover:bg-red-50 h-6 px-1.5 whitespace-nowrap"
                       >
                         <HeartOff className="h-4 w-4 mr-1" />
                         Xóa
@@ -173,7 +173,7 @@ export default function TutorCard({ tutor, compact = false, isFavorite = false, 
                 <Button
                   variant="default"
                   size="sm"
-                  className="bg-primary text-white hover:bg-primary-dark h-7 px-2 whitespace-nowrap"
+                  className="bg-primary text-white hover:bg-primary-dark h-6 px-1.5 whitespace-nowrap"
                   onClick={() => window.location.href = `/tutors/${tutor.id}`}
                 >
                   Xem
