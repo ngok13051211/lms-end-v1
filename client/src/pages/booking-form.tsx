@@ -435,63 +435,49 @@ export default function BookingForm() {
               return;
             }
             
-            // Phương pháp cố định: Map trực tiếp tên ngày sang giá trị cố định của JS
-            // Xác nhận weekday tương ứng JavaScript getDay():
-            // 0 = Chủ nhật, 1 = Thứ Hai, 2 = Thứ Ba, 3 = Thứ Tư, 4 = Thứ Năm, 5 = Thứ Sáu, 6 = Thứ Bảy
+            // Sử dụng getNextWeekdayDate để tìm các ngày tiếp theo một cách nhất quán
+            // Phù hợp với cách tutor tạo lịch trống trong dashboard
             
-            // 1. Đặt cứng giá trị js.getDay() cho từng ngày
-            let jsWeekday: number;
-            const dayName = slot.day.toLowerCase().trim();
+            console.log(`Xử lý ngày trong tuần: ${slot.day}`);
             
-            console.log(`Xử lý ngày: ${dayName}`);
+            // Lấy ngày đầu tiên trong tháng cho ngày trong tuần này
+            const dates: Date[] = [];
             
-            if (dayName === 'sunday' || dayName === 'chủ nhật' || dayName === 'chu nhat' || dayName === 'cn') {
-              jsWeekday = 0;
-            } else if (dayName === 'monday' || dayName === 'thứ hai' || dayName === 'thu hai' || dayName === 'th2') {
-              jsWeekday = 1;
-            } else if (dayName === 'tuesday' || dayName === 'thứ ba' || dayName === 'thu ba' || dayName === 'th3') {
-              jsWeekday = 2;
-            } else if (dayName === 'wednesday' || dayName === 'thứ tư' || dayName === 'thu tu' || dayName === 'th4') {
-              jsWeekday = 3;
-            } else if (dayName === 'thursday' || dayName === 'thứ năm' || dayName === 'thu nam' || dayName === 'th5') {
-              jsWeekday = 4;
-            } else if (dayName === 'friday' || dayName === 'thứ sáu' || dayName === 'thu sau' || dayName === 'th6') {
-              jsWeekday = 5;
-            } else if (dayName === 'saturday' || dayName === 'thứ bảy' || dayName === 'thu bay' || dayName === 'th7') {
-              jsWeekday = 6;
-            } else {
-              console.warn(`Không nhận dạng được ngày: ${dayName}`);
+            // Sử dụng hàm getDayOfWeekNumber từ tutor-dashboard-profile để đảm bảo tính nhất quán
+            const dayNumber = (() => {
+              const day = slot.day.toLowerCase().trim();
+              const dayMap: { [key: string]: number } = {
+                sunday: 0,
+                monday: 1,
+                tuesday: 2,
+                wednesday: 3,
+                thursday: 4,
+                friday: 5,
+                saturday: 6,
+              };
+              return dayMap[day];
+            })();
+            
+            if (dayNumber === undefined) {
+              console.error(`Không nhận dạng được ngày trong tuần: ${slot.day}`);
               return;
             }
             
-            console.log(`Xác định được jsWeekday = ${jsWeekday} cho ngày ${dayName}`);
+            console.log(`Ngày ${slot.day} có chỉ số JavaScript: ${dayNumber}`);
             
-            // 2. Tìm ngày đầu tiên có thứ tương ứng từ ngày hiện tại
+            // Tạo các ngày tiếp theo
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             
-            const dates: Date[] = [];
-            let firstDate: Date | null = null;
+            // Tính số ngày cần thêm để tìm được ngày đầu tiên
+            const daysUntilNext = (dayNumber + 7 - today.getDay()) % 7;
+            const firstDate = new Date(today);
+            firstDate.setDate(today.getDate() + (daysUntilNext === 0 ? 7 : daysUntilNext));
             
-            // Tìm ngày đầu tiên có thứ tương ứng từ ngày hiện tại
-            for (let i = 0; i < 7; i++) {
-              const testDate = new Date(today);
-              testDate.setDate(today.getDate() + i);
-              if (testDate.getDay() === jsWeekday) {
-                firstDate = new Date(testDate);
-                break;
-              }
-            }
-            
-            if (!firstDate) {
-              console.error(`Không tìm được ngày phù hợp cho ${dayName}`);
-              return;
-            }
-            
-            console.log(`Ngày ${dayName} đầu tiên: ${firstDate.toISOString().split('T')[0]}`);
+            console.log(`Ngày ${slot.day} đầu tiên: ${firstDate.toISOString().split('T')[0]}, getDay(): ${firstDate.getDay()}`);
             dates.push(firstDate);
             
-            // Thêm 3 tuần tiếp theo
+            // Tạo thêm 3 tuần tiếp theo
             for (let i = 1; i < 4; i++) {
               const nextDate = new Date(firstDate);
               nextDate.setDate(firstDate.getDate() + (i * 7));
