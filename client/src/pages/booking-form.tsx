@@ -201,7 +201,8 @@ export default function BookingForm() {
       today.setHours(0, 0, 0, 0);
 
       specificSlots.forEach(slot => {
-        const dateObj = new Date(slot.date);
+        // Thêm 'T00:00:00' để đảm bảo ngày được xử lý ở giờ địa phương, không phải UTC
+        const dateObj = new Date(`${slot.date}T00:00:00`);
         
         // Chỉ xem xét ngày hợp lệ và trong tương lai
         if (!isNaN(dateObj.getTime()) && dateObj >= today) {
@@ -235,7 +236,8 @@ export default function BookingForm() {
   const getAvailableStartTimes = (selectedDate: Date | undefined): string[] => {
     if (!selectedDate) return [];
 
-    const dateStr = selectedDate.toISOString().split('T')[0];
+    // Đảm bảo lấy đúng ngày địa phương, không bị ảnh hưởng bởi múi giờ
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
     const slots = availableTimeSlots[dateStr] || [];
     
     if (slots.length === 0) {
@@ -252,7 +254,8 @@ export default function BookingForm() {
     const selectedDate = form.getValues("date");
     if (!selectedDate || !startTime) return;
 
-    const dateStr = selectedDate.toISOString().split('T')[0];
+    // Đảm bảo lấy đúng ngày địa phương, không bị ảnh hưởng bởi múi giờ
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
     const slots = availableTimeSlots[dateStr] || [];
     
     // Tìm khoảng thời gian tương ứng với giờ bắt đầu
