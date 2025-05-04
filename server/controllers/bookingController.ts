@@ -61,8 +61,9 @@ export const createBooking = async (req: Request, res: Response) => {
     const totalAmount = hourlyRate * hours;
     
     // Tạo booking
+    // Tạo booking với dữ liệu đã validate
     const [booking] = await db.insert(schema.bookings)
-      .values({
+      .values([{
         student_id: studentId,
         tutor_id: validatedData.tutor_id,
         ad_id: validatedData.ad_id,
@@ -72,13 +73,13 @@ export const createBooking = async (req: Request, res: Response) => {
         end_time: endTime,
         location: validatedData.location,
         meeting_url: validatedData.meeting_url,
-        hourly_rate: hourlyRate,
-        total_hours: hours,
-        total_amount: totalAmount,
+        hourly_rate: hourlyRate.toString(),
+        total_hours: hours.toString(),
+        total_amount: totalAmount.toString(),
         status: "pending",
         created_at: new Date(),
         updated_at: new Date()
-      })
+      }])
       .returning();
     
     return res.status(201).json({

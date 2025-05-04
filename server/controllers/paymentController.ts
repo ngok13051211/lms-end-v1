@@ -46,7 +46,8 @@ export const createPayment = async (req: Request, res: Response) => {
     }
     
     // Validate amount
-    let paymentAmount = amount ? parseFloat(amount.toString()) : booking.total_amount;
+    const bookingAmount = Number(booking.total_amount);
+    let paymentAmount = amount ? parseFloat(amount.toString()) : bookingAmount;
     if (isNaN(paymentAmount)) {
       return res.status(400).json({ message: "Invalid payment amount" });
     }
@@ -59,33 +60,37 @@ export const createPayment = async (req: Request, res: Response) => {
     let payment;
     
     if (booking.payment) {
+      const updateData = {
+        transaction_id: transaction_id || booking.payment.transaction_id,
+        amount: paymentAmount.toString(),
+        fee: serviceFee.toString(),
+        net_amount: netAmount.toString(),
+        payment_method,
+        status: "pending" as const, // Ban đầu là pending, sau đó sẽ được cập nhật thành completed khi VNPay callback
+        updated_at: new Date()
+      };
+      
       [payment] = await db.update(schema.payments)
-        .set({
-          transaction_id: transaction_id || booking.payment.transaction_id,
-          amount: paymentAmount,
-          fee: serviceFee,
-          net_amount: netAmount,
-          payment_method,
-          status: "pending", // Ban đầu là pending, sau đó sẽ được cập nhật thành completed khi VNPay callback
-          updated_at: new Date()
-        })
+        .set(updateData)
         .where(eq(schema.payments.booking_id, booking_id))
         .returning();
     } else {
+      const newPayment = {
+        booking_id,
+        transaction_id,
+        amount: paymentAmount.toString(),
+        fee: serviceFee.toString(),
+        net_amount: netAmount.toString(),
+        payer_id: studentId,
+        payee_id: booking.tutor.user_id, // ID của user (không phải tutor_profile)
+        payment_method,
+        status: "pending" as const,
+        created_at: new Date(),
+        updated_at: new Date()
+      };
+      
       [payment] = await db.insert(schema.payments)
-        .values({
-          booking_id,
-          transaction_id,
-          amount: paymentAmount,
-          fee: serviceFee,
-          net_amount: netAmount,
-          payer_id: studentId,
-          payee_id: booking.tutor.user_id, // ID của user (không phải tutor_profile)
-          payment_method,
-          status: "pending",
-          created_at: new Date(),
-          updated_at: new Date()
-        })
+        .values([newPayment]) // Bọc đối tượng trong mảng
         .returning();
     }
     
