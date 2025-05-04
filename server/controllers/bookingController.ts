@@ -44,8 +44,17 @@ export const createBooking = async (req: Request, res: Response) => {
     }
     
     // Tính toán tổng thời gian
-    const startTime = new Date(validatedData.start_time);
-    const endTime = new Date(validatedData.end_time);
+    // Đảm bảo xử lý thời gian đúng cách bằng cách thêm thông tin múi giờ
+    // Sử dụng 'T' như một phần của chuỗi ISO để đảm bảo JavaScript xử lý đúng múi giờ địa phương
+    const bookingDate = validatedData.date;
+    const startTimeStr = validatedData.start_time.padStart(5, '0');
+    const endTimeStr = validatedData.end_time.padStart(5, '0');
+    
+    const startTime = new Date(`${bookingDate}T${startTimeStr}:00`);
+    const endTime = new Date(`${bookingDate}T${endTimeStr}:00`);
+    
+    console.log(`Thời gian bắt đầu: ${startTime.toISOString()}, Thời gian kết thúc: ${endTime.toISOString()}`);
+    
     const diffMs = endTime.getTime() - startTime.getTime();
     const hours = diffMs / (1000 * 60 * 60);
     
