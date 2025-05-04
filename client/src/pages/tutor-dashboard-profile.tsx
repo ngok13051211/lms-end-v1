@@ -78,22 +78,6 @@ import {
 } from "date-fns";
 import { vi } from "date-fns/locale";
 
-// Định nghĩa cấu trúc cho khung giờ trống theo ngày trong tuần
-const weeklyAvailabilityItemSchema = z.object({
-  type: z.literal("weekly"),
-  day: z.enum([
-    "monday",
-    "tuesday",
-    "wednesday",
-    "thursday",
-    "friday",
-    "saturday",
-    "sunday",
-  ]),
-  startTime: z.string(), // Format: "HH:MM" in 24h
-  endTime: z.string(), // Format: "HH:MM" in 24h
-});
-
 // Định nghĩa cấu trúc cho khung giờ trống theo ngày cụ thể
 const specificDateAvailabilityItemSchema = z.object({
   type: z.literal("specific"),
@@ -102,17 +86,11 @@ const specificDateAvailabilityItemSchema = z.object({
   endTime: z.string(), // Format: "HH:MM" in 24h
 });
 
-// Kết hợp hai loại lịch trống
-const availabilityItemSchema = z.discriminatedUnion("type", [
-  weeklyAvailabilityItemSchema,
-  specificDateAvailabilityItemSchema,
-]);
+// Định nghĩa cấu trúc cho lịch trống (chỉ có lịch theo ngày cụ thể)
+const availabilityItemSchema = specificDateAvailabilityItemSchema;
 
 // Định nghĩa kiểu dữ liệu cho một khung giờ trống
 export type AvailabilityItem = z.infer<typeof availabilityItemSchema>;
-export type WeeklyAvailabilityItem = z.infer<
-  typeof weeklyAvailabilityItemSchema
->;
 export type SpecificDateAvailabilityItem = z.infer<
   typeof specificDateAvailabilityItemSchema
 >;
@@ -130,52 +108,7 @@ const tutorProfileSchema = z.object({
   // Trường availability là tùy chọn, sẽ được xử lý riêng
 });
 
-// Hàm ánh xạ tên ngày sang số thứ tự ngày trong tuần
-const getDayOfWeekNumber = (day: string): number => {
-  const dayMap: { [key: string]: number } = {
-    sunday: 0,
-    monday: 1,
-    tuesday: 2,
-    wednesday: 3,
-    thursday: 4,
-    friday: 5,
-    saturday: 6,
-  };
-  return dayMap[day.toLowerCase()];
-};
-
-// Hàm tiện ích để lấy ngày trong tuần tới dựa trên tên ngày trong tuần
-const getNextWeekdayDate = (weekday: string): Date => {
-  const dayNumber = getDayOfWeekNumber(weekday);
-  if (dayNumber === undefined) return new Date(); // Trả về ngày hiện tại nếu không tìm thấy
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const daysUntilNext = (dayNumber + 7 - today.getDay()) % 7;
-  const nextDate = new Date(today);
-  nextDate.setDate(today.getDate() + (daysUntilNext === 0 ? 7 : daysUntilNext));
-
-  return nextDate;
-};
-
-// Hàm chuyển đổi tên ngày trong tuần tiếng Anh sang tiếng Việt và thêm ngày/tháng/năm
-const formatWeekdayWithDate = (weekday: string): string => {
-  const date = getNextWeekdayDate(weekday);
-  const weekdayName =
-    {
-      monday: "Thứ Hai",
-      tuesday: "Thứ Ba",
-      wednesday: "Thứ Tư",
-      thursday: "Thứ Năm",
-      friday: "Thứ Sáu",
-      saturday: "Thứ Bảy",
-      sunday: "Chủ Nhật",
-    }[weekday] || weekday;
-
-  // Format: Thứ Hai (06/05/2025)
-  return `${weekdayName} (${format(date, "dd/MM/yyyy", { locale: vi })})`;
-};
+// Không cần các hàm xử lý ngày trong tuần nữa
 
 export default function TutorDashboardProfile() {
   const { user } = useSelector((state: RootState) => state.auth);
@@ -193,19 +126,8 @@ export default function TutorDashboardProfile() {
   >([]);
   const [availabilityDialogOpen, setAvailabilityDialogOpen] = useState(false);
 
-  // State để quản lý một khung giờ mới
-  const [newAvailabilityItem, setNewAvailabilityItem] =
-    useState<WeeklyAvailabilityItem>({
-      type: "weekly",
-      day: "monday",
-      startTime: "08:00",
-      endTime: "17:00",
-    });
-
-  // State để quản lý loại lịch trống đang tạo (hàng tuần hoặc ngày cụ thể)
-  const [availabilityType, setAvailabilityType] = useState<
-    "weekly" | "specific"
-  >("weekly");
+  // State để quản lý loại lịch trống đang tạo (chỉ có ngày cụ thể)
+  const [availabilityType, setAvailabilityType] = useState<"specific">("specific");
 
   // State cho khung giờ trống theo ngày cụ thể
   const [newSpecificDateItem, setNewSpecificDateItem] =
