@@ -174,7 +174,7 @@ export default function TutorCard({ tutor, compact = false, isFavorite = false, 
                   variant="default"
                   size="sm"
                   className="bg-primary text-white hover:bg-primary-dark h-6 px-1.5 whitespace-nowrap"
-                  onClick={() => window.location.href = `/tutors/${tutor.id}`}
+                  onClick={() => { const tutorId = tutor.id; if (tutorId) window.location.href = `/tutors/${tutorId}`; }}
                 >
                   Xem
                 </Button>
@@ -288,7 +288,7 @@ export default function TutorCard({ tutor, compact = false, isFavorite = false, 
             <Button
               variant="default"
               className="bg-primary text-white hover:bg-primary-dark whitespace-nowrap"
-              onClick={() => window.location.href = `/tutors/${tutor.id}`}
+              onClick={() => { const tutorId = tutor.id; if (tutorId) window.location.href = `/tutors/${tutorId}`; }}
             >
               Xem chi tiết
             </Button>
