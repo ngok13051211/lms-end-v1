@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -7,7 +7,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useSelector } from "react-redux";
 import { RootState } from "../store";
-import { addDays, format, parse } from "date-fns";
+import { addDays, format, parse, isSameDay } from "date-fns";
 
 // UI Components
 import { Button } from "@/components/ui/button";
@@ -184,6 +184,50 @@ export default function BookingForm() {
       setIsSubmitting(false);
     }
   };
+
+  // Khung giờ trống của gia sư (trong thực tế, bạn sẽ cần lấy dữ liệu này từ API)
+  const [availableTimeSlots, setAvailableTimeSlots] = useState<{[key: string]: string[]}>({
+    // Key là ngày trong tuần (0 = Chủ nhật, 1 = Thứ hai, ...)
+    "1": ["08:00", "09:00", "10:00", "14:00", "15:00", "16:00"],
+    "2": ["08:00", "09:00", "10:00", "14:00", "15:00", "16:00"],
+    "3": ["10:00", "11:00", "14:00", "15:00", "16:00"],
+    "4": ["08:00", "09:00", "14:00", "15:00", "16:00", "17:00"],
+    "5": ["08:00", "09:00", "10:00", "14:00", "15:00"],
+    "6": ["09:00", "10:00", "14:00"],
+    "0": ["14:00", "15:00", "16:00"],
+  });
+  
+  // Lấy các ngày trong tuần có lịch trống
+  const getAvailableDays = () => {
+    return Object.keys(availableTimeSlots).map(dayStr => {
+      const day = parseInt(dayStr);
+      const today = new Date();
+      const currentDay = today.getDay();
+      let daysToAdd = day - currentDay;
+      if (daysToAdd < 0) daysToAdd += 7;
+      return addDays(today, daysToAdd);
+    });
+  };
+  
+  // Hiển thị thời gian trống cho ngày đã chọn
+  const getAvailableTimesForSelectedDate = () => {
+    if (!form.watch("date")) return [];
+    const dayOfWeek = form.watch("date").getDay().toString();
+    return availableTimeSlots[dayOfWeek] || [];
+  };
+  
+  // Cập nhật danh sách thời gian trống khi ngày thay đổi
+  useEffect(() => {
+    if (form.watch("date")) {
+      const availableTimes = getAvailableTimesForSelectedDate();
+      if (availableTimes.length > 0 && !availableTimes.includes(form.watch("start_time"))) {
+        form.setValue("start_time", availableTimes[0]);
+      }
+    }
+  }, [form.watch("date")]);
+  
+  // Danh sách các ngày có lịch trống
+  const availableDays = getAvailableDays();
 
   // Chọn giờ
   const timeOptions: string[] = [];
@@ -379,6 +423,9 @@ export default function BookingForm() {
                     render={({ field }) => (
                       <FormItem className="flex flex-col">
                         <FormLabel>Ngày học</FormLabel>
+                        <div className="text-xs mb-2 text-muted-foreground">
+                          (Lịch học có màu nền xanh nhạt là những ngày gia sư có lịch trống)
+                        </div>
                         <Popover>
                           <PopoverTrigger asChild>
                             <FormControl>
@@ -404,13 +451,25 @@ export default function BookingForm() {
                               selected={field.value}
                               onSelect={field.onChange}
                               disabled={(date) =>
-                                date < new Date() || date > addDays(new Date(), 60)
+                                date < new Date() || 
+                                date > addDays(new Date(), 60) ||
+                                !availableDays.some(d => isSameDay(d, date))
                               }
                               initialFocus
                               className="rounded-md border"
                               weekStartsOn={1}
                               showOutsideDays={false}
                               today={new Date()}
+                              modifiersStyles={{
+                                today: { fontWeight: 'bold', color: 'var(--primary)' },
+                                outside: { color: 'var(--muted-foreground)' }
+                              }}
+                              modifiers={{
+                                available: availableDays
+                              }}
+                              modifiersClassNames={{
+                                available: "bg-primary/10"
+                              }}
                             />
                           </PopoverContent>
                         </Popover>
@@ -437,11 +496,19 @@ export default function BookingForm() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {timeOptions.map((time) => (
-                                <SelectItem key={time} value={time}>
-                                  {time}
-                                </SelectItem>
-                              ))}
+                              {getAvailableTimesForSelectedDate().length > 0 ? (
+                                getAvailableTimesForSelectedDate().map((time) => (
+                                  <SelectItem key={time} value={time}>
+                                    {time}
+                                  </SelectItem>
+                                ))
+                              ) : (
+                                timeOptions.map((time) => (
+                                  <SelectItem key={time} value={time}>
+                                    {time}
+                                  </SelectItem>
+                                ))
+                              )}
                             </SelectContent>
                           </Select>
                           <FormMessage />
