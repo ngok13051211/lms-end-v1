@@ -57,7 +57,7 @@ export default function TutorDashboard() {
   const [avatar, setAvatar] = useState<File | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
-  const [adDialogOpen, setAdDialogOpen] = useState(false);
+  const [courseDialogOpen, setCourseDialogOpen] = useState(false);
   
   // Get tutor profile
   const { data: tutorProfile, isLoading: profileLoading, error: profileError, refetch: refetchTutorProfile } = useQuery({
@@ -80,9 +80,9 @@ export default function TutorDashboard() {
     enabled: true, // Always fetch education levels for profile creation
   });
   
-  // Get tutor's ads
-  const { data: ads, isLoading: adsLoading } = useQuery({
-    queryKey: [`/api/v1/tutors/ads`],
+  // Get tutor's courses
+  const { data: courses, isLoading: coursesLoading } = useQuery({
+    queryKey: [`/api/v1/tutors/courses`],
     enabled: hasProfile, // Only fetch if profile exists
   });
   
@@ -110,9 +110,9 @@ export default function TutorDashboard() {
     },
   });
   
-  // Ad form
-  const adForm = useForm<z.infer<typeof adSchema>>({
-    resolver: zodResolver(adSchema),
+  // Course form
+  const courseForm = useForm<z.infer<typeof courseSchema>>({
+    resolver: zodResolver(courseSchema),
     defaultValues: {
       title: "",
       description: "",
@@ -172,67 +172,67 @@ export default function TutorDashboard() {
     }
   });
   
-  // Create ad
-  const createAdMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof adSchema>) => {
+  // Create course
+  const createCourseMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof courseSchema>) => {
       const response = await apiRequest(
         "POST",
-        "/api/v1/tutors/ads",
+        "/api/v1/tutors/courses",
         data
       );
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/v1/tutors/ads`] });
-      adForm.reset();
-      setAdDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: [`/api/v1/tutors/courses`] });
+      courseForm.reset();
+      setCourseDialogOpen(false);
       
       // Show success notification
       toast({
-        title: "Ad created",
-        description: "Your teaching ad has been created successfully.",
+        title: "Course created",
+        description: "Your teaching course has been created successfully.",
         variant: "default",
       });
     },
     onError: (error) => {
-      console.error("Ad creation error:", error);
+      console.error("Course creation error:", error);
       
       // Show error notification
       toast({
-        title: "Ad creation failed",
-        description: error instanceof Error ? error.message : "Failed to create your teaching ad. Please try again.",
+        title: "Course creation failed",
+        description: error instanceof Error ? error.message : "Failed to create your teaching course. Please try again.",
         variant: "destructive",
       });
     },
   });
   
-  // Delete ad
-  const deleteAdMutation = useMutation({
-    mutationFn: async (adId: number) => {
+  // Delete course
+  const deleteCourseMutation = useMutation({
+    mutationFn: async (courseId: number) => {
       const response = await apiRequest(
         "DELETE",
-        `/api/v1/tutors/ads/${adId}`,
+        `/api/v1/tutors/courses/${courseId}`,
         undefined
       );
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/v1/tutors/ads`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/v1/tutors/courses`] });
       
       // Show success notification
       toast({
-        title: "Ad deleted",
-        description: "Your teaching ad has been deleted successfully.",
+        title: "Course deleted",
+        description: "Your teaching course has been deleted successfully.",
         variant: "default",
       });
     },
     onError: (error) => {
-      console.error("Ad deletion error:", error);
+      console.error("Course deletion error:", error);
       
       // Show error notification
       toast({
         title: "Deletion failed",
-        description: error instanceof Error ? error.message : "Failed to delete your teaching ad. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to delete your teaching course. Please try again.",
         variant: "destructive",
       });
     },
@@ -401,7 +401,7 @@ export default function TutorDashboard() {
     }
   };
   
-  const isLoading = profileLoading || adsLoading || conversationsLoading || statsLoading;
+  const isLoading = profileLoading || coursesLoading || conversationsLoading || statsLoading;
   
   // Show complete profile notice if no tutor profile
   if (profileError && profileError.message === "Invalid tutor ID") {
@@ -550,8 +550,8 @@ export default function TutorDashboard() {
               <div className="flex items-center">
                 <BookOpen className="h-8 w-8 text-primary" />
                 <div className="ml-4">
-                  <p className="text-sm text-muted-foreground">Active Ads</p>
-                  <p className="text-lg font-medium">{ads?.length || 0}</p>
+                  <p className="text-sm text-muted-foreground">Active Courses</p>
+                  <p className="text-lg font-medium">{courses?.length || 0}</p>
                 </div>
               </div>
             </CardContent>
@@ -808,7 +808,7 @@ export default function TutorDashboard() {
                   </CardDescription>
                 </div>
                 
-                <Dialog open={adDialogOpen} onOpenChange={setAdDialogOpen}>
+                <Dialog open={courseDialogOpen} onOpenChange={setCourseDialogOpen}>
                   <DialogTrigger asChild>
                     <Button>
                       <PlusCircle className="mr-2 h-4 w-4" /> Tạo khóa học
@@ -822,10 +822,10 @@ export default function TutorDashboard() {
                       </DialogDescription>
                     </DialogHeader>
                     
-                    <Form {...adForm}>
-                      <form onSubmit={adForm.handleSubmit((data) => createAdMutation.mutate(data))} className="space-y-4">
+                    <Form {...courseForm}>
+                      <form onSubmit={courseForm.handleSubmit((data) => createCourseMutation.mutate(data))} className="space-y-4">
                         <FormField
-                          control={adForm.control}
+                          control={courseForm.control}
                           name="title"
                           render={({ field }) => (
                             <FormItem>
