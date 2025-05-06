@@ -320,14 +320,12 @@ export default function TutorDashboardProfile() {
     }
   };
 
-  // Update profile mutation
+  // Update profile mutation (đã đơn giản hóa)
   const updateProfileMutation = useMutation({
     mutationFn: async (data: z.infer<typeof tutorProfileSchema>) => {
-      // Get selected subjects and levels from state, not from form
+      // Chỉ gửi dữ liệu bio, đã loại bỏ các trường không cần thiết
       const profileData = {
-        ...data,
-        subjects: selectedSubjects,
-        levels: selectedLevels,
+        bio: data.bio,
       };
 
       console.log("Updating profile with:", profileData);
@@ -340,43 +338,26 @@ export default function TutorDashboardProfile() {
       setProfileDialogOpen(false);
 
       toast({
-        title: "Profile updated",
-        description: "Your tutor profile has been updated",
+        title: "Hồ sơ đã được cập nhật",
+        description: "Thông tin hồ sơ của bạn đã được cập nhật thành công",
         variant: "default",
       });
     },
     onError: (error) => {
       toast({
-        title: "Update failed",
+        title: "Cập nhật thất bại",
         description:
           error instanceof Error
             ? error.message
-            : "Failed to update profile",
+            : "Không thể cập nhật hồ sơ",
         variant: "destructive",
       });
     },
   });
 
-  // Submit handler for profile form
+  // Submit handler for profile form (đã đơn giản hóa)
   const onSubmit = (values: z.infer<typeof tutorProfileSchema>) => {
-    if (selectedSubjects.length === 0) {
-      toast({
-        title: "Subjects required",
-        description: "Please select at least one subject you can teach",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (selectedLevels.length === 0) {
-      toast({
-        title: "Education levels required",
-        description: "Please select at least one education level you can teach",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    // Đã loại bỏ việc kiểm tra các trường không cần thiết
     updateProfileMutation.mutate(values);
   };
 
@@ -972,50 +953,13 @@ export default function TutorDashboardProfile() {
         {/* Profile Details */}
         {tutorProfile && (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card className="md:col-span-2">
+            <div className="grid grid-cols-1 gap-6">
+              <Card>
                 <CardHeader>
-                  <CardTitle>Giới thiệu</CardTitle>
+                  <CardTitle>Giới thiệu bản thân</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="whitespace-pre-wrap">{tutorProfile.bio}</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Quản lý lịch trống</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Button
-                    onClick={() => setAvailabilityDialogOpen(true)}
-                    className="w-full flex items-center"
-                  >
-                    <CalendarDays className="mr-2 h-4 w-4" />
-                    <span>Thiết lập lịch trống</span>
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Thông tin học vấn</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="whitespace-pre-wrap">{tutorProfile.education}</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Kinh nghiệm</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="whitespace-pre-wrap">
-                    {tutorProfile.experience}
-                  </p>
                 </CardContent>
               </Card>
             </div>
@@ -1061,7 +1005,7 @@ export default function TutorDashboardProfile() {
                     </div>
                   ) : (
                     <p className="text-muted-foreground">
-                      No certifications uploaded yet
+                      Chưa có chứng chỉ nào được tải lên
                     </p>
                   )}
 
