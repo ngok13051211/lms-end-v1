@@ -629,29 +629,7 @@ export default function TutorDashboard() {
                             <p className="text-base">{user?.email}</p>
                           </div>
                           
-                          <div>
-                            <h3 className="text-sm font-medium text-muted-foreground mb-1">
-                              Hourly Rate
-                            </h3>
-                            <p className="text-base text-secondary font-medium">
-                              {new Intl.NumberFormat('vi-VN', { 
-                                style: 'currency', 
-                                currency: 'VND'
-                              }).format(Number(tutorProfile.hourly_rate))}{" "}
-                              <span className="text-sm font-normal text-muted-foreground">/hour</span>
-                            </p>
-                          </div>
-                          
-                          <div>
-                            <h3 className="text-sm font-medium text-muted-foreground mb-1">
-                              Teaching Mode
-                            </h3>
-                            <p className="text-base capitalize">
-                              {tutorProfile.teaching_mode === "online" ? "Online" : 
-                              tutorProfile.teaching_mode === "offline" ? "In-person" : 
-                              "Online & In-person"}
-                            </p>
-                          </div>
+
                           
                           <div>
                             <h3 className="text-sm font-medium text-muted-foreground mb-1">
@@ -683,37 +661,7 @@ export default function TutorDashboard() {
                           </div>
                         </div>
                         
-                        <div className="mb-6">
-                          <h3 className="text-sm font-medium text-muted-foreground mb-1">
-                            Subjects
-                          </h3>
-                          <div className="flex flex-wrap gap-2">
-                            {tutorProfile.subjects?.map((subject) => (
-                              <Badge key={subject.id} variant="outline">
-                                {subject.name}
-                              </Badge>
-                            ))}
-                            {(tutorProfile.subjects?.length || 0) === 0 && (
-                              <span className="text-muted-foreground">No subjects added</span>
-                            )}
-                          </div>
-                        </div>
-                        
-                        <div>
-                          <h3 className="text-sm font-medium text-muted-foreground mb-1">
-                            Education Levels
-                          </h3>
-                          <div className="flex flex-wrap gap-2">
-                            {tutorProfile.levels?.map((level) => (
-                              <Badge key={level.id} variant="outline">
-                                {level.name}
-                              </Badge>
-                            ))}
-                            {(tutorProfile.levels?.length || 0) === 0 && (
-                              <span className="text-muted-foreground">No education levels added</span>
-                            )}
-                          </div>
-                        </div>
+
                       </div>
                     </div>
                     
@@ -722,16 +670,6 @@ export default function TutorDashboard() {
                     <div>
                       <h3 className="text-lg font-medium mb-2">Bio</h3>
                       <p className="whitespace-pre-line">{tutorProfile.bio}</p>
-                    </div>
-                    
-                    <div>
-                      <h3 className="text-lg font-medium mb-2">Education</h3>
-                      <p className="whitespace-pre-line">{tutorProfile.education}</p>
-                    </div>
-                    
-                    <div>
-                      <h3 className="text-lg font-medium mb-2">Experience</h3>
-                      <p className="whitespace-pre-line">{tutorProfile.experience}</p>
                     </div>
                   </div>
                 ) : (
