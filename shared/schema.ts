@@ -71,7 +71,7 @@ export const tutorEducationLevels = pgTable("tutor_education_levels", {
   created_at: timestamp("created_at").defaultNow().notNull(),
 });
 
-// Tutor Ads Model
+// Tutor Courses Model
 export const courses = pgTable("courses", {
   id: serial("id").primaryKey(),
   tutor_id: integer("tutor_id").notNull().references(() => tutorProfiles.id),
