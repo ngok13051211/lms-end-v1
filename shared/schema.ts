@@ -72,7 +72,7 @@ export const tutorEducationLevels = pgTable("tutor_education_levels", {
 });
 
 // Tutor Ads Model
-export const ads = pgTable("ads", {
+export const courses = pgTable("courses", {
   id: serial("id").primaryKey(),
   tutor_id: integer("tutor_id").notNull().references(() => tutorProfiles.id),
   title: text("title").notNull(),
@@ -168,7 +168,7 @@ export const tutorProfilesRelations = relations(tutorProfiles, ({ one, many }) =
   }),
   subjects: many(tutorSubjects),
   levels: many(tutorEducationLevels),
-  ads: many(ads),
+  courses: many(courses),
   reviews: many(reviews),
   favoritedBy: many(favoriteTutors),
 }));
@@ -186,20 +186,20 @@ export const tutorSubjectsRelations = relations(tutorSubjects, ({ one }) => ({
 
 export const subjectsRelations = relations(subjects, ({ many }) => ({
   tutors: many(tutorSubjects),
-  ads: many(ads),
+  courses: many(courses),
 }));
 
-export const adsRelations = relations(ads, ({ one }) => ({
+export const coursesRelations = relations(courses, ({ one }) => ({
   tutor: one(tutorProfiles, {
-    fields: [ads.tutor_id],
+    fields: [courses.tutor_id],
     references: [tutorProfiles.id],
   }),
   subject: one(subjects, {
-    fields: [ads.subject_id],
+    fields: [courses.subject_id],
     references: [subjects.id],
   }),
   level: one(educationLevels, {
-    fields: [ads.level_id],
+    fields: [courses.level_id],
     references: [educationLevels.id],
   }),
 }));
@@ -217,7 +217,7 @@ export const tutorEducationLevelsRelations = relations(tutorEducationLevels, ({ 
 
 export const educationLevelsRelations = relations(educationLevels, ({ many }) => ({
   tutors: many(tutorEducationLevels),
-  ads: many(ads),
+  courses: many(courses),
 }));
 
 export const conversationsRelations = relations(conversations, ({ one, many }) => ({
@@ -276,8 +276,8 @@ export const userSelectSchema = createSelectSchema(users);
 export const tutorProfileInsertSchema = createInsertSchema(tutorProfiles);
 export const tutorProfileSelectSchema = createSelectSchema(tutorProfiles);
 
-export const adInsertSchema = createInsertSchema(ads);
-export const adSelectSchema = createSelectSchema(ads);
+export const courseInsertSchema = createInsertSchema(courses);
+export const courseSelectSchema = createSelectSchema(courses);
 
 export const subjectInsertSchema = createInsertSchema(subjects);
 export const subjectSelectSchema = createSelectSchema(subjects);
@@ -303,8 +303,8 @@ export type NewUser = typeof users.$inferInsert;
 export type TutorProfile = typeof tutorProfiles.$inferSelect;
 export type NewTutorProfile = typeof tutorProfiles.$inferInsert;
 
-export type Ad = typeof ads.$inferSelect;
-export type NewAd = typeof ads.$inferInsert;
+export type Course = typeof courses.$inferSelect;
+export type NewCourse = typeof courses.$inferInsert;
 
 export type Subject = typeof subjects.$inferSelect;
 export type NewSubject = typeof subjects.$inferInsert;
@@ -332,7 +332,7 @@ export const bookings = pgTable("bookings", {
   id: serial("id").primaryKey(),
   student_id: integer("student_id").notNull().references(() => users.id),
   tutor_id: integer("tutor_id").notNull().references(() => tutorProfiles.id),
-  ad_id: integer("ad_id").references(() => ads.id),
+  course_id: integer("course_id").references(() => courses.id),
   
   // Thông tin lịch học
   title: text("title").notNull(),
@@ -403,7 +403,7 @@ export const sessionNotes = pgTable("session_notes", {
 export const bookingsRelations = relations(bookings, ({ one }) => ({
   student: one(users, { fields: [bookings.student_id], references: [users.id] }),
   tutor: one(tutorProfiles, { fields: [bookings.tutor_id], references: [tutorProfiles.id] }),
-  ad: one(ads, { fields: [bookings.ad_id], references: [ads.id] }),
+  course: one(courses, { fields: [bookings.course_id], references: [courses.id] }),
   payment: one(payments, { fields: [bookings.id], references: [payments.booking_id] }),
   sessionNote: one(sessionNotes, { fields: [bookings.id], references: [sessionNotes.booking_id] })
 }));
@@ -428,7 +428,7 @@ export const bookingValidationSchema = z.object({
   end_time: z.string(), // Điều chỉnh để chỉ nhận string format "HH:MM"
   student_id: z.number(),
   tutor_id: z.number(),
-  ad_id: z.number().optional(),
+  course_id: z.number().optional(),
   description: z.string().optional(),
   location: z.string().optional(),
   meeting_url: z.string().optional(),
