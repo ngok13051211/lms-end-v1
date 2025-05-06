@@ -881,13 +881,13 @@ export const getTutorStats = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Tutor profile not found" });
     }
     
-    // Get active ads count
-    const activeAdsCount = await db.select({ count: sql<number>`count(*)` })
-      .from(schema.ads)
+    // Get active courses count
+    const activeCoursesCount = await db.select({ count: sql<number>`count(*)` })
+      .from(schema.courses)
       .where(
         and(
-          eq(schema.ads.tutor_id, tutorProfile.id),
-          eq(schema.ads.status, "active")
+          eq(schema.courses.tutor_id, tutorProfile.id),
+          eq(schema.courses.status, "active")
         )
       );
     
@@ -921,7 +921,7 @@ export const getTutorStats = async (req: Request, res: Response) => {
     
     const stats = {
       profile_status: tutorProfile.is_verified ? "Đã xác minh" : "Chờ xác minh",
-      active_ads: Number(activeAdsCount[0]?.count || 0),
+      active_courses: Number(activeCoursesCount[0]?.count || 0),
       reviews: Number(reviewsCount[0]?.count || 0),
       rating: tutorProfile.rating,
       profile_views: profileViews,

@@ -8,7 +8,7 @@ import fs from 'fs';
 // Import controllers
 import * as authController from "./controllers/authController";
 import * as tutorController from "./controllers/tutorController";
-import * as adController from "./controllers/adController";
+import * as courseController from "./controllers/courseController";
 import * as conversationController from "./controllers/conversationController";
 import * as bookingController from "./controllers/bookingController";
 import * as paymentController from "./controllers/paymentController";
@@ -94,19 +94,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get(`${apiPrefix}/tutors/profile`, authMiddleware, roleMiddleware(["tutor"]), tutorController.getOwnTutorProfile); 
   app.post(`${apiPrefix}/tutors/certifications`, authMiddleware, roleMiddleware(["tutor"]), uploadService.uploadDocuments, tutorController.uploadCertifications);
   app.get(`${apiPrefix}/tutors/stats`, authMiddleware, roleMiddleware(["tutor"]), tutorController.getTutorStats);
-  app.get(`${apiPrefix}/tutors/ads`, authMiddleware, roleMiddleware(["tutor"]), adController.getOwnAds);
+  app.get(`${apiPrefix}/tutors/courses`, authMiddleware, roleMiddleware(["tutor"]), courseController.getOwnCourses);
   
   // Routes with :id parameters must come after specific routes
   app.get(`${apiPrefix}/tutors/:id/reviews`, tutorController.getTutorReviews);
-  app.get(`${apiPrefix}/tutors/:id/ads`, adController.getTutorAds);
+  app.get(`${apiPrefix}/tutors/:id/courses`, courseController.getTutorCourses);
   
   // This route must be last to avoid conflicts with other routes
   app.get(`${apiPrefix}/tutors/:id`, tutorController.getTutorById);
 
-  // Ad routes
-  app.post(`${apiPrefix}/tutors/ads`, authMiddleware, roleMiddleware(["tutor"]), adController.createAd);
-  app.patch(`${apiPrefix}/tutors/ads/:id`, authMiddleware, roleMiddleware(["tutor"]), adController.updateAd);
-  app.delete(`${apiPrefix}/tutors/ads/:id`, authMiddleware, roleMiddleware(["tutor"]), adController.deleteAd);
+  // Course routes
+  app.post(`${apiPrefix}/tutors/courses`, authMiddleware, roleMiddleware(["tutor"]), courseController.createCourse);
+  app.patch(`${apiPrefix}/tutors/courses/:id`, authMiddleware, roleMiddleware(["tutor"]), courseController.updateCourse);
+  app.delete(`${apiPrefix}/tutors/courses/:id`, authMiddleware, roleMiddleware(["tutor"]), courseController.deleteCourse);
 
   // Conversation & message routes
   app.post(`${apiPrefix}/conversations/tutor/:tutorId`, authMiddleware, roleMiddleware(["student"]), conversationController.startConversation);
