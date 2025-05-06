@@ -202,47 +202,10 @@ export default function TutorProfile() {
                       </div>
                     </div>
                     
-                    <p className="text-muted-foreground">{tutor.education}</p>
-                    
-                    <div className="flex flex-wrap gap-2 mt-4">
-                      {tutor.subjects?.map((subject) => (
-                        <Badge key={subject.id} className="bg-primary-light/20 text-primary-dark hover:bg-primary-light/30">
-                          {subject.name}
-                        </Badge>
-                      ))}
-                      
-                      {tutor.teaching_mode === "online" && (
-                        <Badge className="bg-success-light/20 text-success-dark hover:bg-success-light/30">
-                          <MapPin className="h-3 w-3 mr-1" /> Online
-                        </Badge>
-                      )}
-                      
-                      {tutor.teaching_mode === "offline" && (
-                        <Badge className="bg-warning-light/20 text-warning-dark hover:bg-warning-light/30">
-                          <MapPin className="h-3 w-3 mr-1" /> In-person
-                        </Badge>
-                      )}
-                      
-                      {tutor.teaching_mode === "both" && (
-                        <Badge className="bg-info-light/20 text-info-dark hover:bg-info-light/30">
-                          <MapPin className="h-3 w-3 mr-1" /> Online & In-person
-                        </Badge>
-                      )}
-                    </div>
                   </div>
                 </div>
                 
                 <div className="mt-6 flex flex-wrap gap-3">
-                  <div className="flex items-center text-muted-foreground">
-                    <Clock className="h-4 w-4 mr-1" />
-                    <span>{tutor.experience}</span>
-                  </div>
-                  
-                  <div className="flex items-center text-muted-foreground">
-                    <Users className="h-4 w-4 mr-1" />
-                    <span>{tutor.levels?.map(level => level.name).join(", ")}</span>
-                  </div>
-                  
                   {tutor.is_verified && (
                     <div className="flex items-center text-success">
                       <Award className="h-4 w-4 mr-1" />
@@ -267,16 +230,6 @@ export default function TutorProfile() {
                   <CardContent className="p-6">
                     <h2 className="text-xl font-medium mb-4">About Me</h2>
                     <p className="whitespace-pre-line">{tutor.bio}</p>
-                    
-                    <Separator className="my-6" />
-                    
-                    <h2 className="text-xl font-medium mb-4">Education</h2>
-                    <p className="whitespace-pre-line">{tutor.education}</p>
-                    
-                    <Separator className="my-6" />
-                    
-                    <h2 className="text-xl font-medium mb-4">Experience</h2>
-                    <p className="whitespace-pre-line">{tutor.experience}</p>
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -408,16 +361,7 @@ export default function TutorProfile() {
                   Contact {tutor.user?.name || (tutor.user?.first_name ? `${tutor.user.first_name}` : "Tutor")}
                 </h3>
                 
-                <div className="mb-6">
-                  <p className="text-muted-foreground mb-2">Hourly Rate:</p>
-                  <p className="text-2xl font-medium text-secondary">
-                    {new Intl.NumberFormat('vi-VN', { 
-                      style: 'currency', 
-                      currency: 'VND' 
-                    }).format(Number(tutor.hourly_rate))}
-                    <span className="text-sm text-muted-foreground font-normal">/hour</span>
-                  </p>
-                </div>
+
                 
                 {user && user.role === "student" && (
                   <Button
