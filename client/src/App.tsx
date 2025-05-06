@@ -70,6 +70,10 @@ function Router() {
         <PrivateRoute role="tutor" component={TutorDashboardProfile} />
       </Route>
       
+      <Route path="/tutor-dashboard/courses">
+        <PrivateRoute role="tutor" component={TutorDashboardCourses} />
+      </Route>
+      
       <Route path="/tutor-dashboard/ads">
         <PrivateRoute role="tutor" component={TutorDashboardCourses} />
       </Route>
@@ -96,7 +100,7 @@ function Router() {
         <PrivateRoute role="tutor" component={TutorDashboardProfile} />
       </Route>
       
-      <Route path="/dashboard/tutor/ads">
+      <Route path="/dashboard/tutor/courses">
         <PrivateRoute role="tutor" component={TutorDashboardCourses} />
       </Route>
       

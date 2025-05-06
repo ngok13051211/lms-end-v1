@@ -26,7 +26,7 @@ export default function TutorDashboardLayout({
     {
       title: "Khóa học",
       icon: <FileText className="mr-2 h-4 w-4" />,
-      href: "/dashboard/tutor/ads",
+      href: "/dashboard/tutor/courses",
       active: activePage === "ads" || activePage === "courses",
     },
     {
