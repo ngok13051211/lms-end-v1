@@ -124,18 +124,18 @@ export default function TutorDashboardStats() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
-              <CardTitle>Thông báo dạy</CardTitle>
-              <CardDescription>Số thông báo dạy đang hoạt động</CardDescription>
+              <CardTitle>Khóa học</CardTitle>
+              <CardDescription>Số khóa học đang hoạt động</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
                     <p className="text-sm font-medium leading-none">
-                      Thông báo đang hiển thị
+                      Khóa học đang hiển thị
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {stats?.active_ads || 0} thông báo
+                      {stats?.active_ads || 0} khóa học
                     </p>
                   </div>
                   <BookOpen className="h-5 w-5 text-muted-foreground" />
@@ -149,8 +149,8 @@ export default function TutorDashboardStats() {
                 </div>
                 
                 <Button variant="outline" size="sm" asChild>
-                  <Link href="/dashboard/tutor/ads">
-                    Quản lý thông báo
+                  <Link href="/dashboard/tutor/courses">
+                    Quản lý khóa học
                   </Link>
                 </Button>
               </div>
@@ -237,7 +237,7 @@ export default function TutorDashboardStats() {
                     <td className="text-right">{tutorProfile.educationLevels?.length || 0}</td>
                   </tr>
                   <tr className="border-b">
-                    <td className="py-3">Thông báo đã tạo</td>
+                    <td className="py-3">Khóa học đã tạo</td>
                     <td className="text-right">{stats?.ads_created || 0}</td>
                   </tr>
                   <tr>
@@ -283,13 +283,13 @@ export default function TutorDashboardStats() {
                 <li className="flex items-start">
                   <BookOpen className="h-5 w-5 text-primary mr-2 mt-0.5" />
                   <div>
-                    <p className="font-medium">Tạo thêm thông báo dạy</p>
+                    <p className="font-medium">Tạo thêm khóa học</p>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Tạo thêm thông báo dạy cho các môn học và cấp độ khác nhau để tiếp cận nhiều học viên hơn.
+                      Tạo thêm khóa học cho các môn học và cấp độ khác nhau để tiếp cận nhiều học viên hơn.
                     </p>
                     <Button variant="link" className="px-0 h-auto mt-1" asChild>
-                      <Link href="/dashboard/tutor/ads">
-                        Tạo thông báo
+                      <Link href="/dashboard/tutor/courses">
+                        Tạo khóa học
                       </Link>
                     </Button>
                   </div>
