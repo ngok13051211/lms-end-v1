@@ -7,7 +7,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 
 interface TutorDashboardLayoutProps {
   children: ReactNode;
-  activePage: "profile" | "ads" | "messages" | "stats";
+  activePage: "profile" | "ads" | "courses" | "messages" | "stats";
 }
 
 export default function TutorDashboardLayout({
@@ -24,10 +24,10 @@ export default function TutorDashboardLayout({
       active: activePage === "profile",
     },
     {
-      title: "Thông báo",
+      title: "Khóa học",
       icon: <FileText className="mr-2 h-4 w-4" />,
       href: "/dashboard/tutor/ads",
-      active: activePage === "ads",
+      active: activePage === "ads" || activePage === "courses",
     },
     {
       title: "Tin nhắn",

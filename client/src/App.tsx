@@ -10,7 +10,7 @@ import TutorProfile from "@/pages/tutor-profile";
 import TutorListing from "@/pages/tutor-listing";
 import TutorDashboard from "@/pages/tutor-dashboard";
 import TutorDashboardProfile from "@/pages/tutor-dashboard-profile";
-import TutorDashboardAds from "@/pages/tutor-dashboard-ads";
+import TutorDashboardCourses from "@/pages/tutor-dashboard-courses";
 import TutorDashboardMessages from "@/pages/tutor-dashboard-messages";
 import TutorDashboardStats from "@/pages/tutor-dashboard-stats";
 import StudentDashboard from "@/pages/student-dashboard";
@@ -59,7 +59,7 @@ function Router() {
       <Route path="/tutors/:id" component={withMainLayout(TutorProfile)} />
       <Route path="/become-tutor" component={withMainLayout(BecomeTutor)} />
       <Route path="/book/:tutorId" component={withMainLayout(BookingForm)} />
-      <Route path="/book/:tutorId/:adId" component={withMainLayout(BookingForm)} />
+      <Route path="/book/:tutorId/:courseId" component={withMainLayout(BookingForm)} />
       
       {/* Legacy routes - keeping for backward compatibility */}
       <Route path="/tutor-dashboard">
@@ -71,7 +71,7 @@ function Router() {
       </Route>
       
       <Route path="/tutor-dashboard/ads">
-        <PrivateRoute role="tutor" component={TutorDashboardAds} />
+        <PrivateRoute role="tutor" component={TutorDashboardCourses} />
       </Route>
       
       <Route path="/tutor-dashboard/messages">
@@ -97,7 +97,7 @@ function Router() {
       </Route>
       
       <Route path="/dashboard/tutor/ads">
-        <PrivateRoute role="tutor" component={TutorDashboardAds} />
+        <PrivateRoute role="tutor" component={TutorDashboardCourses} />
       </Route>
       
       <Route path="/dashboard/tutor/messages">
