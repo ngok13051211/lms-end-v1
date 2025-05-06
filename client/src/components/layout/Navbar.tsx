@@ -139,9 +139,9 @@ export default function Navbar() {
                 {user.role === "tutor" && (
                   <>
                     <DropdownMenuItem asChild>
-                      <Link href="/dashboard/tutor/ads" className="w-full flex items-center">
+                      <Link href="/dashboard/tutor/courses" className="w-full flex items-center">
                         <BookOpen className="mr-2 h-4 w-4" />
-                        <span>My Ads</span>
+                        <span>Khóa học</span>
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>

@@ -573,7 +573,7 @@ export default function TutorDashboard() {
         <Tabs defaultValue="profile">
           <TabsList className="mb-8">
             <TabsTrigger value="profile">Profile</TabsTrigger>
-            <TabsTrigger value="ads">My Ads</TabsTrigger>
+            <TabsTrigger value="courses">Khóa học</TabsTrigger>
             <TabsTrigger value="messages">Messages</TabsTrigger>
             <TabsTrigger value="stats">Statistics</TabsTrigger>
           </TabsList>

@@ -53,7 +53,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       return [
         { label: "Dashboard", icon: <Home className="h-5 w-5" />, href: "/dashboard/tutor" },
         { label: "Profile", icon: <User className="h-5 w-5" />, href: "/dashboard/tutor/profile" },
-        { label: "My Ads", icon: <BookOpen className="h-5 w-5" />, href: "/dashboard/tutor/ads" },
+        { label: "Khóa học", icon: <BookOpen className="h-5 w-5" />, href: "/dashboard/tutor/courses" },
         { label: "Messages", icon: <MessageSquare className="h-5 w-5" />, href: "/dashboard/tutor/messages" },
         { label: "Statistics", icon: <PieChart className="h-5 w-5" />, href: "/dashboard/tutor/stats" }
       ];
