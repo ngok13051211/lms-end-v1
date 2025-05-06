@@ -52,9 +52,6 @@ import {
   AlertCircle,
   UserCircle,
   BadgeCheck,
-  DollarSign,
-  Clock,
-  CalendarDays,
   FileText,
   ExternalLink,
   Trash,
@@ -876,66 +873,7 @@ export default function TutorDashboardProfile() {
 
                 {tutorProfile ? (
                   <>
-                    <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <h3 className="font-medium mb-2">Môn học</h3>
-                        <div className="flex flex-wrap gap-2">
-                          {tutorProfile.subjects?.map((subject: any) => (
-                            <Badge key={subject.id} variant="outline">
-                              {subject.name}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div>
-                        <h3 className="font-medium mb-2">Cấp độ giảng dạy</h3>
-                        <div className="flex flex-wrap gap-2">
-                          {tutorProfile.levels?.map((level: any) => (
-                            <Badge key={level.id} variant="outline">
-                              {level.name}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-6">
-                      <h3 className="font-medium mb-2">Mức phí tham khảo</h3>
-                      <p className="flex items-center">
-                        <DollarSign className="h-4 w-4 text-muted-foreground mr-1" />
-                        {typeof tutorProfile.hourly_rate === "number"
-                          ? new Intl.NumberFormat("vi-VN", {
-                              style: "currency",
-                              currency: "VND",
-                            }).format(tutorProfile.hourly_rate)
-                          : new Intl.NumberFormat("vi-VN", {
-                              style: "currency",
-                              currency: "VND",
-                            }).format(Number(tutorProfile.hourly_rate))}
-                        <span className="text-sm text-muted-foreground ml-1">
-                          /giờ
-                        </span>
-                      </p>
-                    </div>
-
-                    <div className="mt-6">
-                      <h3 className="font-medium mb-2">Hình thức dạy</h3>
-                      <Badge>
-                        {tutorProfile.teaching_mode
-                          ? {
-                              online: "Trực tuyến",
-                              offline: "Tại chỗ",
-                              both: "Cả hai",
-                            }[
-                              tutorProfile.teaching_mode as
-                                | "online"
-                                | "offline"
-                                | "both"
-                            ] || "Không xác định"
-                          : "Không xác định"}
-                      </Badge>
-                    </div>
+                    {/* Removed subject, education level, hourly rate, and teaching mode information */}
                   </>
                 ) : (
                   <Alert className="mt-6">
