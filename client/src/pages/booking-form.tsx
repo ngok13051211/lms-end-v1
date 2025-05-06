@@ -56,7 +56,7 @@ interface AvailabilityItem {
 
 export default function BookingForm() {
   const [location, navigate] = useLocation();
-  const { tutorId, adId } = useParams<{ tutorId?: string; adId?: string }>();
+  const { tutorId, courseId } = useParams<{ tutorId?: string; courseId?: string }>();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [availableDates, setAvailableDates] = useState<Date[]>([]);
@@ -78,19 +78,19 @@ export default function BookingForm() {
     enabled: !!tutorIdNum && tutorIdNum > 0,
   });
 
-  // Fetch thông tin quảng cáo nếu có
-  const adIdNum = adId ? parseInt(adId) : null;
+  // Fetch thông tin khóa học nếu có
+  const courseIdNum = courseId ? parseInt(courseId) : null;
   const {
-    data: adData,
-    isLoading: adLoading,
-    error: adError,
+    data: courseData,
+    isLoading: courseLoading,
+    error: courseError,
   } = useQuery({
-    queryKey: ["/api/v1/ads", adIdNum],
+    queryKey: ["/api/v1/courses", courseIdNum],
     queryFn: async () => {
-      const res = await apiRequest("GET", `/api/v1/ads/${adIdNum}`);
+      const res = await apiRequest("GET", `/api/v1/courses/${courseIdNum}`);
       return res.json();
     },
-    enabled: !!adIdNum && adIdNum > 0,
+    enabled: !!courseIdNum && courseIdNum > 0,
   });
 
   // Khởi tạo form
@@ -147,8 +147,8 @@ export default function BookingForm() {
         date: datePart,
         start_time: startTimeStr,
         end_time: endTimeStr,
-        // Đảm bảo ad_id là số hoặc undefined (không phải null)
-        ...(adIdNum ? { ad_id: adIdNum } : {}),
+        // Đảm bảo course_id là số hoặc undefined (không phải null)
+        ...(courseIdNum ? { course_id: courseIdNum } : {}),
         notes: values.notes || "",
         // Đảm bảo hourly_rate là số
         hourly_rate: Number(tutorData?.hourly_rate || 0),

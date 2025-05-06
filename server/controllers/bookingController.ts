@@ -150,7 +150,7 @@ export const getStudentBookings = async (req: Request, res: Response) => {
             }
           }
         },
-        ad: true
+        course: true
       },
       orderBy: [desc(schema.bookings.created_at)]
     });
@@ -200,7 +200,7 @@ export const getTutorBookings = async (req: Request, res: Response) => {
             avatar: true
           }
         },
-        ad: true
+        course: true
       },
       orderBy: [desc(schema.bookings.created_at)]
     });
@@ -254,7 +254,7 @@ export const getBookingById = async (req: Request, res: Response) => {
             }
           }
         },
-        ad: true,
+        course: true,
         payment: true,
         sessionNote: true
       }
