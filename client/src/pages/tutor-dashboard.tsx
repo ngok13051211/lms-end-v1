@@ -797,28 +797,28 @@ export default function TutorDashboard() {
             </Card>
           </TabsContent>
           
-          {/* Ads Tab */}
-          <TabsContent value="ads">
+          {/* Courses Tab */}
+          <TabsContent value="courses">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                  <CardTitle>My Class Ads</CardTitle>
+                  <CardTitle>Khóa học của tôi</CardTitle>
                   <CardDescription>
-                    Create and manage your class advertisements
+                    Tạo và quản lý các khóa học của bạn
                   </CardDescription>
                 </div>
                 
                 <Dialog open={adDialogOpen} onOpenChange={setAdDialogOpen}>
                   <DialogTrigger asChild>
                     <Button>
-                      <PlusCircle className="mr-2 h-4 w-4" /> Create Ad
+                      <PlusCircle className="mr-2 h-4 w-4" /> Tạo khóa học
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-md">
                     <DialogHeader>
-                      <DialogTitle>Create Class Ad</DialogTitle>
+                      <DialogTitle>Tạo khóa học mới</DialogTitle>
                       <DialogDescription>
-                        Create a new advertisement for your classes
+                        Tạo một khóa học mới để thu hút học viên
                       </DialogDescription>
                     </DialogHeader>
                     
@@ -961,7 +961,7 @@ export default function TutorDashboard() {
                                 Creating...
                               </>
                             ) : (
-                              "Create Ad"
+                              "Tạo khóa học"
                             )}
                           </Button>
                         </DialogFooter>
@@ -1032,9 +1032,9 @@ export default function TutorDashboard() {
                 ) : (
                   <div className="text-center py-12">
                     <BookOpen className="h-12 w-12 mx-auto text-muted-foreground" />
-                    <h2 className="mt-4 text-xl font-medium">No ads yet</h2>
+                    <h2 className="mt-4 text-xl font-medium">Chưa có khóa học nào</h2>
                     <p className="mt-2 text-muted-foreground max-w-md mx-auto">
-                      You haven't created any class advertisements yet. Create your first ad to attract students.
+                      Bạn chưa tạo khóa học nào. Tạo khóa học đầu tiên để thu hút học viên.
                     </p>
                   </div>
                 )}
@@ -1092,7 +1092,7 @@ export default function TutorDashboard() {
                     <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground" />
                     <h2 className="mt-4 text-xl font-medium">No messages yet</h2>
                     <p className="mt-2 text-muted-foreground max-w-md mx-auto">
-                      You haven't received any messages from students yet. Complete your profile and create ads to attract students.
+                      You haven't received any messages from students yet. Complete your profile and create courses to attract students.
                     </p>
                   </div>
                 )}
