@@ -29,17 +29,17 @@ export const createBooking = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Tutor not found" });
     }
     
-    // Nếu có ad_id, kiểm tra quảng cáo tồn tại và thuộc về gia sư đó
-    if (validatedData.ad_id) {
-      const ad = await db.query.ads.findFirst({
+    // Nếu có course_id, kiểm tra khóa học tồn tại và thuộc về gia sư đó
+    if (validatedData.course_id) {
+      const course = await db.query.courses.findFirst({
         where: and(
-          eq(schema.ads.id, validatedData.ad_id),
-          eq(schema.ads.tutor_id, validatedData.tutor_id)
+          eq(schema.courses.id, validatedData.course_id),
+          eq(schema.courses.tutor_id, validatedData.tutor_id)
         )
       });
       
-      if (!ad) {
-        return res.status(404).json({ message: "Ad not found or does not belong to the tutor" });
+      if (!course) {
+        return res.status(404).json({ message: "Course not found or does not belong to the tutor" });
       }
     }
     
@@ -87,7 +87,7 @@ export const createBooking = async (req: Request, res: Response) => {
       .values([{
         student_id: studentId,
         tutor_id: validatedData.tutor_id,
-        ad_id: validatedData.ad_id,
+        course_id: validatedData.course_id,
         title: validatedData.title,
         description: validatedData.description || "",
         start_time: startTime,
