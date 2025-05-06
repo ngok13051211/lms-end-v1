@@ -25,15 +25,9 @@ import { CheckboxGroup, CheckboxItem } from "@/components/ui/checkbox-group";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 
-// Form schema for tutor profile
+// Form schema for tutor profile (simplified)
 const tutorProfileSchema = z.object({
   bio: z.string().min(50, "Bio must be at least 50 characters"),
-  education: z.string().min(20, "Education must be at least 20 characters"),
-  experience: z.string().min(20, "Experience must be at least 20 characters"),
-  hourlyRate: z.coerce.number()
-    .min(10000, "Hourly rate must be at least 10,000 VND")
-    .max(99999999, "Hourly rate must be less than 100,000,000 VND"),
-  teachingMode: z.enum(["online", "offline", "both"]),
 });
 
 // Form schema for course
@@ -98,15 +92,11 @@ export default function TutorDashboard() {
     enabled: hasProfile, // Only fetch if profile exists
   });
 
-  // Tutor profile form
+  // Tutor profile form (simplified)
   const profileForm = useForm<z.infer<typeof tutorProfileSchema>>({
     resolver: zodResolver(tutorProfileSchema),
     defaultValues: {
       bio: tutorProfile?.bio || "",
-      education: tutorProfile?.education || "",
-      experience: tutorProfile?.experience || "",
-      hourlyRate: tutorProfile?.hourly_rate ? Number(tutorProfile.hourly_rate) : 0,
-      teachingMode: tutorProfile?.teaching_mode || "online",
     },
   });
   
@@ -123,18 +113,12 @@ export default function TutorDashboard() {
     },
   });
   
-  // Create/Update tutor profile
+  // Create/Update tutor profile (simplified)
   const profileMutation = useMutation({
     mutationFn: async (data: z.infer<typeof tutorProfileSchema>) => {
       const method = tutorProfile ? "PATCH" : "POST";
       const formattedData = {
         bio: data.bio,
-        education: data.education,
-        experience: data.experience,
-        subject_ids: selectedSubjects,
-        level_ids: selectedLevels,
-        hourly_rate: data.hourlyRate.toString(), // Convert to string as backend expects string
-        teaching_mode: data.teachingMode
       };
       
       console.log("Sending data to create/update profile:", formattedData);
@@ -323,36 +307,16 @@ export default function TutorDashboard() {
     
     // Force refresh tutor profile before opening the dialog
     refetchTutorProfile().then(() => {
-      // Reset form to default values
+      // Reset form to default values (simplified)
       if (tutorProfile && !profileError) {
         profileForm.reset({
           bio: tutorProfile.bio || "",
-          education: tutorProfile.education || "",
-          experience: tutorProfile.experience || "",
-          hourlyRate: Number(tutorProfile.hourly_rate) || 0,
-          teachingMode: tutorProfile.teaching_mode || "online",
         });
-        
-        // Set selected subjects and levels
-        setSelectedSubjects(
-          tutorProfile.subjects?.map(subject => subject.id.toString()) || []
-        );
-        
-        setSelectedLevels(
-          tutorProfile.levels?.map(level => level.id.toString()) || []
-        );
       } else {
         // Reset form for new profile with empty values
         profileForm.reset({
           bio: "",
-          education: "",
-          experience: "",
-          hourlyRate: 50000, // Default hourly rate (50.000 VND)
-          teachingMode: "online",
         });
-        
-        setSelectedSubjects([]);
-        setSelectedLevels([]);
       }
       
       // Open dialog after form reset
