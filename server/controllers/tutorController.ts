@@ -798,19 +798,9 @@ export const updateTutorProfile = async (req: Request, res: Response) => {
     // Log original request data
     console.log("Original request body:", JSON.stringify(req.body));
     
-    // Prepare update data manually to ensure correct field preservation
+    // Đơn giản hóa cấu trúc dữ liệu - chỉ giữ lại bio và các thông tin cần thiết
     const updateData = {
       bio: req.body.bio || existingProfile.bio,
-      education: req.body.education || existingProfile.education,
-      experience: req.body.experience || existingProfile.experience,
-      experience_years: req.body.experience_years || existingProfile.experience_years,
-      // Ensure hourly_rate is always a number - explicitly parse if needed
-      hourly_rate: req.body.hourly_rate !== undefined 
-        ? (typeof req.body.hourly_rate === 'string' ? parseFloat(req.body.hourly_rate) : req.body.hourly_rate) 
-        : existingProfile.hourly_rate,
-      teaching_mode: req.body.teaching_mode || existingProfile.teaching_mode || 'online',
-      // Update availability if provided
-      availability: req.body.availability !== undefined ? req.body.availability : existingProfile.availability,
       user_id: userId
     };
     
@@ -902,16 +892,9 @@ export const getOwnTutorProfile = async (req: Request, res: Response) => {
       return res.status(200).json(null);
     }
     
-    // Ensure numeric fields are properly formatted
-    const hourlyRate = typeof tutorProfile.hourly_rate === 'string'
-      ? parseFloat(tutorProfile.hourly_rate)
-      : tutorProfile.hourly_rate;
-    
-    // Format response
+    // Đơn giản hóa response
     const formattedProfile = {
       ...tutorProfile,
-      hourly_rate: hourlyRate,
-      teaching_mode: tutorProfile.teaching_mode || 'online',
       subjects: tutorProfile.subjects.map(ts => ts.subject),
       levels: tutorProfile.levels.map(tl => tl.level)
     };
@@ -1032,10 +1015,6 @@ export const getFavoriteTutors = async (req: Request, res: Response) => {
         id: tutor.id,
         user_id: tutor.user_id,
         bio: tutor.bio,
-        education: tutor.education,
-        experience: tutor.experience,
-        hourly_rate: tutor.hourly_rate,
-        teaching_mode: tutor.teaching_mode,
         rating: tutor.rating,
         favorite_id: favorite.id,
         created_at: favorite.created_at,

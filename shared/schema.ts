@@ -273,10 +273,7 @@ export const userInsertSchema = createInsertSchema(users);
 export const userSelectSchema = createSelectSchema(users);
 
 // Đơn giản hóa schema để chỉ giữ lại bio và certifications
-export const tutorProfileInsertSchema = createInsertSchema(tutorProfiles, {
-  // Add validation rules
-  bio: (schema) => schema.min(10, "Giới thiệu phải có ít nhất 10 ký tự"),
-});
+export const tutorProfileInsertSchema = createInsertSchema(tutorProfiles);
 export const tutorProfileSelectSchema = createSelectSchema(tutorProfiles);
 
 export const adInsertSchema = createInsertSchema(ads);
