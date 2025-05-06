@@ -104,7 +104,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get(`${apiPrefix}/tutors/:id`, tutorController.getTutorById);
 
   // Ad routes
-  app.get(`${apiPrefix}/courses`, adController.getAllAds);
   app.post(`${apiPrefix}/tutors/ads`, authMiddleware, roleMiddleware(["tutor"]), adController.createAd);
   app.patch(`${apiPrefix}/tutors/ads/:id`, authMiddleware, roleMiddleware(["tutor"]), adController.updateAd);
   app.delete(`${apiPrefix}/tutors/ads/:id`, authMiddleware, roleMiddleware(["tutor"]), adController.deleteAd);

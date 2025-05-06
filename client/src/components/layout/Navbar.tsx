@@ -84,9 +84,6 @@ export default function Navbar() {
           <Link href="/tutors" className="text-foreground hover:text-primary text-sm font-medium">
             Tìm gia sư
           </Link>
-          <Link href="/courses" className="text-foreground hover:text-primary text-sm font-medium">
-            Khóa học
-          </Link>
           <Link href="/become-tutor" className="text-foreground hover:text-primary text-sm font-medium">
             Trở thành gia sư
           </Link>
@@ -206,13 +203,6 @@ export default function Navbar() {
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Tìm gia sư
-                  </Link>
-                  <Link 
-                    href="/courses"
-                    className="px-3 py-2 text-foreground hover:bg-muted rounded-md text-base font-medium"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Khóa học
                   </Link>
                   <Link 
                     href="/become-tutor"

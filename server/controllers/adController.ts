@@ -268,7 +268,7 @@ export const deleteAd = async (req: Request, res: Response) => {
   }
 };
 
-// Get all active ads for courses page
+// Get all active ads
 export const getAllAds = async (req: Request, res: Response) => {
   try {
     // Parse query params for filtering
