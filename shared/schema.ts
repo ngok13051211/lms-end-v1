@@ -18,18 +18,14 @@ export const users = pgTable("users", {
   updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// Tutor Profile Model
+// Tutor Profile Model (Đã đơn giản hóa)
 export const tutorProfiles = pgTable("tutor_profiles", {
   id: serial("id").primaryKey(),
   user_id: integer("user_id").notNull().references(() => users.id),
   bio: text("bio").notNull(),
-  education: text("education").notNull(),
-  experience: text("experience").notNull(),
-  experience_years: integer("experience_years"),
-  hourly_rate: decimal("hourly_rate", { precision: 10, scale: 2 }).notNull(),
-  teaching_mode: text("teaching_mode").notNull(), // "online", "offline", "both"
+  // Đã loại bỏ các trường:
+  // education, experience, experience_years, hourly_rate, teaching_mode, availability
   certifications: text("certifications"),
-  availability: text("availability"),
   is_verified: boolean("is_verified").default(false),
   is_featured: boolean("is_featured").default(false),
   rejection_reason: text("rejection_reason"),
@@ -276,9 +272,10 @@ export const loginSchema = z.object({
 export const userInsertSchema = createInsertSchema(users);
 export const userSelectSchema = createSelectSchema(users);
 
+// Đơn giản hóa schema để chỉ giữ lại bio và certifications
 export const tutorProfileInsertSchema = createInsertSchema(tutorProfiles, {
   // Add validation rules
-  hourly_rate: (schema) => schema.transform(val => val.toString()),
+  bio: (schema) => schema.min(10, "Giới thiệu phải có ít nhất 10 ký tự"),
 });
 export const tutorProfileSelectSchema = createSelectSchema(tutorProfiles);
 
