@@ -158,12 +158,15 @@ export const getTutors = async (req: Request, res: Response) => {
     
     // Add teaching mode filter if not 'all'
     if (mode !== 'all') {
+      // Find tutors who have at least one course with the specified teaching mode
       const tutorsWithTeachingMode = await db.select({ id: schema.tutorProfiles.id })
         .from(schema.tutorProfiles)
+        .innerJoin(schema.courses, eq(schema.tutorProfiles.id, schema.courses.tutor_id))
         .where(or(
-          eq(schema.tutorProfiles.teaching_mode, mode),
-          eq(schema.tutorProfiles.teaching_mode, 'both')
-        ));
+          eq(schema.courses.teaching_mode, mode),
+          eq(schema.courses.teaching_mode, 'both')
+        ))
+        .groupBy(schema.tutorProfiles.id);
       
       if (tutorsWithTeachingMode.length > 0) {
         conditions.push(inArray(schema.tutorProfiles.id, tutorsWithTeachingMode.map(t => t.id)));
@@ -178,22 +181,34 @@ export const getTutors = async (req: Request, res: Response) => {
       }
     }
     
-    // Add price range filter
+    // Add price range filter - now get tutors with at least one course in the price range
     if (minRate > 0 || maxRate < 1000000) {
-      conditions.push(
-        and(
-          sql`${schema.tutorProfiles.hourly_rate} >= ${minRate}`,
-          sql`${schema.tutorProfiles.hourly_rate} <= ${maxRate}`
+      // Find tutors with at least one course in the price range
+      const tutorsInPriceRange = await db.select({ id: schema.tutorProfiles.id })
+        .from(schema.tutorProfiles)
+        .innerJoin(schema.courses, eq(schema.tutorProfiles.id, schema.courses.tutor_id))
+        .where(
+          and(
+            sql`${schema.courses.hourly_rate} >= ${minRate}`,
+            sql`${schema.courses.hourly_rate} <= ${maxRate}`
+          )
         )
-      );
+        .groupBy(schema.tutorProfiles.id);
+      
+      if (tutorsInPriceRange.length > 0) {
+        conditions.push(inArray(schema.tutorProfiles.id, tutorsInPriceRange.map(t => t.id)));
+      } else {
+        // If no tutors in the price range, return empty result
+        return res.status(200).json({
+          tutors: [],
+          total: 0,
+          total_pages: 0,
+          current_page: page
+        });
+      }
     }
     
-    // Add experience filter
-    if (minExperience > 0) {
-      conditions.push(
-        sql`${schema.tutorProfiles.experience_years} >= ${minExperience}`
-      );
-    }
+    // Experience filter is no longer needed as we removed experience_years from tutorProfiles
     
     // Add certifications filter
     if (hasCertifications) {
