@@ -279,7 +279,7 @@ export default function TutorDashboardStats() {
                 </li>
               )}
               
-              {(stats?.active_ads || 0) < 3 && (
+              {(stats?.active_courses || 0) < 3 && (
                 <li className="flex items-start">
                   <BookOpen className="h-5 w-5 text-primary mr-2 mt-0.5" />
                   <div>

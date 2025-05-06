@@ -905,6 +905,11 @@ export const getTutorStats = async (req: Request, res: Response) => {
           eq(schema.courses.status, "active")
         )
       );
+      
+    // Get total courses count
+    const totalCoursesCount = await db.select({ count: sql<number>`count(*)` })
+      .from(schema.courses)
+      .where(eq(schema.courses.tutor_id, tutorProfile.id));
     
     // Get total reviews count
     const reviewsCount = await db.select({ count: sql<number>`count(*)` })
@@ -937,6 +942,7 @@ export const getTutorStats = async (req: Request, res: Response) => {
     const stats = {
       profile_status: tutorProfile.is_verified ? "Đã xác minh" : "Chờ xác minh",
       active_courses: Number(activeCoursesCount[0]?.count || 0),
+      courses_created: Number(totalCoursesCount[0]?.count || 0),
       reviews: Number(reviewsCount[0]?.count || 0),
       rating: tutorProfile.rating,
       profile_views: profileViews,
