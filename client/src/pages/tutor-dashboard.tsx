@@ -839,7 +839,7 @@ export default function TutorDashboard() {
                         />
                         
                         <FormField
-                          control={adForm.control}
+                          control={courseForm.control}
                           name="description"
                           render={({ field }) => (
                             <FormItem>
@@ -858,7 +858,7 @@ export default function TutorDashboard() {
                         
                         <div className="grid grid-cols-2 gap-4">
                           <FormField
-                            control={adForm.control}
+                            control={courseForm.control}
                             name="subjectId"
                             render={({ field }) => (
                               <FormItem>
@@ -883,7 +883,7 @@ export default function TutorDashboard() {
                           />
                           
                           <FormField
-                            control={adForm.control}
+                            control={courseForm.control}
                             name="levelId"
                             render={({ field }) => (
                               <FormItem>
@@ -910,7 +910,7 @@ export default function TutorDashboard() {
                         
                         <div className="grid grid-cols-2 gap-4">
                           <FormField
-                            control={adForm.control}
+                            control={courseForm.control}
                             name="hourlyRate"
                             render={({ field }) => (
                               <FormItem>
@@ -930,7 +930,7 @@ export default function TutorDashboard() {
                           />
                           
                           <FormField
-                            control={adForm.control}
+                            control={courseForm.control}
                             name="teachingMode"
                             render={({ field }) => (
                               <FormItem>
@@ -954,8 +954,8 @@ export default function TutorDashboard() {
                         </div>
                         
                         <DialogFooter>
-                          <Button type="submit" disabled={createAdMutation.isPending}>
-                            {createAdMutation.isPending ? (
+                          <Button type="submit" disabled={createCourseMutation.isPending}>
+                            {createCourseMutation.isPending ? (
                               <>
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                 Creating...
@@ -972,16 +972,16 @@ export default function TutorDashboard() {
               </CardHeader>
               
               <CardContent>
-                {ads && ads.length > 0 ? (
+                {courses && courses.length > 0 ? (
                   <div className="space-y-4">
-                    {ads.map((ad) => (
-                      <div key={ad.id} className="border rounded-lg p-4">
+                    {courses.map((course) => (
+                      <div key={course.id} className="border rounded-lg p-4">
                         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
-                          <h3 className="text-lg font-medium">{ad.title}</h3>
+                          <h3 className="text-lg font-medium">{course.title}</h3>
                           
                           <div className="flex items-center mt-2 md:mt-0">
-                            <Badge variant={ad.status === "active" ? "success" : "secondary"} className="mr-4">
-                              {ad.status === "active" ? "Active" : "Inactive"}
+                            <Badge variant={course.status === "active" ? "success" : "secondary"} className="mr-4">
+                              {course.status === "active" ? "Active" : "Inactive"}
                             </Badge>
                             
                             <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -992,27 +992,27 @@ export default function TutorDashboard() {
                               variant="ghost" 
                               size="icon" 
                               className="h-8 w-8 text-destructive hover:text-destructive"
-                              onClick={() => deleteAdMutation.mutate(ad.id)}
+                              onClick={() => deleteCourseMutation.mutate(course.id)}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         </div>
                         
-                        <p className="text-muted-foreground mb-4">{ad.description}</p>
+                        <p className="text-muted-foreground mb-4">{course.description}</p>
                         
                         <div className="flex flex-wrap gap-2 mb-4">
-                          {ad.subject && (
-                            <Badge variant="outline">{ad.subject.name}</Badge>
+                          {course.subject && (
+                            <Badge variant="outline">{course.subject.name}</Badge>
                           )}
                           
-                          {ad.level && (
-                            <Badge variant="outline">{ad.level.name}</Badge>
+                          {course.level && (
+                            <Badge variant="outline">{course.level.name}</Badge>
                           )}
                           
                           <Badge variant="outline">
-                            {ad.teachingMode === "online" ? "Online" : 
-                             ad.teachingMode === "offline" ? "In-person" : 
+                            {course.teachingMode === "online" ? "Online" : 
+                             course.teachingMode === "offline" ? "In-person" : 
                              "Online & In-person"}
                           </Badge>
                         </div>
@@ -1022,7 +1022,7 @@ export default function TutorDashboard() {
                             {new Intl.NumberFormat('vi-VN', { 
                               style: 'currency', 
                               currency: 'VND'
-                            }).format(Number(ad.hourlyRate))}{" "}
+                            }).format(Number(course.hourlyRate))}{" "}
                             <span className="text-sm font-normal text-muted-foreground">/hour</span>
                           </span>
                         </div>
