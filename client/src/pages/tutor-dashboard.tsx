@@ -1149,8 +1149,8 @@ export default function TutorDashboard() {
           
           <Form {...profileForm}>
             <form onSubmit={profileForm.handleSubmit((data) => profileMutation.mutate(data))} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="md:col-span-2">
+              <div className="grid grid-cols-1 gap-6">
+                <div>
                   <FormField
                     control={profileForm.control}
                     name="bio"
@@ -1160,210 +1160,25 @@ export default function TutorDashboard() {
                         <FormControl>
                           <Textarea 
                             placeholder="Write about yourself, your teaching philosophy, and what makes you a great tutor"
-                            className="min-h-[120px]"
+                            className="min-h-[200px]"
                             {...field} 
                           />
                         </FormControl>
                         <FormDescription>
-                          Minimum 50 characters
+                          Minimum 50 characters. Include information about your educational background, teaching experience, 
+                          teaching style, and any other details that students would want to know.
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                </div>
-                
-                <div className="md:col-span-2">
-                  <FormField
-                    control={profileForm.control}
-                    name="education"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Education</FormLabel>
-                        <FormControl>
-                          <Textarea 
-                            placeholder="List your educational background, degrees, certificates, etc."
-                            className="min-h-[100px]"
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                <div className="md:col-span-2">
-                  <FormField
-                    control={profileForm.control}
-                    name="experience"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Experience</FormLabel>
-                        <FormControl>
-                          <Textarea 
-                            placeholder="Describe your teaching experience, including number of years, institutions, achievements, etc."
-                            className="min-h-[100px]"
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                <div>
-                  <FormField
-                    control={profileForm.control}
-                    name="hourlyRate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Hourly Rate (VND)</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input 
-                              type="number" 
-                              className="pl-9" 
-                              {...field}
-                              onChange={(e) => {
-                                const value = e.target.value === "" ? "0" : e.target.value;
-                                field.onChange(Number(value));
-                              }}
-                            />
-                          </div>
-                        </FormControl>
-                        <FormDescription>
-                          Set your standard hourly rate (VND)
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                <div>
-                  <FormField
-                    control={profileForm.control}
-                    name="teachingMode"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Teaching Mode</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select mode" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="online">Online</SelectItem>
-                            <SelectItem value="offline">In-person</SelectItem>
-                            <SelectItem value="both">Both</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormDescription>
-                          How you prefer to conduct your tutoring sessions
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                
-                <div>
-                  <FormItem>
-                    <FormLabel>Subjects</FormLabel>
-                    <FormDescription>
-                      Select all subjects that you can teach
-                    </FormDescription>
-                    
-                    <div className="mt-2">
-                      <CheckboxGroup
-                        value={selectedSubjects}
-                        onValueChange={setSelectedSubjects}
-                      >
-                        <div className="grid grid-cols-2 gap-2">
-                          {subjects?.map((subject) => (
-                            <div key={subject.id}>
-                              <CheckboxItem 
-                                id={`subject-${subject.id}`}
-                                value={subject.id.toString()}
-                                checked={selectedSubjects.includes(subject.id.toString())}
-                                onCheckedChange={(checked) => {
-                                  if (checked) {
-                                    setSelectedSubjects(prev => [...prev, subject.id.toString()]);
-                                  } else {
-                                    setSelectedSubjects(prev => prev.filter(id => id !== subject.id.toString()));
-                                  }
-                                }}
-                                label={subject.name}
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      </CheckboxGroup>
-                    </div>
-                    
-                    {selectedSubjects.length === 0 && (
-                      <p className="text-sm text-destructive mt-2">
-                        Please select at least one subject
-                      </p>
-                    )}
-                  </FormItem>
-                </div>
-                
-                <div>
-                  <FormItem>
-                    <FormLabel>Education Levels</FormLabel>
-                    <FormDescription>
-                      Select all education levels you can teach
-                    </FormDescription>
-                    
-                    <div className="mt-2">
-                      <CheckboxGroup
-                        value={selectedLevels}
-                        onValueChange={setSelectedLevels}
-                      >
-                        <div className="grid grid-cols-2 gap-2">
-                          {educationLevels?.map((level) => (
-                            <div key={level.id}>
-                              <CheckboxItem 
-                                id={`level-${level.id}`}
-                                value={level.id.toString()}
-                                checked={selectedLevels.includes(level.id.toString())}
-                                onCheckedChange={(checked) => {
-                                  if (checked) {
-                                    setSelectedLevels(prev => [...prev, level.id.toString()]);
-                                  } else {
-                                    setSelectedLevels(prev => prev.filter(id => id !== level.id.toString()));
-                                  }
-                                }}
-                                label={level.name}
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      </CheckboxGroup>
-                    </div>
-                    
-                    {selectedLevels.length === 0 && (
-                      <p className="text-sm text-destructive mt-2">
-                        Please select at least one education level
-                      </p>
-                    )}
-                  </FormItem>
                 </div>
               </div>
               
               <DialogFooter>
                 <Button 
                   type="submit" 
-                  disabled={
-                    profileMutation.isPending || 
-                    selectedSubjects.length === 0 || 
-                    selectedLevels.length === 0
-                  }
+                  disabled={profileMutation.isPending}
                 >
                   {profileMutation.isPending ? (
                     <>
