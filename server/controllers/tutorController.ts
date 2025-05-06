@@ -205,45 +205,28 @@ export const getTutors = async (req: Request, res: Response) => {
       );
     }
     
-    // Add availability filter
-    if (availability !== 'all') {
-      conditions.push(
-        like(schema.tutorProfiles.availability, `%${availability}%`)
-      );
-    }
-    
-    // Add minimum rating filter
+    // Add minimum rating filter (giữ lại)
     if (minRating > 0) {
       conditions.push(
         sql`CAST(${schema.tutorProfiles.rating} AS DECIMAL) >= ${minRating}`
       );
     }
     
-    // Add location filter for offline tutoring (case-insensitive)
-    if (location && (mode === 'offline' || mode === 'both' || mode === 'all')) {
-      // Convert location to lowercase for case-insensitive search
+    // Tìm kiếm theo location trong bio
+    if (location) {
       const locationLower = location.toLowerCase();
       
-      // Search for location in user profile - this would be better with proper location fields
-      const tutorsInLocation = await db.select({ id: schema.tutorProfiles.id })
+      // Tìm kiếm trong bio
+      const tutorsWithLocationInBio = await db.select({ id: schema.tutorProfiles.id })
         .from(schema.tutorProfiles)
-        .innerJoin(schema.users, eq(schema.tutorProfiles.user_id, schema.users.id))
         .where(
-          and(
-            or(
-              eq(schema.tutorProfiles.teaching_mode, 'offline'),
-              eq(schema.tutorProfiles.teaching_mode, 'both')
-            ),
-            // Here we're assuming the location might be stored in the bio or description 
-            // In a real app, you'd have proper location fields
-            sql`LOWER(${schema.tutorProfiles.bio}) LIKE ${'%' + locationLower + '%'}`
-          )
+          sql`LOWER(${schema.tutorProfiles.bio}) LIKE ${'%' + locationLower + '%'}`
         );
       
-      if (tutorsInLocation.length > 0) {
-        conditions.push(inArray(schema.tutorProfiles.id, tutorsInLocation.map(t => t.id)));
+      if (tutorsWithLocationInBio.length > 0) {
+        conditions.push(inArray(schema.tutorProfiles.id, tutorsWithLocationInBio.map(t => t.id)));
       } else {
-        // No tutors in this location
+        // Không tìm thấy gia sư ở địa điểm này
         return res.status(200).json({
           tutors: [],
           total: 0,
@@ -253,26 +236,7 @@ export const getTutors = async (req: Request, res: Response) => {
       }
     }
     
-    // Filter by specific day and time in availability
-    if (specificDay !== 'all' || specificTime !== 'all') {
-      // This is a simplified approach - in a real app, you'd parse the JSON availability properly
-      // For now, we're doing a simple string search in the JSON data
-      let timePattern = '';
-      
-      if (specificDay !== 'all' && specificTime !== 'all') {
-        timePattern = `"day":"${specificDay}".*"startTime":"${specificTime}"`;
-      } else if (specificDay !== 'all') {
-        timePattern = `"day":"${specificDay}"`;
-      } else if (specificTime !== 'all') {
-        timePattern = `"startTime":"${specificTime}"`;
-      }
-      
-      if (timePattern) {
-        conditions.push(
-          like(schema.tutorProfiles.availability, `%${timePattern}%`)
-        );
-      }
-    }
+    // Đã xóa bỏ filter theo ngày và thời gian vì không có trường availability nữa
     
     // Count total tutors matching criteria
     const countResult = await db.select({ count: sql<number>`count(*)` })
@@ -373,13 +337,11 @@ export const getFeaturedTutors = async (req: Request, res: Response) => {
       limit: 6
     });
     
-    // Format response to include only necessary data
+    // Format response đơn giản hóa
     const formattedTutors = tutors.map(tutor => ({
       id: tutor.id,
       user_id: tutor.user_id,
       bio: tutor.bio,
-      hourly_rate: tutor.hourly_rate,
-      teaching_mode: tutor.teaching_mode,
       rating: tutor.rating,
       user: {
         id: tutor.user.id,
@@ -450,17 +412,12 @@ export const getTutorById = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Tutor not found" });
     }
     
-    // Format response data
+    // Format response data (đơn giản hóa)
     const formattedTutor = {
       id: tutor.id,
       user_id: tutor.user_id,
       bio: tutor.bio,
-      experience_years: tutor.experience_years,
-      hourly_rate: tutor.hourly_rate,
-      teaching_mode: tutor.teaching_mode,
-      education: tutor.education,
       certifications: tutor.certifications,
-      availability: tutor.availability,
       is_verified: tutor.is_verified,
       is_featured: tutor.is_featured,
       rating: tutor.rating,
@@ -556,11 +513,9 @@ export const getSimilarTutors = async (req: Request, res: Response) => {
       limit: 4
     });
     
-    // Format response
+    // Format response (đơn giản hóa)
     const formattedTutors = similarTutors.map(tutor => ({
       id: tutor.id,
-      hourly_rate: tutor.hourly_rate,
-      teaching_mode: tutor.teaching_mode,
       rating: tutor.rating,
       user: {
         id: tutor.user.id,
@@ -1103,10 +1058,6 @@ export const addFavoriteTutor = async (req: Request, res: Response) => {
       id: tutorWithDetails.id,
       user_id: tutorWithDetails.user_id,
       bio: tutorWithDetails.bio,
-      education: tutorWithDetails.education,
-      experience: tutorWithDetails.experience,
-      hourly_rate: tutorWithDetails.hourly_rate,
-      teaching_mode: tutorWithDetails.teaching_mode,
       rating: tutorWithDetails.rating,
       favorite_id: favorite.id,
       created_at: favorite.created_at,
@@ -1315,12 +1266,10 @@ export const getTutorVerifications = async (req: Request, res: Response) => {
       }
     });
     
-    // Format response
+    // Format response - đơn giản hóa
     const formattedTutors = pendingTutors.map(tutor => ({
       id: tutor.id,
       bio: tutor.bio,
-      experience_years: tutor.experience_years,
-      education: tutor.education,
       certifications: tutor.certifications,
       created_at: tutor.created_at,
       user: {
