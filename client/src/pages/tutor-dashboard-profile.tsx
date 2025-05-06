@@ -1137,7 +1137,7 @@ export default function TutorDashboardProfile() {
                     </div>
                   ) : (
                     <div className="text-center py-8">
-                      <CalendarDays className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
+                      <CalendarIcon className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
                       <p className="text-lg font-medium">
                         Chưa có lịch trống nào được thiết lập
                       </p>
