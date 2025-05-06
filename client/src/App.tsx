@@ -8,7 +8,6 @@ import Login from "@/pages/login";
 import Register from "@/pages/register";
 import TutorProfile from "@/pages/tutor-profile";
 import TutorListing from "@/pages/tutor-listing";
-import Courses from "@/pages/courses";
 import TutorDashboard from "@/pages/tutor-dashboard";
 import TutorDashboardProfile from "@/pages/tutor-dashboard-profile";
 import TutorDashboardAds from "@/pages/tutor-dashboard-ads";
@@ -59,7 +58,6 @@ function Router() {
       <Route path="/tutors" component={withMainLayout(TutorListing)} />
       <Route path="/tutors/:id" component={withMainLayout(TutorProfile)} />
       <Route path="/become-tutor" component={withMainLayout(BecomeTutor)} />
-      <Route path="/courses" component={withMainLayout(Courses)} />
       <Route path="/book/:tutorId" component={withMainLayout(BookingForm)} />
       <Route path="/book/:tutorId/:adId" component={withMainLayout(BookingForm)} />
       
