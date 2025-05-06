@@ -135,16 +135,16 @@ export default function TutorDashboardStats() {
                       Khóa học đang hiển thị
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {stats?.active_ads || 0} khóa học
+                      {stats?.active_courses || 0} khóa học
                     </p>
                   </div>
                   <BookOpen className="h-5 w-5 text-muted-foreground" />
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  <Progress value={(stats?.active_ads || 0) * 20} className="h-2" />
+                  <Progress value={(stats?.active_courses || 0) * 20} className="h-2" />
                   <span className="text-sm text-muted-foreground w-8">
-                    {stats?.active_ads || 0}/5
+                    {stats?.active_courses || 0}/5
                   </span>
                 </div>
                 
@@ -238,7 +238,7 @@ export default function TutorDashboardStats() {
                   </tr>
                   <tr className="border-b">
                     <td className="py-3">Khóa học đã tạo</td>
-                    <td className="text-right">{stats?.ads_created || 0}</td>
+                    <td className="text-right">{stats?.courses_created || 0}</td>
                   </tr>
                   <tr>
                     <td className="py-3">Học phí tham khảo</td>
