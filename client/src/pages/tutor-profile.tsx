@@ -26,9 +26,9 @@ export default function TutorProfile() {
     queryKey: [`/api/v1/tutors/${id}`],
   });
   
-  // Get tutor's ads
-  const { data: tutorAds, isLoading: adsLoading } = useQuery({
-    queryKey: [`/api/v1/tutors/${id}/ads`],
+  // Get tutor's courses
+  const { data: tutorCourses, isLoading: coursesLoading } = useQuery({
+    queryKey: [`/api/v1/tutors/${id}/courses`],
   });
   
   // Get tutor's reviews
@@ -121,7 +121,7 @@ export default function TutorProfile() {
     }
   };
   
-  const isLoading = tutorLoading || adsLoading || reviewsLoading;
+  const isLoading = tutorLoading || coursesLoading || reviewsLoading;
   
   // Redirect if tutor not found
   useEffect(() => {
@@ -257,7 +257,7 @@ export default function TutorProfile() {
             <Tabs defaultValue="about" className="mb-8">
               <TabsList className="grid grid-cols-3 w-full">
                 <TabsTrigger value="about">About</TabsTrigger>
-                <TabsTrigger value="ads">Class Ads ({tutorAds?.length || 0})</TabsTrigger>
+                <TabsTrigger value="courses">Khóa học ({tutorCourses?.length || 0})</TabsTrigger>
                 <TabsTrigger value="reviews">Reviews ({tutor.total_reviews || 0})</TabsTrigger>
               </TabsList>
               
@@ -281,33 +281,33 @@ export default function TutorProfile() {
                 </Card>
               </TabsContent>
               
-              {/* Ads Tab */}
-              <TabsContent value="ads" className="pt-4">
+              {/* Courses Tab */}
+              <TabsContent value="courses" className="pt-4">
                 <Card>
                   <CardContent className="p-6">
-                    {tutorAds && tutorAds.length > 0 ? (
+                    {tutorCourses && tutorCourses.length > 0 ? (
                       <div className="grid gap-6">
-                        {tutorAds.map((ad) => (
-                          <div key={ad.id} className="border rounded-lg p-4 hover:border-primary transition-colors">
-                            <h3 className="text-lg font-medium mb-2">{ad.title}</h3>
-                            <p className="text-muted-foreground mb-4">{ad.description}</p>
+                        {tutorCourses.map((course) => (
+                          <div key={course.id} className="border rounded-lg p-4 hover:border-primary transition-colors">
+                            <h3 className="text-lg font-medium mb-2">{course.title}</h3>
+                            <p className="text-muted-foreground mb-4">{course.description}</p>
                             
                             <div className="flex flex-wrap gap-2 mb-4">
-                              {ad.subject && (
+                              {course.subject && (
                                 <Badge className="bg-primary-light/20 text-primary-dark hover:bg-primary-light/30">
-                                  {ad.subject.name}
+                                  {course.subject.name}
                                 </Badge>
                               )}
                               
-                              {ad.level && (
+                              {course.level && (
                                 <Badge className="bg-primary-light/20 text-primary-dark hover:bg-primary-light/30">
-                                  {ad.level.name}
+                                  {course.level.name}
                                 </Badge>
                               )}
                               
                               <Badge className="bg-secondary-light/20 text-secondary-dark hover:bg-secondary-light/30">
-                                {ad.teaching_mode === "online" ? "Online" : 
-                                 ad.teaching_mode === "offline" ? "In-person" : 
+                                {course.teachingMode === "online" ? "Online" : 
+                                 course.teachingMode === "offline" ? "In-person" : 
                                  "Online & In-person"}
                               </Badge>
                             </div>
@@ -317,7 +317,7 @@ export default function TutorProfile() {
                                 {new Intl.NumberFormat('vi-VN', { 
                                   style: 'currency', 
                                   currency: 'VND' 
-                                }).format(Number(ad.hourly_rate))}<span className="text-sm text-muted-foreground">/hour</span>
+                                }).format(Number(course.hourlyRate))}<span className="text-sm text-muted-foreground">/hour</span>
                               </span>
                               
                               <Button onClick={startConversation} className="bg-primary hover:bg-primary-dark">
@@ -331,7 +331,7 @@ export default function TutorProfile() {
                       <div className="text-center py-8">
                         <Book className="h-12 w-12 mx-auto text-muted-foreground" />
                         <p className="mt-4 text-muted-foreground">
-                          This tutor has not published any class ads yet.
+                          This tutor has not published any courses yet.
                         </p>
                       </div>
                     )}
