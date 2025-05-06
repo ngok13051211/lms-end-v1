@@ -97,7 +97,7 @@ export type AvailabilityItem = {
 
 // Form schema for tutor profile (đã đơn giản hóa)
 const tutorProfileSchema = z.object({
-  bio: z.string().min(50, "Bio must be at least 50 characters"),
+  bio: z.string().min(50, "Giới thiệu phải có ít nhất 50 ký tự"),
   // Đã loại bỏ các trường không cần thiết như yêu cầu của khách hàng:
   // - Học vấn (education)
   // - Kinh nghiệm (experience)
@@ -179,7 +179,6 @@ export default function TutorDashboardProfile() {
     resolver: zodResolver(tutorProfileSchema),
     defaultValues: {
       bio: "",
-      // Đã loại bỏ các trường không cần thiết
     },
   });
 
@@ -366,17 +365,20 @@ export default function TutorDashboardProfile() {
     if (tutorProfile) {
       console.log("Nhận dữ liệu profile:", tutorProfile);
 
-      // Xử lý subjects
+      // Cập nhật form với dữ liệu bio
+      profileForm.setValue("bio", tutorProfile.bio);
+      
+      // Vẫn giữ lại thông tin về subjects và levels để hiển thị (không cần chỉnh sửa)
       const subjectIds =
         tutorProfile.subjects?.map((subject: any) => String(subject.id)) || [];
       setSelectedSubjects(subjectIds);
 
-      // Xử lý levels
+      // Xử lý levels cho hiển thị (không cần chỉnh sửa)
       const levelIds =
         tutorProfile.levels?.map((level: any) => String(level.id)) || [];
       setSelectedLevels(levelIds);
 
-      // Xử lý lịch trống
+      // Vẫn giữ xử lý lịch trống cho hiển thị (không cần chỉnh sửa)
       if (tutorProfile.availability) {
         try {
           // Parse JSON string thành đối tượng JavaScript
