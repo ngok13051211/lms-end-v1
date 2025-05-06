@@ -95,17 +95,17 @@ export type AvailabilityItem = {
   endTime: string; // Thời gian ở định dạng HH:MM
 };
 
-// Form schema for tutor profile
+// Form schema for tutor profile (đã đơn giản hóa)
 const tutorProfileSchema = z.object({
   bio: z.string().min(50, "Bio must be at least 50 characters"),
-  education: z.string().min(20, "Education must be at least 20 characters"),
-  experience: z.string().min(20, "Experience must be at least 20 characters"),
-  hourlyRate: z.coerce
-    .number()
-    .min(10000, "Hourly rate must be at least 10,000 VND")
-    .max(99999999, "Hourly rate must be less than 100,000,000 VND"),
-  teachingMode: z.enum(["online", "offline", "both"]),
-  // Trường availability là tùy chọn, sẽ được xử lý riêng
+  // Đã loại bỏ các trường không cần thiết như yêu cầu của khách hàng:
+  // - Học vấn (education)
+  // - Kinh nghiệm (experience)
+  // - Mức phí tham khảo (hourlyRate)
+  // - Hình thức dạy (teachingMode)
+  // - Môn học (subjects) - được xử lý riêng
+  // - Cấp độ giảng dạy (levels) - được xử lý riêng
+  // - Lịch trống (availability) - được xử lý riêng
 });
 
 // Hàm kiểm tra hai khung giờ có chồng lấn nhau không
@@ -174,15 +174,12 @@ export default function TutorDashboardProfile() {
     enabled: true, // Always fetch education levels for profile creation
   });
 
-  // Setup profile form
+  // Setup profile form (đã đơn giản hóa)
   const profileForm = useForm<z.infer<typeof tutorProfileSchema>>({
     resolver: zodResolver(tutorProfileSchema),
     defaultValues: {
       bio: "",
-      education: "",
-      experience: "",
-      hourlyRate: 50000,
-      teachingMode: "both",
+      // Đã loại bỏ các trường không cần thiết
     },
   });
 
@@ -1400,170 +1397,29 @@ export default function TutorDashboardProfile() {
                   name="bio"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Bio</FormLabel>
+                      <FormLabel>Giới thiệu bản thân</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Introduce yourself to potential students..."
+                          placeholder="Giới thiệu bản thân cho học sinh tiềm năng..."
                           className="min-h-32"
                           {...field}
                         />
                       </FormControl>
-                      <FormDescription>Minimum 50 characters</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={profileForm.control}
-                  name="education"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Education</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Describe your educational background, degrees, and institutions..."
-                          className="min-h-24"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription>Minimum 20 characters</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={profileForm.control}
-                  name="experience"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Experience</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Describe your teaching experience, positions, and achievements..."
-                          className="min-h-24"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription>Minimum 20 characters</FormDescription>
+                      <FormDescription>Tối thiểu 50 ký tự</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
-                  control={profileForm.control}
-                  name="hourlyRate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Hourly Rate (VND)</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input type="number" className="pl-9" {...field} />
-                        </div>
-                      </FormControl>
-                      <FormDescription>Amount in VND per hour</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={profileForm.control}
-                  name="teachingMode"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Teaching Mode</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value || "online"}
-                        defaultValue={field.value || "online"}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select teaching mode" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="online">Online Only</SelectItem>
-                          <SelectItem value="offline">
-                            In-Person Only
-                          </SelectItem>
-                          <SelectItem value="both">
-                            Both Online & In-Person
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormDescription>
-                        How you prefer to conduct tutoring sessions
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <FormLabel>Subjects</FormLabel>
-                  <FormDescription className="mb-2">
-                    Select the subjects you can teach
-                  </FormDescription>
-
-                  <CheckboxGroup
-                    value={selectedSubjects}
-                    onValueChange={setSelectedSubjects}
-                    className="grid grid-cols-2 md:grid-cols-3 gap-2"
-                  >
-                    {subjects?.map((subject: any) => (
-                      <CheckboxItem
-                        key={subject.id}
-                        id={`subject-${subject.id}`}
-                        value={subject.id.toString()}
-                        label={subject.name}
-                      />
-                    ))}
-                  </CheckboxGroup>
-
-                  {selectedSubjects.length === 0 && (
-                    <p className="text-sm font-medium text-destructive mt-2">
-                      Please select at least one subject
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <FormLabel>Education Levels</FormLabel>
-                  <FormDescription className="mb-2">
-                    Select the education levels you can teach
-                  </FormDescription>
-
-                  <CheckboxGroup
-                    value={selectedLevels}
-                    onValueChange={setSelectedLevels}
-                    className="grid grid-cols-2 md:grid-cols-3 gap-2"
-                  >
-                    {educationLevels?.map((level: any) => (
-                      <CheckboxItem
-                        key={level.id}
-                        id={`level-${level.id}`}
-                        value={level.id.toString()}
-                        label={level.name}
-                      />
-                    ))}
-                  </CheckboxGroup>
-
-                  {selectedLevels.length === 0 && (
-                    <p className="text-sm font-medium text-destructive mt-2">
-                      Please select at least one education level
-                    </p>
-                  )}
-                </div>
-              </div>
+              
+              {/* Đã loại bỏ các phần không cần thiết theo yêu cầu của khách hàng:
+                 - Mức phí tham khảo (Hourly rate)
+                 - Hình thức dạy (Teaching Mode)
+                 - Môn học (Subject)
+                 - Cấp độ giảng dạy (Education Levels)
+                 - Thông tin học vấn (Education)
+                 - Kinh nghiệm (Experience)
+              */}
 
               <DialogFooter>
                 <Button type="submit" disabled={profileForm.formState.isSubmitting}>
