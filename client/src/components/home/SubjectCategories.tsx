@@ -1,3 +1,4 @@
+import { Link } from "wouter";
 import { Subject } from "@shared/schema";
 import SubjectCard from "@/components/ui/SubjectCard";
 
@@ -26,9 +27,9 @@ export default function SubjectCategories({ subjects }: SubjectCategoriesProps) 
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
           {subjects.map((subject) => (
-            <div key={subject.id} onClick={() => window.location.href = `/subjects/${subject.id}`} className="cursor-pointer">
+            <Link key={subject.id} href={`/subjects/${subject.id}`} className="block">
               <SubjectCard subject={subject} compact={true} />
-            </div>
+            </Link>
           ))}
         </div>
       </div>

@@ -8,6 +8,7 @@ import Login from "@/pages/login";
 import Register from "@/pages/register";
 import TutorProfile from "@/pages/tutor-profile";
 import TutorListing from "@/pages/tutor-listing";
+import SubjectDetail from "@/pages/subject-detail";
 import TutorDashboard from "@/pages/tutor-dashboard";
 import TutorDashboardProfile from "@/pages/tutor-dashboard-profile";
 import TutorDashboardCourses from "@/pages/tutor-dashboard-courses";

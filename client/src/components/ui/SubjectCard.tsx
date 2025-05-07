@@ -50,15 +50,16 @@ export default function SubjectCard({ subject, compact = false }: SubjectCardPro
               {subject.description || 'Các khóa học ' + subject.name}
             </p>
             <div className="flex items-center justify-between mt-1">
-              <Button
-                variant="link"
-                size="sm"
-                className="text-primary p-0 h-6"
-                onClick={() => window.location.href = `/subjects/${subject.id}`}
-              >
-                Xem các khóa học
-                <MoveRight className="h-3 w-3 ml-1" />
-              </Button>
+              <Link href={`/subjects/${subject.id}`}>
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="text-primary p-0 h-6"
+                >
+                  Xem các khóa học
+                  <MoveRight className="h-3 w-3 ml-1" />
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
@@ -109,13 +110,14 @@ export default function SubjectCard({ subject, compact = false }: SubjectCardPro
             </span>
             <span className="text-muted-foreground text-sm">/giờ (Trung bình)</span>
           </div>
-          <Button
-            variant="default"
-            className="bg-primary text-white hover:bg-primary-dark whitespace-nowrap"
-            onClick={() => window.location.href = `/subjects/${subject.id}`}
-          >
-            Xem khóa học
-          </Button>
+          <Link href={`/subjects/${subject.id}`}>
+            <Button
+              variant="default"
+              className="bg-primary text-white hover:bg-primary-dark whitespace-nowrap"
+            >
+              Xem khóa học
+            </Button>
+          </Link>
         </div>
       </div>
     </Card>

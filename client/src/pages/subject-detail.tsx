@@ -25,8 +25,9 @@ export default function SubjectDetail() {
       id: number;
       name: string;
     }>;
+    tutor_count?: number;
   }>({
-    queryKey: ["/api/v1/subjects", id],
+    queryKey: [`/api/v1/subjects/${id}`],
     enabled: !!id,
   });
   
@@ -45,7 +46,7 @@ export default function SubjectDetail() {
       };
     })[];
   }>({
-    queryKey: ["/api/v1/subjects", id, "courses"],
+    queryKey: [`/api/v1/subjects/${id}/courses`],
     enabled: !!id,
   });
   
