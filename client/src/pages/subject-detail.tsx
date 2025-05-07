@@ -150,12 +150,6 @@ export default function SubjectDetail() {
           <p className="text-muted-foreground mb-6">
             Hiện chưa có gia sư nào đăng tải khóa học cho môn học này
           </p>
-          <Button 
-            onClick={() => window.location.href = "/tutor-dashboard/courses/new"}
-            className="bg-primary hover:bg-primary-dark"
-          >
-            Đăng ký dạy môn này
-          </Button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
