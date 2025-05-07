@@ -859,8 +859,6 @@ export const updateTutorProfile = async (req: Request, res: Response) => {
       const profileData = {
         user_id: userId,
         bio: req.body.bio || "",
-        education: req.body.education || "",
-        experience: req.body.experience || "",
         date_of_birth: req.body.date_of_birth || null,
         address: req.body.address || "",
         availability: req.body.availability || null,
@@ -906,8 +904,6 @@ export const updateTutorProfile = async (req: Request, res: Response) => {
     // Đơn giản hóa cấu trúc dữ liệu - cập nhật thêm các trường mới
     const updateData = {
       bio: req.body.bio !== undefined ? req.body.bio : existingProfile.bio,
-      education: req.body.education !== undefined ? req.body.education : existingProfile.education,
-      experience: req.body.experience !== undefined ? req.body.experience : existingProfile.experience,
       date_of_birth: req.body.date_of_birth !== undefined ? req.body.date_of_birth : existingProfile.date_of_birth,
       address: req.body.address !== undefined ? req.body.address : existingProfile.address,
       availability: req.body.availability !== undefined ? req.body.availability : existingProfile.availability,
