@@ -58,6 +58,7 @@ function Router() {
       <Route path="/register" component={Register} />
       <Route path="/tutors" component={withMainLayout(TutorListing)} />
       <Route path="/tutors/:id" component={withMainLayout(TutorProfile)} />
+      <Route path="/subjects/:id" component={withMainLayout(SubjectDetail)} />
       <Route path="/become-tutor" component={withMainLayout(BecomeTutor)} />
       <Route path="/book/:tutorId" component={withMainLayout(BookingForm)} />
       <Route path="/book/:tutorId/:courseId" component={withMainLayout(BookingForm)} />
