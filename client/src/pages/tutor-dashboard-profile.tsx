@@ -325,8 +325,8 @@ export default function TutorDashboardProfile() {
   const handleAvatarUpload = async () => {
     if (!avatar) {
       toast({
-        title: "No file selected",
-        description: "Please select a file to upload",
+        title: "Chưa chọn tệp",
+        description: "Vui lòng chọn một tệp để tải lên",
         variant: "destructive",
       });
       return;
