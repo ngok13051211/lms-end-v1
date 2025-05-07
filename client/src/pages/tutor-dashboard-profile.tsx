@@ -351,6 +351,36 @@ export default function TutorDashboardProfile() {
     },
   });
 
+  // Subject update mutation
+  const updateSubjectsMutation = useMutation({
+    mutationFn: async (subjectIds: string[]) => {
+      const res = await apiRequest("PATCH", `/api/v1/tutors/profile`, {
+        subject_ids: subjectIds,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Môn học đã được cập nhật",
+        description: "Danh sách môn học của bạn đã được cập nhật thành công",
+        variant: "default",
+      });
+      queryClient.invalidateQueries({ queryKey: [`/api/v1/tutors/profile`] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Cập nhật thất bại",
+        description: error instanceof Error ? error.message : "Không thể cập nhật môn học",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Handle subjects update
+  const handleSubjectsUpdate = () => {
+    updateSubjectsMutation.mutate(selectedSubjects);
+  };
+
   // Submit handler for profile form (đã đơn giản hóa)
   const onSubmit = (values: z.infer<typeof tutorProfileSchema>) => {
     // Đã loại bỏ việc kiểm tra các trường không cần thiết
