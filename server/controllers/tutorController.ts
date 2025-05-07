@@ -852,16 +852,66 @@ export const updateTutorProfile = async (req: Request, res: Response) => {
     });
     
     if (!existingProfile) {
-      return res.status(404).json({ message: "Tutor profile not found" });
+      // Nếu người dùng chưa có profile, tự động tạo mới
+      console.log("Tutor profile not found. Creating a new one...");
+      
+      // Tạo profile mới với dữ liệu từ request
+      const profileData = {
+        user_id: userId,
+        bio: req.body.bio || "",
+        education: req.body.education || "",
+        experience: req.body.experience || "",
+        date_of_birth: req.body.date_of_birth || null,
+        address: req.body.address || "",
+        availability: req.body.availability || null,
+        is_verified: false,
+        is_featured: false,
+        rating: "0",
+        created_at: new Date(),
+        updated_at: new Date()
+      };
+      
+      // Tạo profile mới
+      const [newProfile] = await db.insert(schema.tutorProfiles)
+        .values(profileData)
+        .returning();
+      
+      console.log("New tutor profile created:", JSON.stringify(newProfile));
+      
+      // Update subjects if provided
+      if (req.body.subject_ids && Array.isArray(req.body.subject_ids)) {
+        const subjectValues = req.body.subject_ids.map((subjectId: string) => ({
+          tutor_id: newProfile.id,
+          subject_id: parseInt(subjectId)
+        }));
+        
+        await db.insert(schema.tutorSubjects)
+          .values(subjectValues);
+      }
+      
+      // Cập nhật role của user thành 'tutor'
+      await db.update(schema.users)
+        .set({ role: 'tutor' })
+        .where(eq(schema.users.id, userId));
+      
+      return res.status(201).json({
+        message: "Tutor profile created successfully",
+        profile: newProfile
+      });
     }
     
     // Log original request data
     console.log("Original request body:", JSON.stringify(req.body));
     
-    // Đơn giản hóa cấu trúc dữ liệu - chỉ giữ lại bio và các thông tin cần thiết
+    // Đơn giản hóa cấu trúc dữ liệu - cập nhật thêm các trường mới
     const updateData = {
-      bio: req.body.bio || existingProfile.bio,
-      user_id: userId
+      bio: req.body.bio !== undefined ? req.body.bio : existingProfile.bio,
+      education: req.body.education !== undefined ? req.body.education : existingProfile.education,
+      experience: req.body.experience !== undefined ? req.body.experience : existingProfile.experience,
+      date_of_birth: req.body.date_of_birth !== undefined ? req.body.date_of_birth : existingProfile.date_of_birth,
+      address: req.body.address !== undefined ? req.body.address : existingProfile.address,
+      availability: req.body.availability !== undefined ? req.body.availability : existingProfile.availability,
+      updated_at: new Date()
     };
     
     // Log the data being sent to the update operation

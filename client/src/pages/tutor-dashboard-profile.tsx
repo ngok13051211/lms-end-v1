@@ -225,7 +225,7 @@ export default function TutorDashboardProfile() {
     mutationFn: async (files: File[]) => {
       const formData = new FormData();
       files.forEach((file) => {
-        formData.append("files", file);
+        formData.append("documents", file);
       });
 
       const res = await fetch("/api/v1/tutors/certifications", {
