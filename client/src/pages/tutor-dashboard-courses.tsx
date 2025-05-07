@@ -70,6 +70,15 @@ export default function TutorDashboardCourses() {
       status: "active",
     },
   });
+  
+  // Get subject ID from URL if available (for direct creation from subject page)
+  const urlParams = new URLSearchParams(window.location.search);
+  const subjectIdFromUrl = urlParams.get('subject_id');
+  
+  // Set subject_id if it exists in URL
+  if (subjectIdFromUrl && !courseForm.getValues('subject_id')) {
+    courseForm.setValue('subject_id', subjectIdFromUrl);
+  }
 
   // Create course
   const createCourseMutation = useMutation({
