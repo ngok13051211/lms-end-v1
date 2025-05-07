@@ -1,42 +1,125 @@
+import { Link } from "wouter";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Book, Users, MoveRight } from "lucide-react";
 import { Subject } from "@shared/schema";
-import { 
-  Calculator, 
-  Atom, 
-  FlaskRound, 
-  Globe2, 
-  BookOpen, 
-  BarChart2, 
-  MoreHorizontal 
-} from "lucide-react";
 
-interface SubjectCardProps {
-  subject: Subject;
+interface FeaturedSubject extends Subject {
+  courses_count?: number;
+  hourly_rate?: number | string;
+  teaching_mode?: string;
+  education_levels?: Array<{
+    name: string;
+    id: number;
+  }>;
 }
 
-export default function SubjectCard({ subject }: SubjectCardProps) {
-  // Map subject name to icon
-  const getSubjectIcon = () => {
-    const nameToLower = subject.name.toLowerCase();
-    
-    if (nameToLower.includes("toán")) return <Calculator className="text-primary text-2xl" />;
-    if (nameToLower.includes("lý")) return <Atom className="text-primary text-2xl" />;
-    if (nameToLower.includes("hóa")) return <FlaskRound className="text-primary text-2xl" />;
-    if (nameToLower.includes("anh")) return <Globe2 className="text-primary text-2xl" />;
-    if (nameToLower.includes("văn")) return <BookOpen className="text-primary text-2xl" />;
-    if (nameToLower.includes("sử") || nameToLower.includes("lịch")) return <BarChart2 className="text-primary text-2xl" />;
-    
-    return <MoreHorizontal className="text-primary text-2xl" />;
+interface SubjectCardProps {
+  subject: FeaturedSubject;
+  compact?: boolean;
+}
+
+export default function SubjectCard({ subject, compact = false }: SubjectCardProps) {
+  const formatPrice = (price: number | string) => {
+    if (!price) return "Thỏa thuận";
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+    }).format(Number(price));
   };
 
+  if (compact) {
+    return (
+      <Card className="hover-rise h-full overflow-hidden">
+        <div className="p-4 flex items-center gap-4 h-full w-full">
+          <div className="h-12 w-12 flex items-center justify-center bg-primary-light/20 rounded-full text-primary">
+            <Book className="h-6 w-6" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between">
+              <h3 className="font-medium truncate">
+                {subject.name}
+              </h3>
+              <div className="flex items-center ml-2 shrink-0">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <span className="ml-1 text-sm">{subject.tutor_count || 0} gia sư</span>
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground truncate">
+              {subject.description || 'Các khóa học ' + subject.name}
+            </p>
+            <div className="flex items-center justify-between mt-1">
+              <Link href={`/subjects/${subject.id}`}>
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="text-primary p-0 h-6"
+                >
+                  Xem các khóa học
+                  <MoveRight className="h-3 w-3 ml-1" />
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
   return (
-    <div className="bg-white rounded-lg shadow-sm p-4 text-center transition-transform duration-200 hover:shadow-md hover:-translate-y-1 cursor-pointer">
-      <div className="bg-primary-light bg-opacity-20 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
-        {getSubjectIcon()}
+    <Card className="hover-rise flex flex-col h-full">
+      <div className="relative h-36 rounded-t-lg overflow-hidden bg-gradient-to-r from-primary-light to-primary flex items-center justify-center">
+        <div className="text-white text-center">
+          <div className="w-16 h-16 mx-auto bg-white/20 rounded-full flex items-center justify-center">
+            <Book className="h-8 w-8" />
+          </div>
+        </div>
       </div>
-      <h3 className="font-medium">{subject.name}</h3>
-      <p className="text-muted-foreground text-sm mt-1">
-        {subject.tutorCount} gia sư
-      </p>
-    </div>
+      <div className="p-4 flex-1 flex flex-col">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-medium text-lg">
+            {subject.name}
+          </h3>
+          <div className="flex items-center">
+            <Users className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm ml-1">{subject.tutor_count || 0} gia sư</span>
+          </div>
+        </div>
+        <p className="text-muted-foreground text-sm mb-3">
+          {subject.description || `Các khóa học ${subject.name} do gia sư có chuyên môn giảng dạy`}
+        </p>
+        
+        {subject.education_levels && subject.education_levels.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-4">
+            {subject.education_levels.map((level) => (
+              <Badge
+                key={level.id}
+                className="bg-primary-light/20 text-primary-dark hover:bg-primary-light/30"
+              >
+                {level.name}
+              </Badge>
+            ))}
+          </div>
+        )}
+        
+        <div className="mt-auto flex items-center justify-between">
+          <div>
+            <span className="text-secondary font-medium">
+              {formatPrice(subject.hourly_rate || 0)}
+            </span>
+            <span className="text-muted-foreground text-sm">/giờ (Trung bình)</span>
+          </div>
+          <Link href={`/subjects/${subject.id}`}>
+            <Button
+              variant="default"
+              className="bg-primary text-white hover:bg-primary-dark whitespace-nowrap"
+            >
+              Xem khóa học
+            </Button>
+          </Link>
+        </div>
+      </div>
+    </Card>
   );
 }

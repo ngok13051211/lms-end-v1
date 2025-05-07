@@ -42,8 +42,6 @@ export const subjects = pgTable("subjects", {
   description: text("description"),
   icon: text("icon"),
   tutor_count: integer("tutor_count").default(0),
-  teaching_mode: text("teaching_mode").default("both"), // "online", "offline", "both"
-  hourly_rate: decimal("hourly_rate", { precision: 10, scale: 2 }).default("0"),
   created_at: timestamp("created_at").defaultNow().notNull(),
   updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
