@@ -134,6 +134,7 @@ export default function TutorDashboardProfile() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingCertifications, setUploadingCertifications] = useState(false);
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  const [subjectsDialogOpen, setSubjectsDialogOpen] = useState(false);
 
   // Khung giờ trống
   const [availabilityItems, setAvailabilityItems] = useState<AvailabilityItem[]>([]);
@@ -932,6 +933,60 @@ export default function TutorDashboardProfile() {
                   <p className="whitespace-pre-wrap">{tutorProfile.bio}</p>
                 </CardContent>
               </Card>
+              
+              {/* Card môn học */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle>Môn học giảng dạy</CardTitle>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setSubjectsDialogOpen(true)}
+                    className="ml-auto"
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Cập nhật
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {tutorProfile.subjects && tutorProfile.subjects.length > 0 ? (
+                      <div className="grid grid-cols-1 gap-3">
+                        {tutorProfile.subjects.map((subject: any) => (
+                          <div
+                            key={subject.id}
+                            className="flex items-center gap-3 border rounded-lg p-3 bg-muted/30"
+                          >
+                            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                              <Book className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                              <div className="font-medium">{subject.name}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {formatPrice(subject.hourly_rate)}/giờ
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 border rounded-lg border-dashed">
+                        <Book className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                        <p className="text-muted-foreground">
+                          Bạn chưa chọn môn học nào để giảng dạy
+                        </p>
+                        <Button 
+                          variant="outline" 
+                          onClick={() => setSubjectsDialogOpen(true)}
+                          className="mt-4"
+                        >
+                          <Edit className="h-4 w-4 mr-2" />
+                          Chọn môn học
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
             <Card>
@@ -1038,6 +1093,72 @@ export default function TutorDashboardProfile() {
           </>
         )}
       </div>
+
+      {/* Subjects Dialog */}
+      <Dialog open={subjectsDialogOpen} onOpenChange={setSubjectsDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Chọn môn học giảng dạy</DialogTitle>
+            <DialogDescription>
+              Chọn các môn học bạn có thể giảng dạy cho học viên
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <div className="space-y-4">
+              {subjects.map((subject) => (
+                <div key={subject.id} className="flex items-center space-x-2">
+                  <Checkbox 
+                    id={`subject-${subject.id}`} 
+                    checked={selectedSubjects.includes(String(subject.id))} 
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setSelectedSubjects([...selectedSubjects, String(subject.id)]);
+                      } else {
+                        setSelectedSubjects(
+                          selectedSubjects.filter((id) => id !== String(subject.id))
+                        );
+                      }
+                    }}
+                  />
+                  <label
+                    htmlFor={`subject-${subject.id}`}
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  >
+                    {subject.name} - {formatPrice(subject.hourly_rate)}/giờ
+                  </label>
+                </div>
+              ))}
+              
+              {subjects.length === 0 && (
+                <div className="text-center py-4 text-muted-foreground">
+                  Không có môn học nào để hiển thị
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <DialogFooter className="sm:justify-end">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setSubjectsDialogOpen(false)}
+            >
+              Hủy
+            </Button>
+            <Button 
+              type="button"
+              onClick={handleSubjectsUpdate}
+              disabled={updateSubjectsMutation.isPending}
+            >
+              {updateSubjectsMutation.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Lưu thay đổi
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Lịch trống Dialog */}
       <Dialog
