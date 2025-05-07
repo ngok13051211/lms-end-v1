@@ -35,6 +35,81 @@ export const getSubjects = async (req: Request, res: Response) => {
   }
 };
 
+// Get subject by ID with education levels and courses
+export const getSubjectById = async (req: Request, res: Response) => {
+  try {
+    const subjectId = parseInt(req.params.id);
+    
+    if (isNaN(subjectId)) {
+      return res.status(400).json({ message: "Invalid subject ID" });
+    }
+    
+    const subject = await db.query.subjects.findFirst({
+      where: eq(schema.subjects.id, subjectId),
+      with: {
+        educationLevels: {
+          with: {
+            level: true
+          }
+        }
+      }
+    });
+    
+    if (!subject) {
+      return res.status(404).json({ message: "Subject not found" });
+    }
+    
+    // Transform the result to include education levels in a more convenient format
+    const transformedSubject = {
+      ...subject,
+      education_levels: subject.educationLevels.map(el => el.level)
+    };
+    
+    return res.status(200).json(transformedSubject);
+  } catch (error) {
+    console.error("Get subject by ID error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// Get courses by subject ID
+export const getCoursesBySubjectId = async (req: Request, res: Response) => {
+  try {
+    const subjectId = parseInt(req.params.id);
+    
+    if (isNaN(subjectId)) {
+      return res.status(400).json({ message: "Invalid subject ID" });
+    }
+    
+    const courses = await db.query.courses.findMany({
+      where: and(
+        eq(schema.courses.subject_id, subjectId),
+        eq(schema.courses.status, "active")
+      ),
+      with: {
+        tutor: {
+          with: {
+            user: {
+              columns: {
+                id: true,
+                first_name: true,
+                last_name: true,
+                avatar: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: desc(schema.courses.created_at)
+    });
+    
+    return res.status(200).json({ courses });
+  } catch (error) {
+    console.error("Get courses by subject ID error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 // Get all education levels
 export const getEducationLevels = async (req: Request, res: Response) => {
   try {
@@ -230,7 +305,7 @@ export const getTutors = async (req: Request, res: Response) => {
       conditions.push(
         and(
           not(isNull(schema.tutorProfiles.certifications)),
-          sql`length(${schema.tutorProfiles.certifications}) > 0`
+          sql`COALESCE(length(${schema.tutorProfiles.certifications}), 0) > 0`
         )
       );
     }

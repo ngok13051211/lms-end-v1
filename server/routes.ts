@@ -76,6 +76,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Subject routes
   app.get(`${apiPrefix}/subjects`, tutorController.getSubjects);
+  app.get(`${apiPrefix}/subjects/:id`, tutorController.getSubjectById);
+  app.get(`${apiPrefix}/subjects/:id/courses`, tutorController.getCoursesBySubjectId);
   
   // Education level routes
   app.get(`${apiPrefix}/education-levels`, tutorController.getEducationLevels);
