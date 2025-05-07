@@ -1,6 +1,6 @@
 import HeroSection from "@/components/home/HeroSection";
 import SearchSection from "@/components/home/SearchSection";
-import FeaturedTutors from "@/components/home/FeaturedTutors";
+import FeaturedSubjects from "@/components/home/FeaturedTutors"; // Component renamed but file still named FeaturedTutors.tsx
 import HowItWorks from "@/components/home/HowItWorks";
 import SubjectCategories from "@/components/home/SubjectCategories";
 import Testimonials from "@/components/home/Testimonials";
@@ -43,7 +43,7 @@ export default function Home() {
     <>
       <HeroSection />
       <SearchSection subjects={subjects || []} educationLevels={educationLevels || []} />
-      <FeaturedTutors tutors={tutors || []} />
+      <FeaturedSubjects subjects={subjects || []} />
       <HowItWorks />
       <SubjectCategories subjects={subjects || []} />
       <Testimonials testimonials={testimonials || []} />

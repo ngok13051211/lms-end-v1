@@ -21,9 +21,9 @@ export default function SubjectCategories({ subjects }: SubjectCategoriesProps) 
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
           {subjects.map((subject) => (
-            <Link key={subject.id} href={`/tutors?subject=${subject.id}`} className="block">
-              <SubjectCard subject={subject} />
-            </Link>
+            <div key={subject.id} onClick={() => window.location.href = `/subjects/${subject.id}`} className="cursor-pointer">
+              <SubjectCard subject={subject} compact={true} />
+            </div>
           ))}
         </div>
       </div>
