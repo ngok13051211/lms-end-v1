@@ -24,6 +24,8 @@ import { Badge } from "@/components/ui/badge";
 import { CheckboxGroup, CheckboxItem } from "@/components/ui/checkbox-group";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 
 // Form schema for tutor profile
 const tutorProfileSchema = z.object({
@@ -187,10 +189,10 @@ export default function TutorDashboard() {
       
       // Show success notification
       toast({
-        title: tutorProfile ? "Profile updated" : "Profile created",
+        title: tutorProfile ? "Hồ sơ đã cập nhật" : "Hồ sơ đã tạo",
         description: tutorProfile 
-          ? "Your tutor profile has been updated successfully." 
-          : "Your tutor profile has been created successfully.",
+          ? "Hồ sơ gia sư của bạn đã được cập nhật thành công." 
+          : "Hồ sơ gia sư của bạn đã được tạo thành công.",
         variant: "default",
       });
     },
@@ -199,8 +201,8 @@ export default function TutorDashboard() {
       
       // Show error notification
       toast({
-        title: "Profile update failed",
-        description: error instanceof Error ? error.message : "Failed to save your profile information. Please try again.",
+        title: "Cập nhật hồ sơ thất bại",
+        description: error instanceof Error ? error.message : "Không thể lưu thông tin hồ sơ của bạn. Vui lòng thử lại.",
         variant: "destructive",
       });
     }
@@ -364,6 +366,17 @@ export default function TutorDashboard() {
           date_of_birth: tutorProfile.date_of_birth || "",
           address: tutorProfile.address || "",
         });
+        
+        // Thiết lập môn học đã chọn
+        if (tutorProfile.subjects && Array.isArray(tutorProfile.subjects)) {
+          const subjectIds = tutorProfile.subjects.map((subject: any) => String(subject.id));
+          setSelectedSubjects(subjectIds);
+        } else {
+          setSelectedSubjects([]);
+        }
+        
+        // Reset certifications list
+        setCertifications([]);
       } else {
         // Reset form for new profile with empty values
         profileForm.reset({
@@ -371,6 +384,12 @@ export default function TutorDashboard() {
           date_of_birth: "",
           address: "",
         });
+        
+        // Reset subject selection
+        setSelectedSubjects([]);
+        
+        // Reset certifications list
+        setCertifications([]);
       }
       
       // Open dialog after form reset
@@ -1277,8 +1296,22 @@ export default function TutorDashboard() {
                           className="hidden"
                           accept=".pdf,.jpg,.jpeg,.png"
                           multiple
+                          onChange={handleCertificationsChange}
                         />
                       </label>
+                      
+                      {certifications.length > 0 && (
+                        <div className="mt-4">
+                          <p className="text-sm font-medium mb-2">
+                            Đã chọn {certifications.length} file:
+                          </p>
+                          <ul className="text-sm text-gray-600 list-disc list-inside">
+                            {certifications.map((file, index) => (
+                              <li key={index} className="truncate">{file.name} ({(file.size / 1024).toFixed(2)}KB)</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </div>
                     <FormDescription className="mt-1">Tải lên các chứng chỉ, bằng cấp để tăng uy tín</FormDescription>
                   </div>
@@ -1293,10 +1326,10 @@ export default function TutorDashboard() {
                   {profileMutation.isPending ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {tutorProfile ? "Updating..." : "Creating..."}
+                      {tutorProfile ? "Đang cập nhật..." : "Đang tạo..."}
                     </>
                   ) : (
-                    tutorProfile ? "Update Profile" : "Create Profile"
+                    tutorProfile ? "Cập nhật hồ sơ" : "Tạo hồ sơ"
                   )}
                 </Button>
               </DialogFooter>
