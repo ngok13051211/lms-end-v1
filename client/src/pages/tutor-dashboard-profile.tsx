@@ -1478,16 +1478,100 @@ export default function TutorDashboardProfile() {
                     </FormItem>
                   )}
                 />
+                
+                <FormField
+                  control={profileForm.control}
+                  name="education"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Học vấn</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Trình độ học vấn, bằng cấp, chứng chỉ của bạn..."
+                          className="min-h-24"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>Tối thiểu 10 ký tự</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={profileForm.control}
+                  name="experience"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Kinh nghiệm</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Kinh nghiệm giảng dạy, các công việc liên quan đến giáo dục trước đây..."
+                          className="min-h-24"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>Tối thiểu 10 ký tự</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={profileForm.control}
+                    name="hourlyRate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Mức phí tham khảo (VNĐ/giờ)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min={0}
+                            placeholder="VD: 150000"
+                            {...field}
+                            onChange={(e) => {
+                              const value = e.target.value === "" ? "0" : e.target.value;
+                              field.onChange(parseInt(value));
+                            }}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Học phí bạn đề xuất cho một giờ dạy
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={profileForm.control}
+                    name="teachingMode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Hình thức dạy</FormLabel>
+                        <Select 
+                          onValueChange={field.onChange} 
+                          defaultValue={field.value}
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Chọn hình thức dạy" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="online">Trực tuyến</SelectItem>
+                            <SelectItem value="offline">Trực tiếp</SelectItem>
+                            <SelectItem value="both">Cả hai hình thức</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </div>
-              
-              {/* Đã loại bỏ các phần không cần thiết theo yêu cầu của khách hàng:
-                 - Mức phí tham khảo (Hourly rate)
-                 - Hình thức dạy (Teaching Mode)
-                 - Môn học (Subject)
-                 - Cấp độ giảng dạy (Education Levels)
-                 - Thông tin học vấn (Education)
-                 - Kinh nghiệm (Experience)
-              */}
 
               <DialogFooter>
                 <Button type="submit" disabled={profileForm.formState.isSubmitting}>
