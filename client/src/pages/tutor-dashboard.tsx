@@ -684,6 +684,24 @@ export default function TutorDashboard() {
                               <span>{tutorProfile.rating} ({tutorProfile.total_reviews} đánh giá)</span>
                             </div>
                           </div>
+                          
+                          <div>
+                            <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                              Ngày sinh
+                            </h3>
+                            <p className="text-base">
+                              {tutorProfile.date_of_birth ? new Date(tutorProfile.date_of_birth).toLocaleDateString('vi-VN') : 'Chưa cập nhật'}
+                            </p>
+                          </div>
+                          
+                          <div>
+                            <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                              Địa chỉ
+                            </h3>
+                            <p className="text-base">
+                              {tutorProfile.address || 'Chưa cập nhật'}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>
