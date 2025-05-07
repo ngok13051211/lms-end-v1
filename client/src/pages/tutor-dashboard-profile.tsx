@@ -980,9 +980,6 @@ export default function TutorDashboardProfile() {
                             </div>
                             <div>
                               <div className="font-medium">{subject.name}</div>
-                              <div className="text-xs text-muted-foreground">
-                                {formatPrice(subject.hourly_rate)}/giờ
-                              </div>
                             </div>
                           </div>
                         ))}
@@ -1144,7 +1141,7 @@ export default function TutorDashboardProfile() {
                     htmlFor={`subject-${subject.id}`}
                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                   >
-                    {subject.name} - {formatPrice(subject.hourly_rate)}/giờ
+                    {subject.name}
                   </label>
                 </div>
               ))}
