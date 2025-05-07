@@ -277,7 +277,7 @@ export default function TutorDashboardProfile() {
   const avatarUploadMutation = useMutation({
     mutationFn: async (file: File) => {
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("avatar", file);
 
       // API call to upload avatar
       const res = await fetch("/api/v1/users/avatar", {
@@ -290,15 +290,20 @@ export default function TutorDashboardProfile() {
       });
 
       if (!res.ok) {
-        throw new Error("Failed to upload avatar");
+        // Cố gắng đọc thông báo lỗi từ server nếu có
+        const errorData = await res.json().catch(() => null);
+        const errorMessage = errorData && errorData.message 
+          ? errorData.message 
+          : "Failed to upload avatar";
+        throw new Error(errorMessage);
       }
 
       return res.json();
     },
     onSuccess: () => {
       toast({
-        title: "Avatar updated",
-        description: "Your profile picture has been updated",
+        title: "Ảnh đại diện đã cập nhật",
+        description: "Ảnh đại diện của bạn đã được cập nhật thành công",
         variant: "default",
       });
       setAvatar(null);
