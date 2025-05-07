@@ -630,67 +630,21 @@ export default function TutorDashboard() {
                   <div className="space-y-8">
                     <div className="flex flex-col md:flex-row gap-8">
                       <div className="flex-shrink-0">
-                        <div className="relative">
-                          <Avatar className="h-32 w-32 border-2 border-primary">
-                            <AvatarImage src={user?.avatar} alt={user?.first_name} />
-                            <AvatarFallback className="text-3xl">
-                              {user?.first_name?.[0]}{user?.last_name?.[0]}
-                            </AvatarFallback>
-                          </Avatar>
-                          
-                          <div className="mt-4">
-                            <label className="block mb-2 text-sm font-medium">
-                              Update Profile Photo
-                            </label>
-                            <div className="flex items-center gap-2">
-                              <Input
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                id="avatar-upload"
-                                onChange={handleOnAvatarChange}
-                              />
-                              <label 
-                                htmlFor="avatar-upload"
-                                className="flex items-center px-3 py-2 text-sm border rounded cursor-pointer bg-background hover:bg-muted transition-colors"
-                              >
-                                <Upload className="mr-2 h-4 w-4" />
-                                Choose File
-                              </label>
-                              
-                              {avatar && (
-                                <Button
-                                  onClick={uploadAvatar}
-                                  disabled={uploadingAvatar}
-                                  size="sm"
-                                >
-                                  {uploadingAvatar ? (
-                                    <>
-                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                      Uploading...
-                                    </>
-                                  ) : (
-                                    "Upload"
-                                  )}
-                                </Button>
-                              )}
-                            </div>
-                            {avatar && (
-                              <p className="mt-1 text-sm text-muted-foreground">
-                                {avatar.name}
-                              </p>
-                            )}
-                          </div>
-                        </div>
+                        <Avatar className="h-32 w-32 border-2 border-primary">
+                          <AvatarImage src={user?.avatar} alt={user?.first_name} />
+                          <AvatarFallback className="text-3xl">
+                            {user?.first_name?.[0]}{user?.last_name?.[0]}
+                          </AvatarFallback>
+                        </Avatar>
                       </div>
                       
                       <div className="flex-1">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                           <div>
                             <h3 className="text-sm font-medium text-muted-foreground mb-1">
-                              Full Name
+                              Họ và tên
                             </h3>
-                            <p className="text-base">
+                            <p className="text-base font-medium">
                               {user?.first_name} {user?.last_name}
                             </p>
                           </div>
@@ -702,22 +656,20 @@ export default function TutorDashboard() {
                             <p className="text-base">{user?.email}</p>
                           </div>
                           
-
-                          
                           <div>
                             <h3 className="text-sm font-medium text-muted-foreground mb-1">
-                              Verification Status
+                              Trạng thái xác minh
                             </h3>
                             <div className="flex items-center">
                               {tutorProfile.is_verified ? (
                                 <>
                                   <BadgeCheck className="h-4 w-4 text-success mr-1" />
-                                  <span className="text-success">Verified</span>
+                                  <span className="text-success">Đã xác minh</span>
                                 </>
                               ) : (
                                 <>
                                   <AlertCircle className="h-4 w-4 text-warning mr-1" />
-                                  <span className="text-warning">Pending Verification</span>
+                                  <span className="text-warning">Đang chờ xác minh</span>
                                 </>
                               )}
                             </div>
@@ -725,50 +677,59 @@ export default function TutorDashboard() {
                           
                           <div>
                             <h3 className="text-sm font-medium text-muted-foreground mb-1">
-                              Rating
+                              Đánh giá
                             </h3>
                             <div className="flex items-center">
                               <Star className="h-4 w-4 text-warning fill-warning mr-1" />
-                              <span>{tutorProfile.rating} ({tutorProfile.total_reviews} reviews)</span>
+                              <span>{tutorProfile.rating} ({tutorProfile.total_reviews} đánh giá)</span>
                             </div>
                           </div>
                         </div>
-                        
-
                       </div>
                     </div>
                     
                     <Separator />
                     
                     <div>
-                      <h3 className="text-lg font-medium mb-2">Bio</h3>
+                      <h3 className="text-lg font-medium mb-2">Giới thiệu</h3>
                       <p className="whitespace-pre-line">{tutorProfile.bio}</p>
+                    </div>
+                    
+                    <Separator />
+                    
+                    <div>
+                      <h3 className="text-lg font-medium mb-2">Môn học giảng dạy</h3>
+                      {tutorProfile.subjects && tutorProfile.subjects.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {tutorProfile.subjects.map((subject: any) => (
+                            <Badge key={subject.id} variant="secondary" className="px-3 py-1">
+                              {subject.name}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-muted-foreground">Chưa có môn học giảng dạy nào.</p>
+                      )}
                     </div>
                   </div>
                 ) : (
                   <div className="text-center py-12">
                     <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground" />
-                    <h2 className="mt-4 text-xl font-medium">No profile yet</h2>
+                    <h2 className="mt-4 text-xl font-medium">Chưa có hồ sơ</h2>
                     <p className="mt-2 text-muted-foreground max-w-md mx-auto">
-                      You haven't created your tutor profile yet. Create a profile to start receiving student inquiries.
+                      Bạn chưa tạo hồ sơ gia sư. Hãy tạo hồ sơ để bắt đầu nhận yêu cầu từ học sinh.
                     </p>
                   </div>
                 )}
               </CardContent>
               
-              <CardFooter>
-                <Button onClick={handleOpenProfileDialog}>
-                  {tutorProfile ? (
-                    <>
-                      <Edit className="mr-2 h-4 w-4" /> Edit Profile
-                    </>
-                  ) : (
-                    <>
-                      <PlusCircle className="mr-2 h-4 w-4" /> Create Profile
-                    </>
-                  )}
-                </Button>
-              </CardFooter>
+              {!tutorProfile && (
+                <CardFooter>
+                  <Button onClick={handleOpenProfileDialog}>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Tạo hồ sơ
+                  </Button>
+                </CardFooter>
+              )}
             </Card>
           </TabsContent>
           
