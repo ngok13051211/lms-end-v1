@@ -98,12 +98,6 @@ export type AvailabilityItem = {
 const tutorProfileSchema = z.object({
   bio: z.string().min(50, "Giới thiệu phải có ít nhất 50 ký tự"),
   
-  // Học vấn
-  education: z.string().min(10, "Học vấn phải có ít nhất 10 ký tự"),
-  
-  // Kinh nghiệm
-  experience: z.string().min(10, "Kinh nghiệm phải có ít nhất 10 ký tự"),
-  
   // Ngày sinh
   date_of_birth: z.string().optional(),
   
@@ -196,8 +190,6 @@ export default function TutorDashboardProfile() {
     resolver: zodResolver(tutorProfileSchema),
     defaultValues: {
       bio: "",
-      education: "",
-      experience: "",
       date_of_birth: "",
       address: "",
     },
@@ -350,8 +342,6 @@ export default function TutorDashboardProfile() {
       // Gửi tất cả dữ liệu từ form
       const profileData = {
         bio: data.bio,
-        education: data.education,
-        experience: data.experience,
         date_of_birth: data.date_of_birth,
         address: data.address
       };
@@ -461,8 +451,6 @@ export default function TutorDashboardProfile() {
 
       // Cập nhật form với dữ liệu
       profileForm.setValue("bio", tutorProfile.bio || "");
-      profileForm.setValue("education", tutorProfile.education || "");
-      profileForm.setValue("experience", tutorProfile.experience || "");
       profileForm.setValue("date_of_birth", tutorProfile.date_of_birth || "");
       profileForm.setValue("address", tutorProfile.address || "");
       
@@ -1513,43 +1501,7 @@ export default function TutorDashboardProfile() {
                   )}
                 />
                 
-                <FormField
-                  control={profileForm.control}
-                  name="education"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Học vấn</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Trình độ học vấn, bằng cấp, chứng chỉ của bạn..."
-                          className="min-h-24"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription>Tối thiểu 10 ký tự</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={profileForm.control}
-                  name="experience"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Kinh nghiệm</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Kinh nghiệm giảng dạy, các công việc liên quan đến giáo dục trước đây..."
-                          className="min-h-24"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription>Tối thiểu 10 ký tự</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+
                 
                 <FormField
                   control={profileForm.control}

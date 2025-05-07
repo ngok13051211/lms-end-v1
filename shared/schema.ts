@@ -23,10 +23,6 @@ export const tutorProfiles = pgTable("tutor_profiles", {
   id: serial("id").primaryKey(),
   user_id: integer("user_id").notNull().references(() => users.id),
   bio: text("bio").notNull(),
-  // Thông tin học vấn
-  education: text("education"),
-  // Kinh nghiệm giảng dạy
-  experience: text("experience"),
   // Ngày sinh 
   date_of_birth: text("date_of_birth"),
   // Địa chỉ
