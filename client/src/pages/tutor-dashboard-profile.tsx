@@ -1511,6 +1511,44 @@ export default function TutorDashboardProfile() {
                     </FormItem>
                   )}
                 />
+                
+                <FormField
+                  control={profileForm.control}
+                  name="date_of_birth"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Ngày sinh</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="date"
+                          placeholder="DD/MM/YYYY"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>Điền ngày sinh của bạn</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={profileForm.control}
+                  name="address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Địa chỉ</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Địa chỉ liên hệ của bạn..."
+                          className="min-h-24"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>Thông tin sẽ chỉ được chia sẻ khi có nhu cầu liên hệ</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
 
               <DialogFooter>
