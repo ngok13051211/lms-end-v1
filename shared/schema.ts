@@ -42,6 +42,8 @@ export const subjects = pgTable("subjects", {
   description: text("description"),
   icon: text("icon"),
   tutor_count: integer("tutor_count").default(0),
+  teaching_mode: text("teaching_mode").default("both"), // "online", "offline", "both"
+  hourly_rate: decimal("hourly_rate", { precision: 10, scale: 2 }).default("0"),
   created_at: timestamp("created_at").defaultNow().notNull(),
   updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -184,9 +186,29 @@ export const tutorSubjectsRelations = relations(tutorSubjects, ({ one }) => ({
   }),
 }));
 
+// Defining Subject-Education Level Many-to-Many Relationship
+export const subjectEducationLevels = pgTable("subject_education_levels", {
+  id: serial("id").primaryKey(),
+  subject_id: integer("subject_id").notNull().references(() => subjects.id),
+  level_id: integer("level_id").notNull().references(() => educationLevels.id),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const subjectEducationLevelsRelations = relations(subjectEducationLevels, ({ one }) => ({
+  subject: one(subjects, {
+    fields: [subjectEducationLevels.subject_id],
+    references: [subjects.id],
+  }),
+  level: one(educationLevels, {
+    fields: [subjectEducationLevels.level_id],
+    references: [educationLevels.id],
+  }),
+}));
+
 export const subjectsRelations = relations(subjects, ({ many }) => ({
   tutors: many(tutorSubjects),
   courses: many(courses),
+  educationLevels: many(subjectEducationLevels),
 }));
 
 export const coursesRelations = relations(courses, ({ one }) => ({
@@ -218,6 +240,7 @@ export const tutorEducationLevelsRelations = relations(tutorEducationLevels, ({ 
 export const educationLevelsRelations = relations(educationLevels, ({ many }) => ({
   tutors: many(tutorEducationLevels),
   courses: many(courses),
+  subjects: many(subjectEducationLevels),
 }));
 
 export const conversationsRelations = relations(conversations, ({ one, many }) => ({
@@ -297,6 +320,9 @@ export const reviewSelectSchema = createSelectSchema(reviews);
 export const favoriteTutorInsertSchema = createInsertSchema(favoriteTutors);
 export const favoriteTutorSelectSchema = createSelectSchema(favoriteTutors);
 
+export const subjectEducationLevelInsertSchema = createInsertSchema(subjectEducationLevels);
+export const subjectEducationLevelSelectSchema = createSelectSchema(subjectEducationLevels);
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 
@@ -326,6 +352,9 @@ export type NewReview = typeof reviews.$inferInsert;
 
 export type FavoriteTutor = typeof favoriteTutors.$inferSelect;
 export type NewFavoriteTutor = typeof favoriteTutors.$inferInsert;
+
+export type SubjectEducationLevel = typeof subjectEducationLevels.$inferSelect;
+export type NewSubjectEducationLevel = typeof subjectEducationLevels.$inferInsert;
 
 // Bảng đặt lịch (bookings)
 export const bookings = pgTable("bookings", {
