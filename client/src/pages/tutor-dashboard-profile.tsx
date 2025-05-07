@@ -104,14 +104,6 @@ const tutorProfileSchema = z.object({
   // Kinh nghiệm
   experience: z.string().min(10, "Kinh nghiệm phải có ít nhất 10 ký tự"),
   
-  // Mức phí tham khảo
-  hourlyRate: z.coerce.number().min(0, "Mức phí không được âm").optional(),
-  
-  // Hình thức dạy 
-  teachingMode: z.enum(["online", "offline", "both"], {
-    required_error: "Vui lòng chọn hình thức dạy",
-  }),
-
   // Các trường khác như môn học (subjects), cấp độ giảng dạy (levels),
   // và lịch trống (availability) được xử lý riêng
 });
@@ -200,8 +192,6 @@ export default function TutorDashboardProfile() {
       bio: "",
       education: "",
       experience: "",
-      hourlyRate: 0,
-      teachingMode: "both",
     },
   });
 
@@ -349,9 +339,7 @@ export default function TutorDashboardProfile() {
       const profileData = {
         bio: data.bio,
         education: data.education,
-        experience: data.experience,
-        hourly_rate: data.hourlyRate,
-        teaching_mode: data.teachingMode
+        experience: data.experience
       };
 
       console.log("Updating profile with:", profileData);
@@ -426,8 +414,6 @@ export default function TutorDashboardProfile() {
       profileForm.setValue("bio", tutorProfile.bio || "");
       profileForm.setValue("education", tutorProfile.education || "");
       profileForm.setValue("experience", tutorProfile.experience || "");
-      profileForm.setValue("hourlyRate", tutorProfile.hourly_rate || 0);
-      profileForm.setValue("teachingMode", tutorProfile.teaching_mode || "both");
       
       // Vẫn giữ lại thông tin về subjects và levels để hiển thị
       const subjectIds =
@@ -1516,61 +1502,6 @@ export default function TutorDashboardProfile() {
                     </FormItem>
                   )}
                 />
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={profileForm.control}
-                    name="hourlyRate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Mức phí tham khảo (VNĐ/giờ)</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            min={0}
-                            placeholder="VD: 150000"
-                            {...field}
-                            onChange={(e) => {
-                              const value = e.target.value === "" ? "0" : e.target.value;
-                              field.onChange(parseInt(value));
-                            }}
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Học phí bạn đề xuất cho một giờ dạy
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={profileForm.control}
-                    name="teachingMode"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Hình thức dạy</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
-                          defaultValue={field.value}
-                          value={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Chọn hình thức dạy" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="online">Trực tuyến</SelectItem>
-                            <SelectItem value="offline">Trực tiếp</SelectItem>
-                            <SelectItem value="both">Cả hai hình thức</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
               </div>
 
               <DialogFooter>
