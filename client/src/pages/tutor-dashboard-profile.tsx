@@ -339,6 +339,10 @@ export default function TutorDashboardProfile() {
       setUploadingAvatar(false);
     }
   };
+  
+
+  
+
 
   // Update profile mutation
   const updateProfileMutation = useMutation({
