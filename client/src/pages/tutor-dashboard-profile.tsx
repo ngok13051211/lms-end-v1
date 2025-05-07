@@ -57,6 +57,7 @@ import {
   Trash,
   Calendar as CalendarIcon,
   Book,
+  Star,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -877,104 +878,149 @@ export default function TutorDashboardProfile() {
           </CardHeader>
 
           <CardContent>
-            <div className="flex flex-col md:flex-row gap-6">
-              <div className="flex flex-col items-center">
-                <Avatar className="h-32 w-32 mb-4">
-                  <AvatarImage
-                    src={user?.avatar || undefined}
-                    alt={user?.first_name || "User"}
-                  />
-                  <AvatarFallback className="text-2xl">
-                    {(user?.first_name?.[0] || "") +
-                      (user?.last_name?.[0] || "")}
-                  </AvatarFallback>
-                </Avatar>
-
-                <div className="flex flex-col items-center">
-                  <label htmlFor="avatar-upload" className="cursor-pointer">
-                    <div className="flex items-center mb-2 text-primary hover:text-primary/80">
-                      <Upload className="h-4 w-4 mr-1" />
-                      <span>Upload avatar</span>
-                    </div>
-                    <input
-                      id="avatar-upload"
-                      type="file"
-                      className="hidden"
-                      accept="image/*"
-                      onChange={handleFileChange}
-                    />
-                  </label>
-
-                  {avatar && (
-                    <Button
-                      size="sm"
-                      onClick={handleAvatarUpload}
-                      disabled={uploadingAvatar}
-                    >
-                      {uploadingAvatar && (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      )}
-                      Apply
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex-1">
-                <div className="flex flex-col md:flex-row justify-between">
-                  <div>
-                    <h2 className="text-xl font-medium">
-                      {user?.first_name} {user?.last_name}
-                    </h2>
-                    <p className="text-muted-foreground">{user?.email}</p>
-
-                    <div className="flex items-center mt-2">
-                      <Badge
-                        variant={
-                          tutorProfile?.isVerified ? "default" : "outline"
-                        }
-                        className="mr-2"
-                      >
-                        {tutorProfile?.isVerified
-                          ? "Verified"
-                          : "Pending Verification"}
-                      </Badge>
-                      {tutorProfile?.rating && (
-                        <Badge variant="outline" className="bg-yellow-50">
-                          ★{" "}
-                          {typeof tutorProfile.rating === "number"
-                            ? tutorProfile.rating.toFixed(1)
-                            : tutorProfile.rating}{" "}
-                          ({tutorProfile.totalReviews || 0})
-                        </Badge>
+            <div className="space-y-8">
+              <div className="flex flex-col md:flex-row gap-8">
+                <div className="flex-shrink-0">
+                  <div className="relative">
+                    <Avatar className="h-32 w-32 border-2 border-primary">
+                      <AvatarImage src={user?.avatar} alt={user?.first_name} />
+                      <AvatarFallback className="text-3xl">
+                        {user?.first_name?.[0]}{user?.last_name?.[0]}
+                      </AvatarFallback>
+                    </Avatar>
+                    
+                    <div className="mt-4">
+                      <label className="block mb-2 text-sm font-medium">
+                        Cập nhật ảnh đại diện
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          id="avatar-upload"
+                          onChange={handleFileChange}
+                        />
+                        <label 
+                          htmlFor="avatar-upload"
+                          className="flex items-center px-3 py-2 text-sm border rounded cursor-pointer bg-background hover:bg-muted transition-colors"
+                        >
+                          <Upload className="mr-2 h-4 w-4" />
+                          Chọn ảnh
+                        </label>
+                        
+                        {avatar && (
+                          <Button
+                            onClick={handleAvatarUpload}
+                            disabled={uploadingAvatar}
+                            size="sm"
+                          >
+                            {uploadingAvatar ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Đang tải lên...
+                              </>
+                            ) : (
+                              "Tải lên"
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                      {avatar && (
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {avatar.name}
+                        </p>
                       )}
                     </div>
                   </div>
-
-                  <Button
-                    onClick={() => setProfileDialogOpen(true)}
-                    className="mt-4 md:mt-0"
-                  >
-                    <Edit className="h-4 w-4 mr-2" />
-                    {tutorProfile ? "Edit Profile" : "Create Profile"}
-                  </Button>
                 </div>
-
-                {tutorProfile ? (
-                  <>
-                    {/* Removed subject, education level, hourly rate, and teaching mode information */}
-                  </>
-                ) : (
-                  <Alert className="mt-6">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Profile Not Created</AlertTitle>
-                    <AlertDescription>
-                      You haven't created your tutor profile yet. Create your
-                      profile to start receiving inquiries from students.
-                    </AlertDescription>
-                  </Alert>
-                )}
+                
+                <div className="flex-1">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div>
+                      <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                        Họ và tên
+                      </h3>
+                      <p className="text-base font-medium">
+                        {user?.first_name} {user?.last_name}
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                        Email
+                      </h3>
+                      <p className="text-base">{user?.email}</p>
+                    </div>
+                    
+                    <div>
+                      <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                        Trạng thái xác minh
+                      </h3>
+                      <div className="flex items-center">
+                        {tutorProfile?.is_verified ? (
+                          <>
+                            <BadgeCheck className="h-4 w-4 text-success mr-1" />
+                            <span className="text-success">Đã xác minh</span>
+                          </>
+                        ) : (
+                          <>
+                            <AlertCircle className="h-4 w-4 text-warning mr-1" />
+                            <span className="text-warning">Đang chờ xác minh</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                        Đánh giá
+                      </h3>
+                      <div className="flex items-center">
+                        <Star className="h-4 w-4 text-warning fill-warning mr-1" />
+                        <span>{tutorProfile?.rating} ({tutorProfile?.total_reviews} đánh giá)</span>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                        Ngày sinh
+                      </h3>
+                      <p className="text-base">
+                        {tutorProfile?.date_of_birth ? new Date(tutorProfile.date_of_birth).toLocaleDateString('vi-VN') : 'Chưa cập nhật'}
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                        Địa chỉ
+                      </h3>
+                      <p className="text-base">
+                        {tutorProfile?.address || 'Chưa cập nhật'}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={() => setProfileDialogOpen(true)}
+                    >
+                      <Edit className="h-4 w-4 mr-2" />
+                      {tutorProfile ? "Chỉnh sửa hồ sơ" : "Tạo hồ sơ"}
+                    </Button>
+                  </div>
+                </div>
               </div>
+              
+              {!tutorProfile && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Chưa có hồ sơ</AlertTitle>
+                  <AlertDescription>
+                    Bạn chưa tạo hồ sơ gia sư. Hãy tạo hồ sơ để bắt đầu nhận yêu cầu từ học sinh.
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
           </CardContent>
         </Card>
