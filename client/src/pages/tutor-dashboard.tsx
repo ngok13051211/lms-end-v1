@@ -25,9 +25,18 @@ import { CheckboxGroup, CheckboxItem } from "@/components/ui/checkbox-group";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 
-// Form schema for tutor profile (simplified)
+// Form schema for tutor profile
 const tutorProfileSchema = z.object({
-  bio: z.string().min(50, "Bio must be at least 50 characters"),
+  bio: z.string().min(50, "Giới thiệu phải có ít nhất 50 ký tự"),
+  
+  // Ngày sinh
+  date_of_birth: z.string().optional(),
+  
+  // Địa chỉ
+  address: z.string().optional(),
+  
+  // Các trường khác như môn học (subjects), cấp độ giảng dạy (levels),
+  // và lịch trống (availability) được xử lý riêng
 });
 
 // Form schema for course
@@ -92,11 +101,13 @@ export default function TutorDashboard() {
     enabled: hasProfile, // Only fetch if profile exists
   });
 
-  // Tutor profile form (simplified)
+  // Tutor profile form
   const profileForm = useForm<z.infer<typeof tutorProfileSchema>>({
     resolver: zodResolver(tutorProfileSchema),
     defaultValues: {
       bio: tutorProfile?.bio || "",
+      date_of_birth: tutorProfile?.date_of_birth || "",
+      address: tutorProfile?.address || "",
     },
   });
   
@@ -113,12 +124,14 @@ export default function TutorDashboard() {
     },
   });
   
-  // Create/Update tutor profile (simplified)
+  // Create/Update tutor profile
   const profileMutation = useMutation({
     mutationFn: async (data: z.infer<typeof tutorProfileSchema>) => {
       const method = tutorProfile ? "PATCH" : "POST";
       const formattedData = {
         bio: data.bio,
+        date_of_birth: data.date_of_birth,
+        address: data.address,
       };
       
       console.log("Sending data to create/update profile:", formattedData);
@@ -307,15 +320,19 @@ export default function TutorDashboard() {
     
     // Force refresh tutor profile before opening the dialog
     refetchTutorProfile().then(() => {
-      // Reset form to default values (simplified)
+      // Reset form with default values
       if (tutorProfile && !profileError) {
         profileForm.reset({
           bio: tutorProfile.bio || "",
+          date_of_birth: tutorProfile.date_of_birth || "",
+          address: tutorProfile.address || "",
         });
       } else {
         // Reset form for new profile with empty values
         profileForm.reset({
           bio: "",
+          date_of_birth: "",
+          address: "",
         });
       }
       
