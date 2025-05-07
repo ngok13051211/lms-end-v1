@@ -104,6 +104,12 @@ const tutorProfileSchema = z.object({
   // Kinh nghiệm
   experience: z.string().min(10, "Kinh nghiệm phải có ít nhất 10 ký tự"),
   
+  // Ngày sinh
+  date_of_birth: z.string().optional(),
+  
+  // Địa chỉ
+  address: z.string().optional(),
+  
   // Các trường khác như môn học (subjects), cấp độ giảng dạy (levels),
   // và lịch trống (availability) được xử lý riêng
 });
@@ -192,6 +198,8 @@ export default function TutorDashboardProfile() {
       bio: "",
       education: "",
       experience: "",
+      date_of_birth: "",
+      address: "",
     },
   });
 
@@ -339,7 +347,9 @@ export default function TutorDashboardProfile() {
       const profileData = {
         bio: data.bio,
         education: data.education,
-        experience: data.experience
+        experience: data.experience,
+        date_of_birth: data.date_of_birth,
+        address: data.address
       };
 
       console.log("Updating profile with:", profileData);
@@ -414,6 +424,8 @@ export default function TutorDashboardProfile() {
       profileForm.setValue("bio", tutorProfile.bio || "");
       profileForm.setValue("education", tutorProfile.education || "");
       profileForm.setValue("experience", tutorProfile.experience || "");
+      profileForm.setValue("date_of_birth", tutorProfile.date_of_birth || "");
+      profileForm.setValue("address", tutorProfile.address || "");
       
       // Vẫn giữ lại thông tin về subjects và levels để hiển thị
       const subjectIds =

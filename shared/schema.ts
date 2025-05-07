@@ -18,14 +18,23 @@ export const users = pgTable("users", {
   updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// Tutor Profile Model (Đã đơn giản hóa)
+// Tutor Profile Model
 export const tutorProfiles = pgTable("tutor_profiles", {
   id: serial("id").primaryKey(),
   user_id: integer("user_id").notNull().references(() => users.id),
   bio: text("bio").notNull(),
-  // Đã loại bỏ các trường:
-  // education, experience, experience_years, hourly_rate, teaching_mode, availability
+  // Thông tin học vấn
+  education: text("education"),
+  // Kinh nghiệm giảng dạy
+  experience: text("experience"),
+  // Ngày sinh 
+  date_of_birth: text("date_of_birth"),
+  // Địa chỉ
+  address: text("address"),
+  // Chứng chỉ (JSON string chứa URLs)
   certifications: text("certifications"),
+  // Khung thời gian rảnh (JSON string)
+  availability: text("availability"),
   is_verified: boolean("is_verified").default(false),
   is_featured: boolean("is_featured").default(false),
   rejection_reason: text("rejection_reason"),
@@ -295,7 +304,7 @@ export const loginSchema = z.object({
 export const userInsertSchema = createInsertSchema(users);
 export const userSelectSchema = createSelectSchema(users);
 
-// Đơn giản hóa schema để chỉ giữ lại bio và certifications
+// Schema cho hồ sơ gia sư đã bổ sung thêm các trường mới
 export const tutorProfileInsertSchema = createInsertSchema(tutorProfiles);
 export const tutorProfileSelectSchema = createSelectSchema(tutorProfiles);
 
