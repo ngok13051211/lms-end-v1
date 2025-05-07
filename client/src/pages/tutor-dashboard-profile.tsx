@@ -56,6 +56,7 @@ import {
   ExternalLink,
   Trash,
   Calendar as CalendarIcon,
+  Book,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -72,6 +73,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { Checkbox } from "@/components/ui/checkbox";
 
 // Định nghĩa cấu trúc cho khung giờ trống theo ngày cụ thể
 const specificDateAvailabilityItemSchema = z.object({
@@ -106,6 +108,16 @@ const tutorProfileSchema = z.object({
 });
 
 // Hàm kiểm tra hai khung giờ có chồng lấn nhau không
+// Hàm định dạng giá tiền
+const formatPrice = (price: number): string => {
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(price);
+};
+
 const isTimeSlotOverlapping = (
   slot1: AvailabilityItem,
   slot2: AvailabilityItem
@@ -1111,7 +1123,7 @@ export default function TutorDashboardProfile() {
                   <Checkbox 
                     id={`subject-${subject.id}`} 
                     checked={selectedSubjects.includes(String(subject.id))} 
-                    onCheckedChange={(checked) => {
+                    onCheckedChange={(checked: boolean) => {
                       if (checked) {
                         setSelectedSubjects([...selectedSubjects, String(subject.id)]);
                       } else {
