@@ -207,15 +207,21 @@ export default function TutorDashboardCourses() {
 
   const openNewCourseDialog = () => {
     setEditingCourseId(null);
+    
+    // Try to get subject_id from URL query parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const subjectIdFromUrl = urlParams.get('subject_id');
+    
     courseForm.reset({
       title: "",
       description: "",
-      subject_id: "",
+      subject_id: subjectIdFromUrl || "",
       level_id: "",
       hourly_rate: 200000, // Default hourly rate in VND
       teaching_mode: "online",
       status: "active",
     });
+    
     setCourseDialogOpen(true);
   };
   

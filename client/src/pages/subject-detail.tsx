@@ -19,6 +19,19 @@ import { Button } from "@/components/ui/button";
 export default function SubjectDetail() {
   const { id } = useParams<{ id: string }>();
   
+  // Get current user
+  const { data: userData } = useQuery<{
+    user?: {
+      id: number;
+      role: string;
+    }
+  }>({
+    queryKey: ["/api/v1/auth/me"],
+  });
+  
+  const isLoggedIn = !!userData?.user;
+  const isTutor = userData?.user?.role === "tutor";
+  
   // Fetch subject details
   const { data: subject, isLoading: isLoadingSubject } = useQuery<Subject & {
     education_levels?: Array<{
@@ -141,7 +154,18 @@ export default function SubjectDetail() {
       </div>
       
       {/* Courses Section */}
-      <h2 className="text-2xl font-bold mb-6">Khóa học {subject?.name}</h2>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold">Khóa học {subject?.name}</h2>
+        
+        {isTutor && (
+          <Button 
+            onClick={() => window.location.href = `/tutor-dashboard/courses?subject_id=${id}`}
+            className="bg-primary hover:bg-primary-dark"
+          >
+            Tạo khóa học mới
+          </Button>
+        )}
+      </div>
       
       {!courses?.courses?.length ? (
         <div className="text-center py-10 bg-muted/30 rounded-lg">
@@ -150,6 +174,15 @@ export default function SubjectDetail() {
           <p className="text-muted-foreground mb-6">
             Hiện chưa có gia sư nào đăng tải khóa học cho môn học này
           </p>
+          
+          {isTutor && (
+            <Button 
+              onClick={() => window.location.href = `/tutor-dashboard/courses?subject_id=${id}`}
+              className="bg-primary hover:bg-primary-dark"
+            >
+              Tạo khóa học mới cho môn này
+            </Button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
