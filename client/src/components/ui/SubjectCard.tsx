@@ -5,10 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Book, Users, MoveRight } from "lucide-react";
 import { Subject } from "@shared/schema";
 
-interface FeaturedSubject extends Subject {
+interface FeaturedSubject extends Omit<Subject, 'hourly_rate' | 'teaching_mode'> {
   courses_count?: number;
-  hourly_rate?: number | string;
-  teaching_mode?: string;
+  hourly_rate?: number | string | null;
+  teaching_mode?: string | null;
   education_levels?: Array<{
     name: string;
     id: number;

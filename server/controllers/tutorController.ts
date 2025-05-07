@@ -10,10 +10,25 @@ import { uploadToCloudinary } from "../storage";
 export const getSubjects = async (req: Request, res: Response) => {
   try {
     const subjects = await db.query.subjects.findMany({
-      orderBy: schema.subjects.name
+      orderBy: schema.subjects.name,
+      with: {
+        educationLevels: {
+          with: {
+            level: true
+          }
+        }
+      }
     });
     
-    return res.status(200).json(subjects);
+    // Transform the result to include education levels in a more convenient format
+    const transformedSubjects = subjects.map(subject => {
+      return {
+        ...subject,
+        education_levels: subject.educationLevels.map(el => el.level)
+      };
+    });
+    
+    return res.status(200).json(transformedSubjects);
   } catch (error) {
     console.error("Get subjects error:", error);
     return res.status(500).json({ message: "Internal server error" });
@@ -223,7 +238,7 @@ export const getTutors = async (req: Request, res: Response) => {
     // Add minimum rating filter (giữ lại)
     if (minRating > 0) {
       conditions.push(
-        sql`CAST(${schema.tutorProfiles.rating} AS DECIMAL) >= ${minRating}`
+        sql`COALESCE(CAST(${schema.tutorProfiles.rating} AS DECIMAL), 0) >= ${minRating}`
       );
     }
     

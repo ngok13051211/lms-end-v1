@@ -1,9 +1,14 @@
-import { Link } from "wouter";
 import { Subject } from "@shared/schema";
 import SubjectCard from "@/components/ui/SubjectCard";
 
+// Extended type that aligns with our FeaturedSubject interface in SubjectCard
 interface SubjectCategoriesProps {
-  subjects: Subject[];
+  subjects: Array<Subject & {
+    education_levels?: Array<{
+      name: string;
+      id: number;
+    }>;
+  }>;
 }
 
 export default function SubjectCategories({ subjects }: SubjectCategoriesProps) {
