@@ -94,17 +94,26 @@ export type AvailabilityItem = {
   endTime: string; // Thời gian ở định dạng HH:MM
 };
 
-// Form schema for tutor profile (đã đơn giản hóa)
+// Form schema for tutor profile
 const tutorProfileSchema = z.object({
   bio: z.string().min(50, "Giới thiệu phải có ít nhất 50 ký tự"),
-  // Đã loại bỏ các trường không cần thiết như yêu cầu của khách hàng:
-  // - Học vấn (education)
-  // - Kinh nghiệm (experience)
-  // - Mức phí tham khảo (hourlyRate)
-  // - Hình thức dạy (teachingMode)
-  // - Môn học (subjects) - được xử lý riêng
-  // - Cấp độ giảng dạy (levels) - được xử lý riêng
-  // - Lịch trống (availability) - được xử lý riêng
+  
+  // Học vấn
+  education: z.string().min(10, "Học vấn phải có ít nhất 10 ký tự"),
+  
+  // Kinh nghiệm
+  experience: z.string().min(10, "Kinh nghiệm phải có ít nhất 10 ký tự"),
+  
+  // Mức phí tham khảo
+  hourlyRate: z.coerce.number().min(0, "Mức phí không được âm").optional(),
+  
+  // Hình thức dạy 
+  teachingMode: z.enum(["online", "offline", "both"], {
+    required_error: "Vui lòng chọn hình thức dạy",
+  }),
+
+  // Các trường khác như môn học (subjects), cấp độ giảng dạy (levels),
+  // và lịch trống (availability) được xử lý riêng
 });
 
 // Hàm kiểm tra hai khung giờ có chồng lấn nhau không
@@ -184,11 +193,15 @@ export default function TutorDashboardProfile() {
     enabled: true, // Always fetch education levels for profile creation
   });
 
-  // Setup profile form (đã đơn giản hóa)
+  // Setup profile form
   const profileForm = useForm<z.infer<typeof tutorProfileSchema>>({
     resolver: zodResolver(tutorProfileSchema),
     defaultValues: {
       bio: "",
+      education: "",
+      experience: "",
+      hourlyRate: 0,
+      teachingMode: "both",
     },
   });
 
@@ -329,12 +342,16 @@ export default function TutorDashboardProfile() {
     }
   };
 
-  // Update profile mutation (đã đơn giản hóa)
+  // Update profile mutation
   const updateProfileMutation = useMutation({
     mutationFn: async (data: z.infer<typeof tutorProfileSchema>) => {
-      // Chỉ gửi dữ liệu bio, đã loại bỏ các trường không cần thiết
+      // Gửi tất cả dữ liệu từ form
       const profileData = {
         bio: data.bio,
+        education: data.education,
+        experience: data.experience,
+        hourly_rate: data.hourlyRate,
+        teaching_mode: data.teachingMode
       };
 
       console.log("Updating profile with:", profileData);
@@ -405,15 +422,19 @@ export default function TutorDashboardProfile() {
     if (tutorProfile) {
       console.log("Nhận dữ liệu profile:", tutorProfile);
 
-      // Cập nhật form với dữ liệu bio
-      profileForm.setValue("bio", tutorProfile.bio);
+      // Cập nhật form với dữ liệu
+      profileForm.setValue("bio", tutorProfile.bio || "");
+      profileForm.setValue("education", tutorProfile.education || "");
+      profileForm.setValue("experience", tutorProfile.experience || "");
+      profileForm.setValue("hourlyRate", tutorProfile.hourly_rate || 0);
+      profileForm.setValue("teachingMode", tutorProfile.teaching_mode || "both");
       
-      // Vẫn giữ lại thông tin về subjects và levels để hiển thị (không cần chỉnh sửa)
+      // Vẫn giữ lại thông tin về subjects và levels để hiển thị
       const subjectIds =
         tutorProfile.subjects?.map((subject: any) => String(subject.id)) || [];
       setSelectedSubjects(subjectIds);
 
-      // Xử lý levels cho hiển thị (không cần chỉnh sửa)
+      // Xử lý levels cho hiển thị
       const levelIds =
         tutorProfile.levels?.map((level: any) => String(level.id)) || [];
       setSelectedLevels(levelIds);
