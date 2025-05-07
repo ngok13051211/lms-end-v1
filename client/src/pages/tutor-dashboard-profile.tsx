@@ -409,10 +409,45 @@ export default function TutorDashboardProfile() {
     updateSubjectsMutation.mutate(selectedSubjects);
   };
 
-  // Submit handler for profile form (đã đơn giản hóa)
-  const onSubmit = (values: z.infer<typeof tutorProfileSchema>) => {
-    // Đã loại bỏ việc kiểm tra các trường không cần thiết
-    updateProfileMutation.mutate(values);
+  // Submit handler for profile form
+  const onSubmit = async (values: z.infer<typeof tutorProfileSchema>) => {
+    // Cập nhật profile
+    const updateProfilePromise = updateProfileMutation.mutateAsync(values);
+    
+    // Cập nhật môn học
+    const updateSubjectsPromise = selectedSubjects.length > 0 
+      ? updateSubjectsMutation.mutateAsync(selectedSubjects)
+      : Promise.resolve();
+    
+    // Tải lên chứng chỉ nếu có chọn file
+    const uploadCertificationsPromise = certifications.length > 0
+      ? certificationsUploadMutation.mutateAsync(certifications)
+      : Promise.resolve();
+    
+    try {
+      await Promise.all([
+        updateProfilePromise, 
+        updateSubjectsPromise,
+        uploadCertificationsPromise
+      ]);
+      
+      // Xóa danh sách file đã chọn sau khi tải lên thành công
+      if (certifications.length > 0) {
+        setCertifications([]);
+      }
+      
+      toast({
+        title: "Hồ sơ đã được cập nhật",
+        description: "Thông tin hồ sơ và các dữ liệu liên quan đã được cập nhật thành công",
+        variant: "default",
+      });
+      
+      // Đóng dialog
+      setProfileDialogOpen(false);
+    } catch (error) {
+      console.error("Lỗi khi cập nhật hồ sơ:", error);
+      // Toast thông báo lỗi được xử lý bởi các mutation
+    }
   };
 
   // Tải profile và thiết lập form
@@ -1549,6 +1584,92 @@ export default function TutorDashboardProfile() {
                     </FormItem>
                   )}
                 />
+                
+                {/* Phần chọn môn học */}
+                <div>
+                  <Label className="text-base">Môn học giảng dạy</Label>
+                  <div className="mt-2">
+                    <div className="border rounded-md p-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        {subjects.map((subject) => (
+                          <div key={subject.id} className="flex items-center space-x-2">
+                            <Checkbox 
+                              id={`subject-select-${subject.id}`} 
+                              checked={selectedSubjects.includes(String(subject.id))} 
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setSelectedSubjects([...selectedSubjects, String(subject.id)]);
+                                } else {
+                                  setSelectedSubjects(
+                                    selectedSubjects.filter((id) => id !== String(subject.id))
+                                  );
+                                }
+                              }}
+                            />
+                            <label
+                              htmlFor={`subject-select-${subject.id}`}
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                            >
+                              {subject.name}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {subjects.length === 0 && (
+                        <div className="text-center py-4 text-muted-foreground">
+                          Không có môn học nào để hiển thị
+                        </div>
+                      )}
+                    </div>
+                    <FormDescription className="mt-1">Chọn môn học bạn có thể giảng dạy</FormDescription>
+                  </div>
+                </div>
+                
+                {/* Phần tải chứng chỉ */}
+                <div>
+                  <Label className="text-base">Chứng chỉ & Giấy tờ</Label>
+                  <div className="mt-2">
+                    <div className="border rounded-md p-4">
+                      <label
+                        htmlFor="certification-upload-form"
+                        className="cursor-pointer block"
+                      >
+                        <div className="border-2 border-dashed border-gray-300 rounded-md p-6 text-center hover:border-primary transition-colors">
+                          <Upload className="h-8 w-8 mx-auto text-gray-400" />
+                          <p className="mt-2 text-sm text-gray-600">
+                            Chọn hoặc kéo thả file vào đây
+                          </p>
+                          <p className="mt-1 text-xs text-gray-500">
+                            Hỗ trợ PDF, JPG, PNG (tối đa 5MB)
+                          </p>
+                        </div>
+                        <input
+                          id="certification-upload-form"
+                          type="file"
+                          className="hidden"
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          onChange={handleCertificationsChange}
+                          multiple
+                        />
+                      </label>
+
+                      {certifications.length > 0 && (
+                        <div className="mt-4">
+                          <p className="text-sm font-medium mb-2">
+                            Đã chọn {certifications.length} file:
+                          </p>
+                          <ul className="text-sm text-gray-600 list-disc list-inside">
+                            {certifications.map((file, index) => (
+                              <li key={index}>{file.name}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                    <FormDescription className="mt-1">Tải lên các chứng chỉ, bằng cấp để tăng uy tín</FormDescription>
+                  </div>
+                </div>
               </div>
 
               <DialogFooter>
