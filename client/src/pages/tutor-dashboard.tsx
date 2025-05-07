@@ -124,6 +124,25 @@ export default function TutorDashboard() {
     },
   });
   
+  // State để quản lý chứng chỉ
+  const [certifications, setCertifications] = useState<File[]>([]);
+  const [uploadingCertifications, setUploadingCertifications] = useState(false);
+
+  // Upload chứng chỉ
+  const handleCertificationsChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const files = Array.from(e.target.files);
+      setCertifications(files);
+      toast({
+        title: "Đã chọn files",
+        description: `Đã chọn ${files.length} file. Nhấn "Cập nhật hồ sơ" để tải lên.`,
+        variant: "default",
+      });
+    }
+  };
+
   // Create/Update tutor profile
   const profileMutation = useMutation({
     mutationFn: async (data: z.infer<typeof tutorProfileSchema>) => {
@@ -132,6 +151,7 @@ export default function TutorDashboard() {
         bio: data.bio,
         date_of_birth: data.date_of_birth,
         address: data.address,
+        subject_ids: selectedSubjects.length > 0 ? selectedSubjects : undefined,
       };
       
       console.log("Sending data to create/update profile:", formattedData);
@@ -141,6 +161,23 @@ export default function TutorDashboard() {
         "/api/v1/tutors/profile",
         formattedData
       );
+
+      // Upload certifications if any
+      if (certifications.length > 0) {
+        const formData = new FormData();
+        certifications.forEach((file) => {
+          formData.append("documents", file);
+        });
+
+        await fetch("/api/v1/tutors/certifications", {
+          method: "POST",
+          body: formData,
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+      }
+      
       return response.json();
     },
     onSuccess: (data) => {
@@ -1104,29 +1141,147 @@ export default function TutorDashboard() {
           
           <Form {...profileForm}>
             <form onSubmit={profileForm.handleSubmit((data) => profileMutation.mutate(data))} className="space-y-6">
-              <div className="grid grid-cols-1 gap-6">
+              <div className="space-y-4">
+                {/* Bio Field */}
                 <div>
                   <FormField
                     control={profileForm.control}
                     name="bio"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Bio</FormLabel>
+                        <FormLabel>Giới thiệu bản thân</FormLabel>
                         <FormControl>
                           <Textarea 
-                            placeholder="Write about yourself, your teaching philosophy, and what makes you a great tutor"
+                            placeholder="Viết về bản thân, triết lý giảng dạy của bạn và điều gì làm cho bạn trở thành một gia sư tuyệt vời"
                             className="min-h-[200px]"
                             {...field} 
                           />
                         </FormControl>
                         <FormDescription>
-                          Minimum 50 characters. Include information about your educational background, teaching experience, 
-                          teaching style, and any other details that students would want to know.
+                          Tối thiểu 50 ký tự. Bao gồm thông tin về bản thân, phong cách giảng dạy và các chi tiết khác mà học sinh muốn biết.
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+                </div>
+
+                {/* Date of Birth Field */}
+                <div>
+                  <FormField
+                    control={profileForm.control}
+                    name="date_of_birth"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Ngày sinh</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="date" 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Ngày sinh của bạn (tùy chọn)
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* Address Field */}
+                <div>
+                  <FormField
+                    control={profileForm.control}
+                    name="address"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Địa chỉ</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Nhập địa chỉ của bạn" 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Địa chỉ của bạn (tùy chọn)
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* Phần chọn môn học */}
+                <div>
+                  <Label className="text-base">Môn học giảng dạy</Label>
+                  <div className="mt-2">
+                    <div className="border rounded-md p-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        {subjects?.map((subject) => (
+                          <div key={subject.id} className="flex items-center space-x-2">
+                            <Checkbox 
+                              id={`subject-select-${subject.id}`} 
+                              checked={selectedSubjects.includes(String(subject.id))} 
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setSelectedSubjects([...selectedSubjects, String(subject.id)]);
+                                } else {
+                                  setSelectedSubjects(
+                                    selectedSubjects.filter((id) => id !== String(subject.id))
+                                  );
+                                }
+                              }}
+                            />
+                            <label
+                              htmlFor={`subject-select-${subject.id}`}
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                            >
+                              {subject.name}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {!subjects || subjects.length === 0 && (
+                        <div className="text-center py-4 text-muted-foreground">
+                          Không có môn học nào để hiển thị
+                        </div>
+                      )}
+                    </div>
+                    <FormDescription className="mt-1">Chọn môn học bạn có thể giảng dạy</FormDescription>
+                  </div>
+                </div>
+                
+                {/* Phần tải chứng chỉ */}
+                <div>
+                  <Label className="text-base">Chứng chỉ & Giấy tờ</Label>
+                  <div className="mt-2">
+                    <div className="border rounded-md p-4">
+                      <label
+                        htmlFor="certification-upload"
+                        className="cursor-pointer block"
+                      >
+                        <div className="border-2 border-dashed border-gray-300 rounded-md p-6 text-center hover:border-primary transition-colors">
+                          <Upload className="h-8 w-8 mx-auto text-gray-400" />
+                          <p className="mt-2 text-sm text-gray-600">
+                            Chọn hoặc kéo thả file vào đây
+                          </p>
+                          <p className="mt-1 text-xs text-gray-500">
+                            Hỗ trợ PDF, JPG, PNG (tối đa 5MB)
+                          </p>
+                        </div>
+                        <input
+                          id="certification-upload"
+                          type="file"
+                          className="hidden"
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          multiple
+                        />
+                      </label>
+                    </div>
+                    <FormDescription className="mt-1">Tải lên các chứng chỉ, bằng cấp để tăng uy tín</FormDescription>
+                  </div>
                 </div>
               </div>
               
