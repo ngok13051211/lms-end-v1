@@ -280,7 +280,7 @@ export default function TutorDashboardProfile() {
       formData.append("file", file);
 
       // API call to upload avatar
-      const res = await fetch("/api/v1/auth/avatar", {
+      const res = await fetch("/api/v1/users/avatar", {
         method: "POST",
         body: formData,
         headers: {
@@ -304,6 +304,8 @@ export default function TutorDashboardProfile() {
       setAvatar(null);
       // Force reload user data
       queryClient.invalidateQueries({ queryKey: [`/api/v1/auth/me`] });
+      // Also reload tutor profile
+      queryClient.invalidateQueries({ queryKey: [`/api/v1/tutors/profile`] });
     },
     onError: (error: Error) => {
       toast({
