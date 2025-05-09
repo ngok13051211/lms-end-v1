@@ -1,10 +1,20 @@
+import dotenv from "dotenv";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import cors from "cors";
 
+dotenv.config();
 const app = express();
-app.use(cors()); // Cho phép truy cập từ tất cả nguồn gốc
+app.use(
+  cors({
+    origin:
+      process.env.NODE_ENV === "production"
+        ? process.env.CLIENT_URL
+        : ["http://localhost:3000", "http://localhost:5000"],
+    credentials: true, // Quan trọng: cho phép chia sẻ cookie giữa frontend và backend
+  })
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 

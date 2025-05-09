@@ -1,4 +1,15 @@
-import { pgTable, text, serial, integer, boolean, timestamp, json, decimal } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  serial,
+  integer,
+  boolean,
+  timestamp,
+  json,
+  decimal,
+  date,
+  time,
+} from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -21,9 +32,11 @@ export const users = pgTable("users", {
 // Tutor Profile Model
 export const tutorProfiles = pgTable("tutor_profiles", {
   id: serial("id").primaryKey(),
-  user_id: integer("user_id").notNull().references(() => users.id),
+  user_id: integer("user_id")
+    .notNull()
+    .references(() => users.id),
   bio: text("bio").notNull(),
-  // Ngày sinh 
+  // Ngày sinh
   date_of_birth: text("date_of_birth"),
   // Địa chỉ
   address: text("address"),
@@ -65,23 +78,33 @@ export const educationLevels = pgTable("education_levels", {
 // Tutor-Subject Many-to-Many Relationship
 export const tutorSubjects = pgTable("tutor_subjects", {
   id: serial("id").primaryKey(),
-  tutor_id: integer("tutor_id").notNull().references(() => tutorProfiles.id),
-  subject_id: integer("subject_id").notNull().references(() => subjects.id),
+  tutor_id: integer("tutor_id")
+    .notNull()
+    .references(() => tutorProfiles.id),
+  subject_id: integer("subject_id")
+    .notNull()
+    .references(() => subjects.id),
   created_at: timestamp("created_at").defaultNow().notNull(),
 });
 
 // Tutor-Education Level Many-to-Many Relationship
 export const tutorEducationLevels = pgTable("tutor_education_levels", {
   id: serial("id").primaryKey(),
-  tutor_id: integer("tutor_id").notNull().references(() => tutorProfiles.id),
-  level_id: integer("level_id").notNull().references(() => educationLevels.id),
+  tutor_id: integer("tutor_id")
+    .notNull()
+    .references(() => tutorProfiles.id),
+  level_id: integer("level_id")
+    .notNull()
+    .references(() => educationLevels.id),
   created_at: timestamp("created_at").defaultNow().notNull(),
 });
 
 // Tutor Courses Model
 export const courses = pgTable("courses", {
   id: serial("id").primaryKey(),
-  tutor_id: integer("tutor_id").notNull().references(() => tutorProfiles.id),
+  tutor_id: integer("tutor_id")
+    .notNull()
+    .references(() => tutorProfiles.id),
   title: text("title").notNull(),
   description: text("description").notNull(),
   subject_id: integer("subject_id").references(() => subjects.id),
@@ -96,8 +119,12 @@ export const courses = pgTable("courses", {
 // Conversations Model
 export const conversations = pgTable("conversations", {
   id: serial("id").primaryKey(),
-  student_id: integer("student_id").notNull().references(() => users.id),
-  tutor_id: integer("tutor_id").notNull().references(() => users.id),
+  student_id: integer("student_id")
+    .notNull()
+    .references(() => users.id),
+  tutor_id: integer("tutor_id")
+    .notNull()
+    .references(() => users.id),
   last_message_at: timestamp("last_message_at").defaultNow().notNull(),
   created_at: timestamp("created_at").defaultNow().notNull(),
 });
@@ -105,8 +132,12 @@ export const conversations = pgTable("conversations", {
 // Messages Model
 export const messages = pgTable("messages", {
   id: serial("id").primaryKey(),
-  conversation_id: integer("conversation_id").notNull().references(() => conversations.id),
-  sender_id: integer("sender_id").notNull().references(() => users.id),
+  conversation_id: integer("conversation_id")
+    .notNull()
+    .references(() => conversations.id),
+  sender_id: integer("sender_id")
+    .notNull()
+    .references(() => users.id),
   content: text("content").notNull(),
   read: boolean("read").default(false),
   created_at: timestamp("created_at").defaultNow().notNull(),
@@ -115,8 +146,12 @@ export const messages = pgTable("messages", {
 // Reviews Model
 export const reviews = pgTable("reviews", {
   id: serial("id").primaryKey(),
-  student_id: integer("student_id").notNull().references(() => users.id),
-  tutor_id: integer("tutor_id").notNull().references(() => tutorProfiles.id),
+  student_id: integer("student_id")
+    .notNull()
+    .references(() => users.id),
+  tutor_id: integer("tutor_id")
+    .notNull()
+    .references(() => tutorProfiles.id),
   rating: integer("rating").notNull(),
   comment: text("comment"),
   created_at: timestamp("created_at").defaultNow().notNull(),
@@ -138,9 +173,127 @@ export const testimonials = pgTable("testimonials", {
 // Favorite Tutors Model
 export const favoriteTutors = pgTable("favorite_tutors", {
   id: serial("id").primaryKey(),
-  student_id: integer("student_id").notNull().references(() => users.id),
-  tutor_id: integer("tutor_id").notNull().references(() => tutorProfiles.id),
+  student_id: integer("student_id")
+    .notNull()
+    .references(() => users.id),
+  tutor_id: integer("tutor_id")
+    .notNull()
+    .references(() => tutorProfiles.id),
   created_at: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Defining Subject-Education Level Many-to-Many Relationship
+export const subjectEducationLevels = pgTable("subject_education_levels", {
+  id: serial("id").primaryKey(),
+  subject_id: integer("subject_id")
+    .notNull()
+    .references(() => subjects.id),
+  level_id: integer("level_id")
+    .notNull()
+    .references(() => educationLevels.id),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Bảng đặt lịch (bookings)
+export const bookings = pgTable("bookings", {
+  id: serial("id").primaryKey(),
+  student_id: integer("student_id")
+    .notNull()
+    .references(() => users.id),
+  tutor_id: integer("tutor_id")
+    .notNull()
+    .references(() => tutorProfiles.id),
+  course_id: integer("course_id").references(() => courses.id),
+
+  // Thông tin lịch học
+  title: text("title").notNull(),
+  description: text("description"),
+  start_time: timestamp("start_time").notNull(),
+  end_time: timestamp("end_time").notNull(),
+  location: text("location"), // Địa điểm nếu dạy trực tiếp
+  meeting_url: text("meeting_url"), // URL nếu dạy trực tuyến
+
+  // Thông tin thanh toán
+  hourly_rate: decimal("hourly_rate", { precision: 10, scale: 2 }).notNull(),
+  total_hours: decimal("total_hours", { precision: 5, scale: 2 }).notNull(),
+  total_amount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+
+  // Trạng thái đặt lịch
+  status: text("status").notNull().default("pending"), // pending, confirmed, completed, cancelled, rejected
+
+  // Timestamps
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Bảng thanh toán (payments)
+export const payments = pgTable("payments", {
+  id: serial("id").primaryKey(),
+  booking_id: integer("booking_id")
+    .notNull()
+    .references(() => bookings.id),
+  transaction_id: text("transaction_id"), // ID giao dịch từ VNPay
+
+  // Thông tin thanh toán
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  fee: decimal("fee", { precision: 10, scale: 2 }).default("0"),
+  net_amount: decimal("net_amount", { precision: 10, scale: 2 }).notNull(),
+
+  // Thông tin người thanh toán/nhận tiền
+  payer_id: integer("payer_id")
+    .notNull()
+    .references(() => users.id),
+  payee_id: integer("payee_id")
+    .notNull()
+    .references(() => users.id),
+
+  // Trạng thái thanh toán
+  status: text("status").notNull().default("pending"), // pending, completed, refunded, failed
+  payment_method: text("payment_method").notNull(), // vnpay, bank_transfer, wallet
+
+  // Data bổ sung
+  payment_data: json("payment_data"), // Lưu dữ liệu phản hồi từ cổng thanh toán
+
+  // Timestamps
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Bảng ghi chú và đánh giá buổi học (session_notes)
+export const sessionNotes = pgTable("session_notes", {
+  id: serial("id").primaryKey(),
+  booking_id: integer("booking_id")
+    .notNull()
+    .references(() => bookings.id),
+
+  // Ghi chú của gia sư
+  tutor_notes: text("tutor_notes"),
+
+  // Đánh giá của học sinh
+  student_rating: integer("student_rating"), // 1-5 sao
+  student_feedback: text("student_feedback"),
+
+  // Timestamps
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Teaching Schedules Model for tutor availability
+export const teachingSchedules = pgTable("teaching_schedules", {
+  id: serial("id").primaryKey(),
+  tutor_id: integer("tutor_id")
+    .notNull()
+    .references(() => tutorProfiles.id),
+  course_id: integer("course_id").references(() => courses.id),
+  date: date("date").notNull(),
+  start_time: time("start_time").notNull(),
+  end_time: time("end_time").notNull(),
+  mode: text("mode").notNull(), // "online", "offline"
+  location: text("location"),
+  is_recurring: boolean("is_recurring").default(false),
+  status: text("status").default("available"), // "available", "booked", "completed", "cancelled"
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
 // Relations for favorite tutors
@@ -155,6 +308,21 @@ export const favoriteTutorsRelations = relations(favoriteTutors, ({ one }) => ({
   }),
 }));
 
+// Relations for teaching schedules
+export const teachingSchedulesRelations = relations(
+  teachingSchedules,
+  ({ one }) => ({
+    tutor: one(tutorProfiles, {
+      fields: [teachingSchedules.tutor_id],
+      references: [tutorProfiles.id],
+    }),
+    course: one(courses, {
+      fields: [teachingSchedules.course_id],
+      references: [courses.id],
+    }),
+  })
+);
+
 // Define relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   tutorProfile: one(tutorProfiles, {
@@ -168,17 +336,21 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   favoriteTutors: many(favoriteTutors),
 }));
 
-export const tutorProfilesRelations = relations(tutorProfiles, ({ one, many }) => ({
-  user: one(users, {
-    fields: [tutorProfiles.user_id],
-    references: [users.id],
-  }),
-  subjects: many(tutorSubjects),
-  levels: many(tutorEducationLevels),
-  courses: many(courses),
-  reviews: many(reviews),
-  favoritedBy: many(favoriteTutors),
-}));
+export const tutorProfilesRelations = relations(
+  tutorProfiles,
+  ({ one, many }) => ({
+    user: one(users, {
+      fields: [tutorProfiles.user_id],
+      references: [users.id],
+    }),
+    subjects: many(tutorSubjects),
+    levels: many(tutorEducationLevels),
+    courses: many(courses),
+    reviews: many(reviews),
+    favoritedBy: many(favoriteTutors),
+    teachingSchedules: many(teachingSchedules), // Relation to teaching schedules
+  })
+);
 
 export const tutorSubjectsRelations = relations(tutorSubjects, ({ one }) => ({
   tutor: one(tutorProfiles, {
@@ -191,24 +363,19 @@ export const tutorSubjectsRelations = relations(tutorSubjects, ({ one }) => ({
   }),
 }));
 
-// Defining Subject-Education Level Many-to-Many Relationship
-export const subjectEducationLevels = pgTable("subject_education_levels", {
-  id: serial("id").primaryKey(),
-  subject_id: integer("subject_id").notNull().references(() => subjects.id),
-  level_id: integer("level_id").notNull().references(() => educationLevels.id),
-  created_at: timestamp("created_at").defaultNow().notNull(),
-});
-
-export const subjectEducationLevelsRelations = relations(subjectEducationLevels, ({ one }) => ({
-  subject: one(subjects, {
-    fields: [subjectEducationLevels.subject_id],
-    references: [subjects.id],
-  }),
-  level: one(educationLevels, {
-    fields: [subjectEducationLevels.level_id],
-    references: [educationLevels.id],
-  }),
-}));
+export const subjectEducationLevelsRelations = relations(
+  subjectEducationLevels,
+  ({ one }) => ({
+    subject: one(subjects, {
+      fields: [subjectEducationLevels.subject_id],
+      references: [subjects.id],
+    }),
+    level: one(educationLevels, {
+      fields: [subjectEducationLevels.level_id],
+      references: [educationLevels.id],
+    }),
+  })
+);
 
 export const subjectsRelations = relations(subjects, ({ many }) => ({
   tutors: many(tutorSubjects),
@@ -216,7 +383,7 @@ export const subjectsRelations = relations(subjects, ({ many }) => ({
   educationLevels: many(subjectEducationLevels),
 }));
 
-export const coursesRelations = relations(courses, ({ one }) => ({
+export const coursesRelations = relations(courses, ({ one, many }) => ({
   tutor: one(tutorProfiles, {
     fields: [courses.tutor_id],
     references: [tutorProfiles.id],
@@ -229,36 +396,46 @@ export const coursesRelations = relations(courses, ({ one }) => ({
     fields: [courses.level_id],
     references: [educationLevels.id],
   }),
+  teachingSchedules: many(teachingSchedules), // Relation to teaching schedules
 }));
 
-export const tutorEducationLevelsRelations = relations(tutorEducationLevels, ({ one }) => ({
-  tutor: one(tutorProfiles, {
-    fields: [tutorEducationLevels.tutor_id],
-    references: [tutorProfiles.id],
-  }),
-  level: one(educationLevels, {
-    fields: [tutorEducationLevels.level_id],
-    references: [educationLevels.id],
-  }),
-}));
+export const tutorEducationLevelsRelations = relations(
+  tutorEducationLevels,
+  ({ one }) => ({
+    tutor: one(tutorProfiles, {
+      fields: [tutorEducationLevels.tutor_id],
+      references: [tutorProfiles.id],
+    }),
+    level: one(educationLevels, {
+      fields: [tutorEducationLevels.level_id],
+      references: [educationLevels.id],
+    }),
+  })
+);
 
-export const educationLevelsRelations = relations(educationLevels, ({ many }) => ({
-  tutors: many(tutorEducationLevels),
-  courses: many(courses),
-  subjects: many(subjectEducationLevels),
-}));
+export const educationLevelsRelations = relations(
+  educationLevels,
+  ({ many }) => ({
+    tutors: many(tutorEducationLevels),
+    courses: many(courses),
+    subjects: many(subjectEducationLevels),
+  })
+);
 
-export const conversationsRelations = relations(conversations, ({ one, many }) => ({
-  student: one(users, {
-    fields: [conversations.student_id],
-    references: [users.id],
-  }),
-  tutor: one(users, {
-    fields: [conversations.tutor_id],
-    references: [users.id],
-  }),
-  messages: many(messages),
-}));
+export const conversationsRelations = relations(
+  conversations,
+  ({ one, many }) => ({
+    student: one(users, {
+      fields: [conversations.student_id],
+      references: [users.id],
+    }),
+    tutor: one(users, {
+      fields: [conversations.tutor_id],
+      references: [users.id],
+    }),
+    messages: many(messages),
+  })
+);
 
 export const messagesRelations = relations(messages, ({ one }) => ({
   conversation: one(conversations, {
@@ -279,6 +456,45 @@ export const reviewsRelations = relations(reviews, ({ one }) => ({
   tutor: one(tutorProfiles, {
     fields: [reviews.tutor_id],
     references: [tutorProfiles.id],
+  }),
+}));
+
+export const bookingsRelations = relations(bookings, ({ one }) => ({
+  student: one(users, {
+    fields: [bookings.student_id],
+    references: [users.id],
+  }),
+  tutor: one(tutorProfiles, {
+    fields: [bookings.tutor_id],
+    references: [tutorProfiles.id],
+  }),
+  course: one(courses, {
+    fields: [bookings.course_id],
+    references: [courses.id],
+  }),
+  payment: one(payments, {
+    fields: [bookings.id],
+    references: [payments.booking_id],
+  }),
+  sessionNote: one(sessionNotes, {
+    fields: [bookings.id],
+    references: [sessionNotes.booking_id],
+  }),
+}));
+
+export const paymentsRelations = relations(payments, ({ one }) => ({
+  booking: one(bookings, {
+    fields: [payments.booking_id],
+    references: [bookings.id],
+  }),
+  payer: one(users, { fields: [payments.payer_id], references: [users.id] }),
+  payee: one(users, { fields: [payments.payee_id], references: [users.id] }),
+}));
+
+export const sessionNotesRelations = relations(sessionNotes, ({ one }) => ({
+  booking: one(bookings, {
+    fields: [sessionNotes.booking_id],
+    references: [bookings.id],
   }),
 }));
 
@@ -325,8 +541,61 @@ export const reviewSelectSchema = createSelectSchema(reviews);
 export const favoriteTutorInsertSchema = createInsertSchema(favoriteTutors);
 export const favoriteTutorSelectSchema = createSelectSchema(favoriteTutors);
 
-export const subjectEducationLevelInsertSchema = createInsertSchema(subjectEducationLevels);
-export const subjectEducationLevelSelectSchema = createSelectSchema(subjectEducationLevels);
+export const subjectEducationLevelInsertSchema = createInsertSchema(
+  subjectEducationLevels
+);
+export const subjectEducationLevelSelectSchema = createSelectSchema(
+  subjectEducationLevels
+);
+
+export const bookingInsertSchema = createInsertSchema(bookings);
+// Bổ sung validation riêng
+export const bookingValidationSchema = z.object({
+  title: z.string().min(3, "Tiêu đề phải có ít nhất 3 ký tự"),
+  date: z.string(), // Thêm trường date để xử lý đúng múi giờ
+  start_time: z.string(), // Điều chỉnh để chỉ nhận string format "HH:MM"
+  end_time: z.string(), // Điều chỉnh để chỉ nhận string format "HH:MM"
+  student_id: z.number(),
+  tutor_id: z.number(),
+  course_id: z.number().optional(),
+  description: z.string().optional(),
+  location: z.string().optional(),
+  meeting_url: z.string().optional(),
+  hourly_rate: z.number().or(z.string().transform((val) => parseFloat(val))),
+  total_hours: z.number().optional(), // Trở thành optional vì sẽ tính toán trên server
+  total_amount: z.number().optional(), // Trở thành optional vì sẽ tính toán trên server
+  status: z.string().default("pending"),
+});
+export const bookingSelectSchema = createSelectSchema(bookings);
+
+export const paymentInsertSchema = createInsertSchema(payments);
+export const paymentSelectSchema = createSelectSchema(payments);
+
+// Validation schema cho thanh toán
+export const paymentValidationSchema = z.object({
+  booking_id: z.number(),
+  transaction_id: z.string().optional(),
+  amount: z.number().or(z.string().transform((val) => parseFloat(val))),
+  fee: z
+    .number()
+    .or(z.string().transform((val) => parseFloat(val)))
+    .optional(),
+  net_amount: z.number().or(z.string().transform((val) => parseFloat(val))),
+  payer_id: z.number(),
+  payee_id: z.number(),
+  status: z.string().default("pending"),
+  payment_method: z.string(),
+  payment_data: z.any().optional(),
+});
+
+export const sessionNoteInsertSchema = createInsertSchema(sessionNotes);
+export const sessionNoteSelectSchema = createSelectSchema(sessionNotes);
+
+// Schema for teaching schedules
+export const teachingScheduleInsertSchema =
+  createInsertSchema(teachingSchedules);
+export const teachingScheduleSelectSchema =
+  createSelectSchema(teachingSchedules);
 
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -359,139 +628,8 @@ export type FavoriteTutor = typeof favoriteTutors.$inferSelect;
 export type NewFavoriteTutor = typeof favoriteTutors.$inferInsert;
 
 export type SubjectEducationLevel = typeof subjectEducationLevels.$inferSelect;
-export type NewSubjectEducationLevel = typeof subjectEducationLevels.$inferInsert;
-
-// Bảng đặt lịch (bookings)
-export const bookings = pgTable("bookings", {
-  id: serial("id").primaryKey(),
-  student_id: integer("student_id").notNull().references(() => users.id),
-  tutor_id: integer("tutor_id").notNull().references(() => tutorProfiles.id),
-  course_id: integer("course_id").references(() => courses.id),
-  
-  // Thông tin lịch học
-  title: text("title").notNull(),
-  description: text("description"),
-  start_time: timestamp("start_time").notNull(),
-  end_time: timestamp("end_time").notNull(),
-  location: text("location"),  // Địa điểm nếu dạy trực tiếp
-  meeting_url: text("meeting_url"), // URL nếu dạy trực tuyến
-  
-  // Thông tin thanh toán
-  hourly_rate: decimal("hourly_rate", { precision: 10, scale: 2 }).notNull(),
-  total_hours: decimal("total_hours", { precision: 5, scale: 2 }).notNull(),
-  total_amount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
-  
-  // Trạng thái đặt lịch
-  status: text("status").notNull().default("pending"), // pending, confirmed, completed, cancelled, rejected
-  
-  // Timestamps
-  created_at: timestamp("created_at").defaultNow().notNull(),
-  updated_at: timestamp("updated_at").defaultNow().notNull()
-});
-
-// Bảng thanh toán (payments)
-export const payments = pgTable("payments", {
-  id: serial("id").primaryKey(),
-  booking_id: integer("booking_id").notNull().references(() => bookings.id),
-  transaction_id: text("transaction_id"),  // ID giao dịch từ VNPay
-  
-  // Thông tin thanh toán
-  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
-  fee: decimal("fee", { precision: 10, scale: 2 }).default("0"),
-  net_amount: decimal("net_amount", { precision: 10, scale: 2 }).notNull(),
-  
-  // Thông tin người thanh toán/nhận tiền
-  payer_id: integer("payer_id").notNull().references(() => users.id),
-  payee_id: integer("payee_id").notNull().references(() => users.id),
-  
-  // Trạng thái thanh toán
-  status: text("status").notNull().default("pending"), // pending, completed, refunded, failed
-  payment_method: text("payment_method").notNull(),  // vnpay, bank_transfer, wallet
-  
-  // Data bổ sung
-  payment_data: json("payment_data"),  // Lưu dữ liệu phản hồi từ cổng thanh toán
-  
-  // Timestamps
-  created_at: timestamp("created_at").defaultNow().notNull(),
-  updated_at: timestamp("updated_at").defaultNow().notNull()
-});
-
-// Bảng ghi chú và đánh giá buổi học (session_notes)
-export const sessionNotes = pgTable("session_notes", {
-  id: serial("id").primaryKey(),
-  booking_id: integer("booking_id").notNull().references(() => bookings.id),
-  
-  // Ghi chú của gia sư
-  tutor_notes: text("tutor_notes"),
-  
-  // Đánh giá của học sinh
-  student_rating: integer("student_rating"),  // 1-5 sao
-  student_feedback: text("student_feedback"),
-  
-  // Timestamps
-  created_at: timestamp("created_at").defaultNow().notNull(),
-  updated_at: timestamp("updated_at").defaultNow().notNull()
-});
-
-// Relations
-export const bookingsRelations = relations(bookings, ({ one }) => ({
-  student: one(users, { fields: [bookings.student_id], references: [users.id] }),
-  tutor: one(tutorProfiles, { fields: [bookings.tutor_id], references: [tutorProfiles.id] }),
-  course: one(courses, { fields: [bookings.course_id], references: [courses.id] }),
-  payment: one(payments, { fields: [bookings.id], references: [payments.booking_id] }),
-  sessionNote: one(sessionNotes, { fields: [bookings.id], references: [sessionNotes.booking_id] })
-}));
-
-export const paymentsRelations = relations(payments, ({ one }) => ({
-  booking: one(bookings, { fields: [payments.booking_id], references: [bookings.id] }),
-  payer: one(users, { fields: [payments.payer_id], references: [users.id] }),
-  payee: one(users, { fields: [payments.payee_id], references: [users.id] })
-}));
-
-export const sessionNotesRelations = relations(sessionNotes, ({ one }) => ({
-  booking: one(bookings, { fields: [sessionNotes.booking_id], references: [bookings.id] })
-}));
-
-// Schemas
-export const bookingInsertSchema = createInsertSchema(bookings);
-// Bổ sung validation riêng
-export const bookingValidationSchema = z.object({
-  title: z.string().min(3, "Tiêu đề phải có ít nhất 3 ký tự"),
-  date: z.string(), // Thêm trường date để xử lý đúng múi giờ
-  start_time: z.string(), // Điều chỉnh để chỉ nhận string format "HH:MM"
-  end_time: z.string(), // Điều chỉnh để chỉ nhận string format "HH:MM"
-  student_id: z.number(),
-  tutor_id: z.number(),
-  course_id: z.number().optional(),
-  description: z.string().optional(),
-  location: z.string().optional(),
-  meeting_url: z.string().optional(),
-  hourly_rate: z.number().or(z.string().transform(val => parseFloat(val))),
-  total_hours: z.number().optional(), // Trở thành optional vì sẽ tính toán trên server
-  total_amount: z.number().optional(), // Trở thành optional vì sẽ tính toán trên server
-  status: z.string().default("pending")
-});
-export const bookingSelectSchema = createSelectSchema(bookings);
-
-export const paymentInsertSchema = createInsertSchema(payments);
-export const paymentSelectSchema = createSelectSchema(payments);
-
-// Validation schema cho thanh toán
-export const paymentValidationSchema = z.object({
-  booking_id: z.number(),
-  transaction_id: z.string().optional(),
-  amount: z.number().or(z.string().transform(val => parseFloat(val))),
-  fee: z.number().or(z.string().transform(val => parseFloat(val))).optional(),
-  net_amount: z.number().or(z.string().transform(val => parseFloat(val))),
-  payer_id: z.number(),
-  payee_id: z.number(),
-  status: z.string().default("pending"),
-  payment_method: z.string(),
-  payment_data: z.any().optional()
-});
-
-export const sessionNoteInsertSchema = createInsertSchema(sessionNotes);
-export const sessionNoteSelectSchema = createSelectSchema(sessionNotes);
+export type NewSubjectEducationLevel =
+  typeof subjectEducationLevels.$inferInsert;
 
 export type Booking = typeof bookings.$inferSelect;
 export type NewBooking = typeof bookings.$inferInsert;
@@ -501,3 +639,7 @@ export type NewPayment = typeof payments.$inferInsert;
 
 export type SessionNote = typeof sessionNotes.$inferSelect;
 export type NewSessionNote = typeof sessionNotes.$inferInsert;
+
+// Types for teaching schedules
+export type TeachingSchedule = typeof teachingSchedules.$inferSelect;
+export type NewTeachingSchedule = typeof teachingSchedules.$inferInsert;

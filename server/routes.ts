@@ -12,6 +12,7 @@ import * as courseController from "./controllers/courseController";
 import * as conversationController from "./controllers/conversationController";
 import * as bookingController from "./controllers/bookingController";
 import * as paymentController from "./controllers/paymentController";
+import * as scheduleController from "./controllers/scheduleController";
 
 // Import middlewares
 import { authMiddleware, roleMiddleware } from "./middlewares/authMiddleware";
@@ -328,6 +329,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     authMiddleware,
     roleMiddleware(["admin"]),
     paymentController.approvePaymentToTutor
+  );
+
+  // Schedule routes
+  app.post(
+    `${apiPrefix}/schedules/create`,
+    authMiddleware,
+    roleMiddleware(["tutor"]),
+    scheduleController.createSchedule
+  );
+  app.get(
+    `${apiPrefix}/schedules/tutor`,
+    authMiddleware,
+    roleMiddleware(["tutor"]),
+    scheduleController.getTutorSchedules
   );
 
   return httpServer;

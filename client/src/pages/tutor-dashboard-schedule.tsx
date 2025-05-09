@@ -19,23 +19,65 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
-import { format, addDays } from "date-fns";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { format, addDays, parseISO, isSameDay } from "date-fns";
 import { vi } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+interface Schedule {
+  id: number;
+  tutor_id: number;
+  course_id?: number;
+  date: string;
+  start_time: string;
+  end_time: string;
+  mode: "online" | "offline";
+  location?: string;
+  is_recurring: boolean;
+  status: "available" | "booked" | "completed" | "cancelled";
+  created_at: string;
+  updated_at: string;
+  course?: {
+    id: number;
+    title: string;
+  };
+}
 
 interface ScheduleEvent {
   id: string | number;
@@ -72,14 +114,18 @@ interface CreateRecurringSessionInput {
 
 // API function to create a single session schedule
 const createSingleSession = async (data: CreateSingleSessionInput) => {
-  const response = await fetch("/api/schedules/create", {
+  const response = await fetch("/api/v1/schedules/create", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      ...data,
-      type: "single",
+      date: format(data.date, "yyyy-MM-dd"),
+      start_time: data.startTime,
+      end_time: data.endTime,
+      mode: data.sessionType,
+      location: data.location,
+      is_recurring: false,
     }),
   });
 
@@ -92,14 +138,20 @@ const createSingleSession = async (data: CreateSingleSessionInput) => {
 
 // API function to create recurring sessions
 const createRecurringSessions = async (data: CreateRecurringSessionInput) => {
-  const response = await fetch("/api/schedules/create", {
+  const response = await fetch("/api/v1/schedules/create", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      ...data,
-      type: "recurring",
+      start_date: format(data.startDate, "yyyy-MM-dd"),
+      end_date: format(data.endDate, "yyyy-MM-dd"),
+      repeat_days: data.weekdays,
+      start_time: data.timeSlots[0].startTime,
+      end_time: data.timeSlots[0].endTime,
+      mode: data.sessionType,
+      location: data.location,
+      is_recurring: true,
     }),
   });
 
@@ -112,7 +164,14 @@ const createRecurringSessions = async (data: CreateRecurringSessionInput) => {
 
 // API function to fetch tutor schedules
 const fetchTutorSchedules = async () => {
-  const response = await fetch("/api/schedules/tutor");
+  const response = await fetch("/api/v1/schedules/tutor", {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${localStorage.getItem("token")}`,
+    },
+    credentials: "include", // Đảm bảo cookies được gửi trong request
+  });
 
   if (!response.ok) {
     throw new Error("Failed to fetch schedules");
@@ -121,10 +180,75 @@ const fetchTutorSchedules = async () => {
   return response.json();
 };
 
+// API function to cancel a schedule
+const cancelSchedule = async (scheduleId: number) => {
+  const response = await fetch(`/api/v1/schedules/${scheduleId}`, {
+    method: "DELETE",
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to cancel schedule");
+  }
+
+  return response.json();
+};
+
+// Function to get status badge variant
+const getStatusBadgeVariant = (
+  status: string
+): "default" | "destructive" | "outline" | "secondary" => {
+  switch (status) {
+    case "available":
+      return "outline";
+    case "booked":
+      return "default";
+    case "completed":
+      return "secondary";
+    case "cancelled":
+      return "destructive";
+    default:
+      return "secondary";
+  }
+};
+
+// Function to translate status text to Vietnamese
+const translateStatus = (status: string) => {
+  switch (status) {
+    case "available":
+      return "Chưa đặt";
+    case "booked":
+      return "Đã đặt";
+    case "completed":
+      return "Đã dạy";
+    case "cancelled":
+      return "Đã huỷ";
+    default:
+      return status;
+  }
+};
+
+// Function to get status emoji
+const getStatusEmoji = (status: string) => {
+  switch (status) {
+    case "available":
+      return "🟢";
+    case "booked":
+      return "🔴";
+    case "completed":
+      return "✅";
+    case "cancelled":
+      return "❌";
+    default:
+      return "⚪";
+  }
+};
+
 export default function TutorSchedulePage() {
   const { user } = useSelector((state: RootState) => state.auth);
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [activeTab, setActiveTab] = useState<string>("single");
+  const [viewMode, setViewMode] = useState<"calendar" | "table">("table");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   // Single session form state
   const [singleSessionForm, setSingleSessionForm] =
@@ -150,15 +274,18 @@ export default function TutorSchedulePage() {
     });
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [scheduleToCancel, setScheduleToCancel] = useState<number | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // Query to fetch tutor schedules
-  const { data: scheduleData, isLoading } = useQuery({
+  const {
+    data: scheduleData,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["tutorSchedules"],
     queryFn: fetchTutorSchedules,
-    // Fallback to empty array if API request fails
-    placeholderData: [],
   });
 
   // Mutation for creating a single session
@@ -202,40 +329,47 @@ export default function TutorSchedulePage() {
     },
   });
 
-  // Combined events from API or fallback to example data
-  const events: ScheduleEvent[] = scheduleData || [
-    {
-      id: 1,
-      title: "Lịch trống",
-      time: "09:00 - 10:30",
-      date: new Date(),
-      type: "available",
-      sessionType: "online",
+  // Mutation for cancelling a schedule
+  const cancelScheduleMutation = useMutation({
+    mutationFn: cancelSchedule,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tutorSchedules"] });
+      toast({
+        title: "Lịch dạy đã huỷ",
+        description: "Đã huỷ lịch dạy thành công",
+      });
     },
-    {
-      id: 2,
-      title: "Mathematics",
-      student: "Trần Thị B",
-      time: "13:00 - 14:30",
-      date: new Date(),
-      type: "booked",
-      sessionType: "offline",
-      location: "Café MindX, 14 Nguyễn Đình Chiểu",
+    onError: (error) => {
+      toast({
+        title: "Lỗi",
+        description: `Không thể huỷ lịch: ${error.message}`,
+        variant: "destructive",
+      });
     },
-    {
-      id: 3,
-      title: "Chemistry",
-      student: "Lê Văn C",
-      time: "16:00 - 17:30",
-      date: new Date(Date.now() + 86400000),
-      type: "booked",
-      sessionType: "online",
-    },
-  ];
+  });
 
-  // Filter events for selected date
-  const selectedDateEvents = events.filter(
-    (event) => date && event.date.toDateString() === date.toDateString()
+  // Process schedules data
+  const schedules: Schedule[] = scheduleData?.schedules || [];
+
+  // Filter schedules by status
+  const filteredSchedules = schedules.filter(
+    (schedule) => statusFilter === "all" || schedule.status === statusFilter
+  );
+
+  // Calendar-formatted events
+  const calendarEvents: ScheduleEvent[] = schedules.map((schedule) => ({
+    id: schedule.id,
+    title: schedule.course?.title || "Lịch trống",
+    time: `${schedule.start_time} - ${schedule.end_time}`,
+    date: parseISO(schedule.date),
+    location: schedule.location,
+    type: schedule.status === "available" ? "available" : "booked",
+    sessionType: schedule.mode,
+  }));
+
+  // Filter events for selected date in calendar view
+  const selectedDateEvents = calendarEvents.filter(
+    (event) => date && isSameDay(event.date, date)
   );
 
   // Handle single session form submission
@@ -295,6 +429,14 @@ export default function TutorSchedulePage() {
     }));
   };
 
+  // Handle schedule cancellation
+  const handleCancelSchedule = () => {
+    if (scheduleToCancel) {
+      cancelScheduleMutation.mutate(scheduleToCancel);
+      setScheduleToCancel(null);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="container p-6">
@@ -303,94 +445,435 @@ export default function TutorSchedulePage() {
           <Button onClick={() => setIsDialogOpen(true)}>Tạo lịch mới</Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-1">
-            <Card>
-              <CardHeader>
-                <CardTitle>Lịch</CardTitle>
-                <CardDescription>Xem lịch dạy theo ngày</CardDescription>
-              </CardHeader>
-              <CardContent className="pb-6">
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={setDate}
-                  className="rounded-md border"
-                  locale={vi}
-                />
-              </CardContent>
-            </Card>
+        {/* View Mode and Filter Controls */}
+        <div className="flex flex-col md:flex-row gap-4 mb-6 items-start md:items-center justify-between">
+          <div className="flex gap-4">
+            <Tabs
+              value={viewMode}
+              onValueChange={(v) => setViewMode(v as "calendar" | "table")}
+              className="w-[400px]"
+            >
+              <TabsList>
+                <TabsTrigger value="table">Dạng bảng</TabsTrigger>
+                <TabsTrigger value="calendar">Lịch theo ngày</TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
 
-          <div className="md:col-span-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  Lịch dạy{" "}
-                  {date && format(date, "EEEE, dd MMMM yyyy", { locale: vi })}
-                </CardTitle>
-                <CardDescription>
-                  Danh sách các buổi dạy và lịch trống
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {isLoading ? (
-                  <div className="flex justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                  </div>
-                ) : selectedDateEvents.length > 0 ? (
-                  <div className="space-y-4">
-                    {selectedDateEvents.map((event) => (
-                      <div
-                        key={event.id}
-                        className="flex items-center justify-between p-4 border rounded-lg"
-                      >
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-medium">{event.title}</h3>
-                            <Badge
-                              variant={
-                                event.type === "available"
-                                  ? "outline"
-                                  : "default"
-                              }
-                            >
-                              {event.type === "available"
-                                ? "Lịch trống"
-                                : "Đã đặt"}
-                            </Badge>
+          <div className="flex gap-2 items-center">
+            <Label htmlFor="status-filter" className="mr-2">
+              Lọc theo trạng thái:
+            </Label>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Chọn trạng thái" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="all">Tất cả</SelectItem>
+                  <SelectItem value="available">🟢 Chưa đặt</SelectItem>
+                  <SelectItem value="booked">🔴 Đã đặt</SelectItem>
+                  <SelectItem value="completed">✅ Đã dạy</SelectItem>
+                  <SelectItem value="cancelled">❌ Đã huỷ</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Table View */}
+        {viewMode === "table" && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Danh sách lịch dạy</CardTitle>
+              <CardDescription>
+                Quản lý lịch dạy và xem tình trạng các buổi học
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : isError ? (
+                <div className="text-center py-8 text-destructive">
+                  Đã xảy ra lỗi khi tải dữ liệu. Vui lòng thử lại sau.
+                </div>
+              ) : filteredSchedules.length > 0 ? (
+                <div className="border rounded-md">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Ngày</TableHead>
+                        <TableHead>Thời gian</TableHead>
+                        <TableHead>Hình thức</TableHead>
+                        <TableHead>Khóa học</TableHead>
+                        <TableHead>Địa điểm</TableHead>
+                        <TableHead>Trạng thái</TableHead>
+                        <TableHead className="text-right">Hành động</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredSchedules.map((schedule) => (
+                        <TableRow key={schedule.id}>
+                          <TableCell>
+                            {format(parseISO(schedule.date), "dd/MM/yyyy")}
+                          </TableCell>
+                          <TableCell>
+                            {schedule.start_time} - {schedule.end_time}
+                          </TableCell>
+                          <TableCell>
                             <Badge variant="outline">
-                              {event.sessionType === "online"
+                              {schedule.mode === "online"
                                 ? "Online"
                                 : "Offline"}
                             </Badge>
+                          </TableCell>
+                          <TableCell>{schedule.course?.title || "-"}</TableCell>
+                          <TableCell>{schedule.location || "-"}</TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={getStatusBadgeVariant(schedule.status)}
+                            >
+                              {getStatusEmoji(schedule.status)}{" "}
+                              {translateStatus(schedule.status)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {schedule.status === "available" && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                      setScheduleToCancel(schedule.id)
+                                    }
+                                  >
+                                    Huỷ lịch
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>
+                                      Xác nhận huỷ lịch
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Bạn có chắc chắn muốn huỷ lịch dạy này
+                                      không? Hành động này không thể khôi phục.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel
+                                      onClick={() => setScheduleToCancel(null)}
+                                    >
+                                      Không
+                                    </AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={handleCancelSchedule}
+                                      className="bg-destructive hover:bg-destructive/90"
+                                    >
+                                      {cancelScheduleMutation.isPending ? (
+                                        <span className="flex items-center gap-1">
+                                          <span className="h-3 w-3 animate-spin rounded-full border-2 border-background border-t-transparent"></span>
+                                          Đang huỷ...
+                                        </span>
+                                      ) : (
+                                        "Huỷ lịch"
+                                      )}
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="ml-2"
+                                >
+                                  Chi tiết
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Chi tiết lịch dạy</DialogTitle>
+                                </DialogHeader>
+                                <div className="grid gap-4 py-4">
+                                  <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label className="text-right font-medium">
+                                      Ngày
+                                    </Label>
+                                    <div className="col-span-3">
+                                      {format(
+                                        parseISO(schedule.date),
+                                        "EEEE, dd MMMM yyyy",
+                                        { locale: vi }
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label className="text-right font-medium">
+                                      Thời gian
+                                    </Label>
+                                    <div className="col-span-3">
+                                      {schedule.start_time} -{" "}
+                                      {schedule.end_time}
+                                    </div>
+                                  </div>
+                                  <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label className="text-right font-medium">
+                                      Hình thức
+                                    </Label>
+                                    <div className="col-span-3">
+                                      {schedule.mode === "online"
+                                        ? "Online"
+                                        : "Offline"}
+                                    </div>
+                                  </div>
+                                  <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label className="text-right font-medium">
+                                      Khóa học
+                                    </Label>
+                                    <div className="col-span-3">
+                                      {schedule.course?.title || "-"}
+                                    </div>
+                                  </div>
+                                  <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label className="text-right font-medium">
+                                      Địa điểm
+                                    </Label>
+                                    <div className="col-span-3">
+                                      {schedule.location || "-"}
+                                    </div>
+                                  </div>
+                                  <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label className="text-right font-medium">
+                                      Trạng thái
+                                    </Label>
+                                    <div className="col-span-3">
+                                      <Badge
+                                        variant={getStatusBadgeVariant(
+                                          schedule.status
+                                        )}
+                                      >
+                                        {getStatusEmoji(schedule.status)}{" "}
+                                        {translateStatus(schedule.status)}
+                                      </Badge>
+                                    </div>
+                                  </div>
+                                  <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label className="text-right font-medium">
+                                      Định kỳ
+                                    </Label>
+                                    <div className="col-span-3">
+                                      {schedule.is_recurring ? "Có" : "Không"}
+                                    </div>
+                                  </div>
+                                </div>
+                                <DialogFooter>
+                                  {schedule.status === "available" && (
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button
+                                          variant="destructive"
+                                          onClick={() =>
+                                            setScheduleToCancel(schedule.id)
+                                          }
+                                        >
+                                          Huỷ lịch
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>
+                                            Xác nhận huỷ lịch
+                                          </AlertDialogTitle>
+                                          <AlertDialogDescription>
+                                            Bạn có chắc chắn muốn huỷ lịch dạy
+                                            này không? Hành động này không thể
+                                            khôi phục.
+                                          </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel
+                                            onClick={() =>
+                                              setScheduleToCancel(null)
+                                            }
+                                          >
+                                            Không
+                                          </AlertDialogCancel>
+                                          <AlertDialogAction
+                                            onClick={handleCancelSchedule}
+                                            className="bg-destructive hover:bg-destructive/90"
+                                          >
+                                            {cancelScheduleMutation.isPending ? (
+                                              <span className="flex items-center gap-1">
+                                                <span className="h-3 w-3 animate-spin rounded-full border-2 border-background border-t-transparent"></span>
+                                                Đang huỷ...
+                                              </span>
+                                            ) : (
+                                              "Huỷ lịch"
+                                            )}
+                                          </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                  )}
+                                </DialogFooter>
+                              </DialogContent>
+                            </Dialog>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  {statusFilter === "all"
+                    ? "Chưa có lịch dạy nào. Hãy tạo lịch mới."
+                    : `Không có lịch dạy nào với trạng thái "${translateStatus(
+                        statusFilter
+                      )}".`}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Calendar View */}
+        {viewMode === "calendar" && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="md:col-span-1">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Lịch</CardTitle>
+                  <CardDescription>Xem lịch dạy theo ngày</CardDescription>
+                </CardHeader>
+                <CardContent className="pb-6">
+                  <Calendar
+                    mode="single"
+                    selected={date}
+                    onSelect={setDate}
+                    className="rounded-md border"
+                    locale={vi}
+                  />
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="md:col-span-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>
+                    Lịch dạy{" "}
+                    {date && format(date, "EEEE, dd MMMM yyyy", { locale: vi })}
+                  </CardTitle>
+                  <CardDescription>
+                    Danh sách các buổi dạy và lịch trống
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {isLoading ? (
+                    <div className="flex justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    </div>
+                  ) : selectedDateEvents.length > 0 ? (
+                    <div className="space-y-4">
+                      {selectedDateEvents.map((event) => (
+                        <div
+                          key={event.id}
+                          className="flex items-center justify-between p-4 border rounded-lg"
+                        >
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-medium">{event.title}</h3>
+                              <Badge
+                                variant={
+                                  event.type === "available"
+                                    ? "outline"
+                                    : "default"
+                                }
+                              >
+                                {event.type === "available"
+                                  ? "Lịch trống"
+                                  : "Đã đặt"}
+                              </Badge>
+                              <Badge variant="outline">
+                                {event.sessionType === "online"
+                                  ? "Online"
+                                  : "Offline"}
+                              </Badge>
+                            </div>
+                            {event.student && (
+                              <p className="text-sm text-muted-foreground">
+                                Học sinh: {event.student}
+                              </p>
+                            )}
+                            {event.location && (
+                              <p className="text-sm text-muted-foreground">
+                                Địa điểm: {event.location}
+                              </p>
+                            )}
                           </div>
-                          {event.student && (
-                            <p className="text-sm text-muted-foreground">
-                              Học sinh: {event.student}
-                            </p>
-                          )}
-                          {event.location && (
-                            <p className="text-sm text-muted-foreground">
-                              Địa điểm: {event.location}
-                            </p>
-                          )}
+                          <div className="text-right flex items-center gap-2">
+                            <Badge variant="secondary">{event.time}</Badge>
+                            {event.type === "available" && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                      setScheduleToCancel(Number(event.id))
+                                    }
+                                  >
+                                    Huỷ
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>
+                                      Xác nhận huỷ lịch
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Bạn có chắc chắn muốn huỷ lịch dạy này
+                                      không? Hành động này không thể khôi phục.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel
+                                      onClick={() => setScheduleToCancel(null)}
+                                    >
+                                      Không
+                                    </AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={handleCancelSchedule}
+                                      className="bg-destructive hover:bg-destructive/90"
+                                    >
+                                      Huỷ lịch
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <Badge variant="secondary">{event.time}</Badge>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-center py-8 text-muted-foreground">
-                    Không có lịch dạy nào vào ngày này
-                  </p>
-                )}
-              </CardContent>
-            </Card>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-center py-8 text-muted-foreground">
+                      Không có lịch dạy nào vào ngày này
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Dialog for creating new schedules with tabs */}

@@ -4,6 +4,7 @@ import authService from "./authService";
 
 interface AuthState {
   user: User | null;
+  accessToken: string | null;
   isLoading: boolean;
   isSuccess: boolean;
   error: string | null;
@@ -17,6 +18,7 @@ interface ProfileUpdateData {
 
 const initialState: AuthState = {
   user: null,
+  accessToken: null,
   isLoading: false,
   isSuccess: false,
   error: null,
@@ -143,5 +145,6 @@ export const authSlice = createSlice({
   },
 });
 
-export const { reset, updateAvatar, updateUserProfile, setUser } = authSlice.actions;
+export const { reset, updateAvatar, updateUserProfile, setUser } =
+  authSlice.actions;
 export default authSlice.reducer;
