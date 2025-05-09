@@ -98,13 +98,13 @@ export type AvailabilityItem = {
 // Form schema for tutor profile
 const tutorProfileSchema = z.object({
   bio: z.string().min(50, "Giới thiệu phải có ít nhất 50 ký tự"),
-  
+
   // Ngày sinh
   date_of_birth: z.string().optional(),
-  
+
   // Địa chỉ
   address: z.string().optional(),
-  
+
   // Các trường khác như môn học (subjects), cấp độ giảng dạy (levels),
   // và lịch trống (availability) được xử lý riêng
 });
@@ -112,9 +112,9 @@ const tutorProfileSchema = z.object({
 // Hàm kiểm tra hai khung giờ có chồng lấn nhau không
 // Hàm định dạng giá tiền
 const formatPrice = (price: number): string => {
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'VND',
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(price);
@@ -125,12 +125,12 @@ const isTimeSlotOverlapping = (
   slot2: AvailabilityItem
 ): boolean => {
   if (slot1.date !== slot2.date) return false;
-  
+
   const startTime1 = slot1.startTime;
   const endTime1 = slot1.endTime;
   const startTime2 = slot2.startTime;
   const endTime2 = slot2.endTime;
-  
+
   // Kiểm tra có chồng lấn không
   return (
     (startTime1 < endTime2 && endTime1 > startTime2) ||
@@ -151,16 +151,19 @@ export default function TutorDashboardProfile() {
   const [subjectsDialogOpen, setSubjectsDialogOpen] = useState(false);
 
   // Khung giờ trống
-  const [availabilityItems, setAvailabilityItems] = useState<AvailabilityItem[]>([]);
+  const [availabilityItems, setAvailabilityItems] = useState<
+    AvailabilityItem[]
+  >([]);
   const [availabilityDialogOpen, setAvailabilityDialogOpen] = useState(false);
 
   // State cho khung giờ trống mới (chỉ có ngày cụ thể)
-  const [newAvailabilityItem, setNewAvailabilityItem] = useState<AvailabilityItem>({
-    type: "specific",
-    date: format(new Date(), "yyyy-MM-dd"),
-    startTime: "08:00",
-    endTime: "17:00",
-  });
+  const [newAvailabilityItem, setNewAvailabilityItem] =
+    useState<AvailabilityItem>({
+      type: "specific",
+      date: format(new Date(), "yyyy-MM-dd"),
+      startTime: "08:00",
+      endTime: "17:00",
+    });
 
   // Get tutor profile
   const {
@@ -205,7 +208,7 @@ export default function TutorDashboardProfile() {
 
   // Handle certification file change
   const handleCertificationsChange = (
-    e: React.ChangeEvent<HTMLInputElement>,
+    e: React.ChangeEvent<HTMLInputElement>
   ) => {
     if (e.target.files && e.target.files.length > 0) {
       const files = Array.from(e.target.files);
@@ -292,9 +295,10 @@ export default function TutorDashboardProfile() {
       if (!res.ok) {
         // Cố gắng đọc thông báo lỗi từ server nếu có
         const errorData = await res.json().catch(() => null);
-        const errorMessage = errorData && errorData.message 
-          ? errorData.message 
-          : "Failed to upload avatar";
+        const errorMessage =
+          errorData && errorData.message
+            ? errorData.message
+            : "Failed to upload avatar";
         throw new Error(errorMessage);
       }
 
@@ -339,10 +343,6 @@ export default function TutorDashboardProfile() {
       setUploadingAvatar(false);
     }
   };
-  
-
-  
-
 
   // Update profile mutation
   const updateProfileMutation = useMutation({
@@ -351,12 +351,16 @@ export default function TutorDashboardProfile() {
       const profileData = {
         bio: data.bio,
         date_of_birth: data.date_of_birth,
-        address: data.address
+        address: data.address,
       };
 
       console.log("Updating profile with:", profileData);
 
-      const res = await apiRequest("PATCH", `/api/v1/tutors/profile`, profileData);
+      const res = await apiRequest(
+        "PATCH",
+        `/api/v1/tutors/profile`,
+        profileData
+      );
       return res.json();
     },
     onSuccess: () => {
@@ -373,9 +377,7 @@ export default function TutorDashboardProfile() {
       toast({
         title: "Cập nhật thất bại",
         description:
-          error instanceof Error
-            ? error.message
-            : "Không thể cập nhật hồ sơ",
+          error instanceof Error ? error.message : "Không thể cập nhật hồ sơ",
         variant: "destructive",
       });
     },
@@ -400,7 +402,8 @@ export default function TutorDashboardProfile() {
     onError: (error) => {
       toast({
         title: "Cập nhật thất bại",
-        description: error instanceof Error ? error.message : "Không thể cập nhật môn học",
+        description:
+          error instanceof Error ? error.message : "Không thể cập nhật môn học",
         variant: "destructive",
       });
     },
@@ -415,35 +418,38 @@ export default function TutorDashboardProfile() {
   const onSubmit = async (values: z.infer<typeof tutorProfileSchema>) => {
     // Cập nhật profile
     const updateProfilePromise = updateProfileMutation.mutateAsync(values);
-    
+
     // Cập nhật môn học
-    const updateSubjectsPromise = selectedSubjects.length > 0 
-      ? updateSubjectsMutation.mutateAsync(selectedSubjects)
-      : Promise.resolve();
-    
+    const updateSubjectsPromise =
+      selectedSubjects.length > 0
+        ? updateSubjectsMutation.mutateAsync(selectedSubjects)
+        : Promise.resolve();
+
     // Tải lên chứng chỉ nếu có chọn file
-    const uploadCertificationsPromise = certifications.length > 0
-      ? certificationsUploadMutation.mutateAsync(certifications)
-      : Promise.resolve();
-    
+    const uploadCertificationsPromise =
+      certifications.length > 0
+        ? certificationsUploadMutation.mutateAsync(certifications)
+        : Promise.resolve();
+
     try {
       await Promise.all([
-        updateProfilePromise, 
+        updateProfilePromise,
         updateSubjectsPromise,
-        uploadCertificationsPromise
+        uploadCertificationsPromise,
       ]);
-      
+
       // Xóa danh sách file đã chọn sau khi tải lên thành công
       if (certifications.length > 0) {
         setCertifications([]);
       }
-      
+
       toast({
         title: "Hồ sơ đã được cập nhật",
-        description: "Thông tin hồ sơ và các dữ liệu liên quan đã được cập nhật thành công",
+        description:
+          "Thông tin hồ sơ và các dữ liệu liên quan đã được cập nhật thành công",
         variant: "default",
       });
-      
+
       // Đóng dialog
       setProfileDialogOpen(false);
     } catch (error) {
@@ -461,7 +467,7 @@ export default function TutorDashboardProfile() {
       profileForm.setValue("bio", tutorProfile.bio || "");
       profileForm.setValue("date_of_birth", tutorProfile.date_of_birth || "");
       profileForm.setValue("address", tutorProfile.address || "");
-      
+
       // Vẫn giữ lại thông tin về subjects và levels để hiển thị
       const subjectIds =
         tutorProfile.subjects?.map((subject: any) => String(subject.id)) || [];
@@ -506,13 +512,13 @@ export default function TutorDashboardProfile() {
                 });
                 continue;
               }
-              
+
               // Nếu là weekly hoặc không có type nhưng có day, bỏ qua
               if (item.type === "weekly" || (!item.type && item.day)) {
                 console.log("Bỏ qua lịch trống theo tuần:", item);
                 continue;
               }
-              
+
               // Nếu là data cũ không có type nhưng có date, chuyển thành specific
               if (!item.type && item.date) {
                 // Chuẩn hóa thời gian
@@ -525,7 +531,7 @@ export default function TutorDashboardProfile() {
                 if (endTime.length === 4) {
                   endTime = "0" + endTime;
                 }
-                
+
                 convertedItems.push({
                   type: "specific",
                   date: item.date,
@@ -540,7 +546,7 @@ export default function TutorDashboardProfile() {
           } else {
             console.warn(
               "Dữ liệu lịch trống không phải mảng:",
-              parsedAvailability,
+              parsedAvailability
             );
             setAvailabilityItems([]);
           }
@@ -640,12 +646,9 @@ export default function TutorDashboardProfile() {
         const [newStartHour, newStartMin] = newSlot.startTime
           .split(":")
           .map(Number);
-        const [newEndHour, newEndMin] = newSlot.endTime
-          .split(":")
-          .map(Number);
+        const [newEndHour, newEndMin] = newSlot.endTime.split(":").map(Number);
 
-        const existingStartMinutes =
-          existingStartHour * 60 + existingStartMin;
+        const existingStartMinutes = existingStartHour * 60 + existingStartMin;
         const existingEndMinutes = existingEndHour * 60 + existingEndMin;
         const newStartMinutes = newStartHour * 60 + newStartMin;
         const newEndMinutes = newEndHour * 60 + newEndMin;
@@ -678,27 +681,22 @@ export default function TutorDashboardProfile() {
     if (startTime && startTime.length === 4) {
       startTime = "0" + startTime;
     }
-    
+
     // Chuẩn hóa định dạng giờ kết thúc
     let endTime = newAvailabilityItem.endTime;
     if (endTime && endTime.length === 4) {
       endTime = "0" + endTime;
     }
-    
+
     // Cập nhật giá trị đã chuẩn hóa
     const normalizedItem = {
       ...newAvailabilityItem,
       startTime,
-      endTime
+      endTime,
     };
-    
+
     // Kiểm tra nếu thời gian kết thúc <= thời gian bắt đầu
-    if (
-      !validateTimeRange(
-        normalizedItem.startTime,
-        normalizedItem.endTime,
-      )
-    ) {
+    if (!validateTimeRange(normalizedItem.startTime, normalizedItem.endTime)) {
       toast({
         title: "Lỗi thời gian",
         description: "Thời gian kết thúc phải sau thời gian bắt đầu.",
@@ -742,7 +740,7 @@ export default function TutorDashboardProfile() {
 
   // Xử lý lịch trùng lặp trước khi lưu (chỉ cho ngày cụ thể)
   const removeDuplicateTimeSlots = (
-    slots: AvailabilityItem[],
+    slots: AvailabilityItem[]
   ): AvailabilityItem[] => {
     // Nhóm các khung giờ theo ngày
     const dateMaps: Record<string, AvailabilityItem[]> = {};
@@ -754,18 +752,18 @@ export default function TutorDashboardProfile() {
       if (startTime && startTime.length === 4) {
         startTime = "0" + startTime;
       }
-      
+
       let endTime = slot.endTime;
       if (endTime && endTime.length === 4) {
         endTime = "0" + endTime;
       }
-      
+
       const normalizedSlot = {
         ...slot,
         startTime: startTime,
-        endTime: endTime
+        endTime: endTime,
       };
-      
+
       if (!dateMaps[slot.date]) {
         dateMaps[slot.date] = [];
       }
@@ -823,7 +821,9 @@ export default function TutorDashboardProfile() {
             // Chuyển số phút thành giờ:phút
             const newEndHour = Math.floor(currEndMinutes / 60);
             const newEndMin = currEndMinutes % 60;
-            lastSlot.endTime = `${newEndHour.toString().padStart(2, "0")}:${newEndMin.toString().padStart(2, "0")}`;
+            lastSlot.endTime = `${newEndHour
+              .toString()
+              .padStart(2, "0")}:${newEndMin.toString().padStart(2, "0")}`;
           }
         } else {
           // Nếu không chồng lấp, thêm khung giờ mới
@@ -890,12 +890,17 @@ export default function TutorDashboardProfile() {
                 <div className="flex-shrink-0">
                   <div className="relative">
                     <Avatar className="h-32 w-32 border-2 border-primary">
-                      <AvatarImage src={user?.avatar} alt={user?.first_name} />
+                      {/* <AvatarImage src={user?.avatar} alt={user?.first_name} /> */}
+                      <AvatarImage
+                        src={user?.avatar ?? undefined}
+                        alt={user?.first_name ?? ""}
+                      />
                       <AvatarFallback className="text-3xl">
-                        {user?.first_name?.[0]}{user?.last_name?.[0]}
+                        {user?.first_name?.[0]}
+                        {user?.last_name?.[0]}
                       </AvatarFallback>
                     </Avatar>
-                    
+
                     <div className="mt-4">
                       <label className="block mb-2 text-sm font-medium">
                         Cập nhật ảnh đại diện
@@ -908,14 +913,14 @@ export default function TutorDashboardProfile() {
                           id="avatar-upload"
                           onChange={handleFileChange}
                         />
-                        <label 
+                        <label
                           htmlFor="avatar-upload"
                           className="flex items-center px-3 py-2 text-sm border rounded cursor-pointer bg-background hover:bg-muted transition-colors"
                         >
                           <Upload className="mr-2 h-4 w-4" />
                           Chọn ảnh
                         </label>
-                        
+
                         {avatar && (
                           <Button
                             onClick={handleAvatarUpload}
@@ -941,7 +946,7 @@ export default function TutorDashboardProfile() {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="flex-1">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                     <div>
@@ -952,14 +957,14 @@ export default function TutorDashboardProfile() {
                         {user?.first_name} {user?.last_name}
                       </p>
                     </div>
-                    
+
                     <div>
                       <h3 className="text-sm font-medium text-muted-foreground mb-1">
                         Email
                       </h3>
                       <p className="text-base">{user?.email}</p>
                     </div>
-                    
+
                     <div>
                       <h3 className="text-sm font-medium text-muted-foreground mb-1">
                         Trạng thái xác minh
@@ -973,58 +978,66 @@ export default function TutorDashboardProfile() {
                         ) : (
                           <>
                             <AlertCircle className="h-4 w-4 text-warning mr-1" />
-                            <span className="text-warning">Đang chờ xác minh</span>
+                            <span className="text-warning">
+                              Đang chờ xác minh
+                            </span>
                           </>
                         )}
                       </div>
                     </div>
-                    
+
                     <div>
                       <h3 className="text-sm font-medium text-muted-foreground mb-1">
                         Đánh giá
                       </h3>
                       <div className="flex items-center">
                         <Star className="h-4 w-4 text-warning fill-warning mr-1" />
-                        <span>{tutorProfile?.rating} ({tutorProfile?.total_reviews} đánh giá)</span>
+                        <span>
+                          {tutorProfile?.rating} ({tutorProfile?.total_reviews}{" "}
+                          đánh giá)
+                        </span>
                       </div>
                     </div>
-                    
+
                     <div>
                       <h3 className="text-sm font-medium text-muted-foreground mb-1">
                         Ngày sinh
                       </h3>
                       <p className="text-base">
-                        {tutorProfile?.date_of_birth ? new Date(tutorProfile.date_of_birth).toLocaleDateString('vi-VN') : 'Chưa cập nhật'}
+                        {tutorProfile?.date_of_birth
+                          ? new Date(
+                              tutorProfile.date_of_birth
+                            ).toLocaleDateString("vi-VN")
+                          : "Chưa cập nhật"}
                       </p>
                     </div>
-                    
+
                     <div>
                       <h3 className="text-sm font-medium text-muted-foreground mb-1">
                         Địa chỉ
                       </h3>
                       <p className="text-base">
-                        {tutorProfile?.address || 'Chưa cập nhật'}
+                        {tutorProfile?.address || "Chưa cập nhật"}
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="flex justify-end">
-                    <Button
-                      onClick={() => setProfileDialogOpen(true)}
-                    >
+                    <Button onClick={() => setProfileDialogOpen(true)}>
                       <Edit className="h-4 w-4 mr-2" />
                       {tutorProfile ? "Chỉnh sửa hồ sơ" : "Tạo hồ sơ"}
                     </Button>
                   </div>
                 </div>
               </div>
-              
+
               {!tutorProfile && (
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
                   <AlertTitle>Chưa có hồ sơ</AlertTitle>
                   <AlertDescription>
-                    Bạn chưa tạo hồ sơ gia sư. Hãy tạo hồ sơ để bắt đầu nhận yêu cầu từ học sinh.
+                    Bạn chưa tạo hồ sơ gia sư. Hãy tạo hồ sơ để bắt đầu nhận yêu
+                    cầu từ học sinh.
                   </AlertDescription>
                 </Alert>
               )}
@@ -1044,13 +1057,13 @@ export default function TutorDashboardProfile() {
                   <p className="whitespace-pre-wrap">{tutorProfile.bio}</p>
                 </CardContent>
               </Card>
-              
+
               {/* Card môn học */}
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle>Môn học giảng dạy</CardTitle>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     onClick={() => setSubjectsDialogOpen(true)}
                     className="ml-auto"
                   >
@@ -1060,7 +1073,8 @@ export default function TutorDashboardProfile() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {tutorProfile.subjects && tutorProfile.subjects.length > 0 ? (
+                    {tutorProfile.subjects &&
+                    tutorProfile.subjects.length > 0 ? (
                       <div className="grid grid-cols-1 gap-3">
                         {tutorProfile.subjects.map((subject: any) => (
                           <div
@@ -1082,8 +1096,8 @@ export default function TutorDashboardProfile() {
                         <p className="text-muted-foreground">
                           Bạn chưa chọn môn học nào để giảng dạy
                         </p>
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           onClick={() => setSubjectsDialogOpen(true)}
                           className="mt-4"
                         >
@@ -1133,7 +1147,7 @@ export default function TutorDashboardProfile() {
                               </a>
                             </div>
                           </div>
-                        ),
+                        )
                       )}
                     </div>
                   ) : (
@@ -1211,20 +1225,25 @@ export default function TutorDashboardProfile() {
               Chọn các môn học bạn có thể giảng dạy cho học viên
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="py-4">
             <div className="space-y-4">
               {subjects.map((subject) => (
                 <div key={subject.id} className="flex items-center space-x-2">
-                  <Checkbox 
-                    id={`subject-${subject.id}`} 
-                    checked={selectedSubjects.includes(String(subject.id))} 
+                  <Checkbox
+                    id={`subject-${subject.id}`}
+                    checked={selectedSubjects.includes(String(subject.id))}
                     onCheckedChange={(checked: boolean) => {
                       if (checked) {
-                        setSelectedSubjects([...selectedSubjects, String(subject.id)]);
+                        setSelectedSubjects([
+                          ...selectedSubjects,
+                          String(subject.id),
+                        ]);
                       } else {
                         setSelectedSubjects(
-                          selectedSubjects.filter((id) => id !== String(subject.id))
+                          selectedSubjects.filter(
+                            (id) => id !== String(subject.id)
+                          )
                         );
                       }
                     }}
@@ -1237,7 +1256,7 @@ export default function TutorDashboardProfile() {
                   </label>
                 </div>
               ))}
-              
+
               {subjects.length === 0 && (
                 <div className="text-center py-4 text-muted-foreground">
                   Không có môn học nào để hiển thị
@@ -1245,7 +1264,7 @@ export default function TutorDashboardProfile() {
               )}
             </div>
           </div>
-          
+
           <DialogFooter className="sm:justify-end">
             <Button
               type="button"
@@ -1254,7 +1273,7 @@ export default function TutorDashboardProfile() {
             >
               Hủy
             </Button>
-            <Button 
+            <Button
               type="button"
               onClick={handleSubjectsUpdate}
               disabled={updateSubjectsMutation.isPending}
@@ -1323,8 +1342,7 @@ export default function TutorDashboardProfile() {
                                     const itemIndex =
                                       availabilityItems.indexOf(item);
                                     if (itemIndex !== -1) {
-                                      newItems[itemIndex].date =
-                                        e.target.value;
+                                      newItems[itemIndex].date = e.target.value;
                                       setAvailabilityItems(newItems);
                                     }
                                   }}
@@ -1337,7 +1355,7 @@ export default function TutorDashboardProfile() {
                                     "EEEE",
                                     {
                                       locale: vi,
-                                    },
+                                    }
                                   )}
                                 </p>
                               </div>
@@ -1384,7 +1402,7 @@ export default function TutorDashboardProfile() {
                               size="sm"
                               onClick={() =>
                                 handleRemoveAvailability(
-                                  availabilityItems.indexOf(item),
+                                  availabilityItems.indexOf(item)
                                 )
                               }
                             >
@@ -1437,10 +1455,17 @@ export default function TutorDashboardProfile() {
                                 )}
                               </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
+                            <PopoverContent
+                              className="w-auto p-0"
+                              align="start"
+                            >
                               <Calendar
                                 mode="single"
-                                selected={newAvailabilityItem.date ? parseISO(newAvailabilityItem.date) : undefined}
+                                selected={
+                                  newAvailabilityItem.date
+                                    ? parseISO(newAvailabilityItem.date)
+                                    : undefined
+                                }
                                 onSelect={(date: Date | undefined) => {
                                   if (date) {
                                     setNewAvailabilityItem({
@@ -1509,7 +1534,11 @@ export default function TutorDashboardProfile() {
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setAvailabilityDialogOpen(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setAvailabilityDialogOpen(false)}
+            >
               Hủy
             </Button>
             <Button onClick={handleSubmitAvailability}>Lưu thay đổi</Button>
@@ -1553,9 +1582,7 @@ export default function TutorDashboardProfile() {
                     </FormItem>
                   )}
                 />
-                
 
-                
                 <FormField
                   control={profileForm.control}
                   name="date_of_birth"
@@ -1574,7 +1601,7 @@ export default function TutorDashboardProfile() {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={profileForm.control}
                   name="address"
@@ -1588,12 +1615,14 @@ export default function TutorDashboardProfile() {
                           {...field}
                         />
                       </FormControl>
-                      <FormDescription>Thông tin sẽ chỉ được chia sẻ khi có nhu cầu liên hệ</FormDescription>
+                      <FormDescription>
+                        Thông tin sẽ chỉ được chia sẻ khi có nhu cầu liên hệ
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                
+
                 {/* Phần chọn môn học */}
                 <div>
                   <Label className="text-base">Môn học giảng dạy</Label>
@@ -1601,16 +1630,26 @@ export default function TutorDashboardProfile() {
                     <div className="border rounded-md p-4">
                       <div className="grid grid-cols-2 gap-4">
                         {subjects.map((subject) => (
-                          <div key={subject.id} className="flex items-center space-x-2">
-                            <Checkbox 
-                              id={`subject-select-${subject.id}`} 
-                              checked={selectedSubjects.includes(String(subject.id))} 
+                          <div
+                            key={subject.id}
+                            className="flex items-center space-x-2"
+                          >
+                            <Checkbox
+                              id={`subject-select-${subject.id}`}
+                              checked={selectedSubjects.includes(
+                                String(subject.id)
+                              )}
                               onCheckedChange={(checked) => {
                                 if (checked) {
-                                  setSelectedSubjects([...selectedSubjects, String(subject.id)]);
+                                  setSelectedSubjects([
+                                    ...selectedSubjects,
+                                    String(subject.id),
+                                  ]);
                                 } else {
                                   setSelectedSubjects(
-                                    selectedSubjects.filter((id) => id !== String(subject.id))
+                                    selectedSubjects.filter(
+                                      (id) => id !== String(subject.id)
+                                    )
                                   );
                                 }
                               }}
@@ -1624,17 +1663,19 @@ export default function TutorDashboardProfile() {
                           </div>
                         ))}
                       </div>
-                      
+
                       {subjects.length === 0 && (
                         <div className="text-center py-4 text-muted-foreground">
                           Không có môn học nào để hiển thị
                         </div>
                       )}
                     </div>
-                    <FormDescription className="mt-1">Chọn môn học bạn có thể giảng dạy</FormDescription>
+                    <FormDescription className="mt-1">
+                      Chọn môn học bạn có thể giảng dạy
+                    </FormDescription>
                   </div>
                 </div>
-                
+
                 {/* Phần tải chứng chỉ */}
                 <div>
                   <Label className="text-base">Chứng chỉ & Giấy tờ</Label>
@@ -1676,13 +1717,18 @@ export default function TutorDashboardProfile() {
                         </div>
                       )}
                     </div>
-                    <FormDescription className="mt-1">Tải lên các chứng chỉ, bằng cấp để tăng uy tín</FormDescription>
+                    <FormDescription className="mt-1">
+                      Tải lên các chứng chỉ, bằng cấp để tăng uy tín
+                    </FormDescription>
                   </div>
                 </div>
               </div>
 
               <DialogFooter>
-                <Button type="submit" disabled={profileForm.formState.isSubmitting}>
+                <Button
+                  type="submit"
+                  disabled={profileForm.formState.isSubmitting}
+                >
                   {profileForm.formState.isSubmitting && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   )}

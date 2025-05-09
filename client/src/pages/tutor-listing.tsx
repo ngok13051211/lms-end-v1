@@ -4,22 +4,55 @@ import { useLocation } from "wouter";
 import TutorCard from "@/components/ui/TutorCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Search, Filter, SlidersHorizontal, Calendar, MapPin, Star, Clock } from "lucide-react";
+import {
+  Loader2,
+  Search,
+  Filter,
+  SlidersHorizontal,
+  Calendar,
+  MapPin,
+  Star,
+  Clock,
+} from "lucide-react";
 import { Subject, EducationLevel } from "@shared/schema";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
 export default function TutorListing() {
   const [, navigate] = useLocation();
-  const [searchParams, setSearchParams] = useState(new URLSearchParams(window.location.search));
-  const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
-  const [subjectFilter, setSubjectFilter] = useState(searchParams.get("subject") || "all");
-  const [levelFilter, setLevelFilter] = useState(searchParams.get("level") || "all");
-  const [modeFilter, setModeFilter] = useState(searchParams.get("mode") || "all");
+  const [searchParams, setSearchParams] = useState(
+    new URLSearchParams(window.location.search)
+  );
+  const [searchTerm, setSearchTerm] = useState(
+    searchParams.get("search") || ""
+  );
+  const [subjectFilter, setSubjectFilter] = useState(
+    searchParams.get("subject") || "all"
+  );
+  const [levelFilter, setLevelFilter] = useState(
+    searchParams.get("level") || "all"
+  );
+  const [modeFilter, setModeFilter] = useState(
+    searchParams.get("mode") || "all"
+  );
   const [rateRange, setRateRange] = useState([0, 500000]);
   const [minExperienceFilter, setMinExperienceFilter] = useState("0");
   const [availabilityFilter, setAvailabilityFilter] = useState("all");
@@ -29,44 +62,50 @@ export default function TutorListing() {
   const [timeFilter, setTimeFilter] = useState("all");
   const [hasCertifications, setHasCertifications] = useState(false);
   const [page, setPage] = useState(1);
-  
+
   // Get filter options
   const { data: subjects, isLoading: subjectsLoading } = useQuery<Subject[]>({
-    queryKey: ['/api/v1/subjects']
+    queryKey: ["/api/v1/subjects"],
   });
-  
-  const { data: educationLevels, isLoading: levelsLoading } = useQuery<EducationLevel[]>({
-    queryKey: ['/api/v1/education-levels']
+
+  const { data: educationLevels, isLoading: levelsLoading } = useQuery<
+    EducationLevel[]
+  >({
+    queryKey: ["/api/v1/education-levels"],
   });
-  
+
   // Build URL for tutors with filters
   const buildTutorsUrl = () => {
-    const url = new URL('/api/v1/tutors', window.location.origin);
-    
-    if (searchTerm) url.searchParams.append('search', searchTerm);
-    if (subjectFilter !== 'all') url.searchParams.append('subject', subjectFilter);
-    if (levelFilter !== 'all') url.searchParams.append('level', levelFilter);
-    if (modeFilter !== 'all') url.searchParams.append('mode', modeFilter);
-    url.searchParams.append('minRate', rateRange[0].toString());
-    url.searchParams.append('maxRate', rateRange[1].toString());
-    
+    const url = new URL("/api/v1/tutors", window.location.origin);
+
+    if (searchTerm) url.searchParams.append("search", searchTerm);
+    if (subjectFilter !== "all")
+      url.searchParams.append("subject", subjectFilter);
+    if (levelFilter !== "all") url.searchParams.append("level", levelFilter);
+    if (modeFilter !== "all") url.searchParams.append("mode", modeFilter);
+    url.searchParams.append("minRate", rateRange[0].toString());
+    url.searchParams.append("maxRate", rateRange[1].toString());
+
     // Advanced filters
-    if (minExperienceFilter !== '0') url.searchParams.append('minExperience', minExperienceFilter);
-    if (availabilityFilter !== 'all') url.searchParams.append('availability', availabilityFilter);
-    if (hasCertifications) url.searchParams.append('hasCertifications', 'true');
-    
+    if (minExperienceFilter !== "0")
+      url.searchParams.append("minExperience", minExperienceFilter);
+    if (availabilityFilter !== "all")
+      url.searchParams.append("availability", availabilityFilter);
+    if (hasCertifications) url.searchParams.append("hasCertifications", "true");
+
     // New filters
-    if (minRatingFilter !== '0') url.searchParams.append('minRating', minRatingFilter);
-    if (locationFilter) url.searchParams.append('location', locationFilter);
-    if (dayFilter !== 'all') url.searchParams.append('day', dayFilter);
-    if (timeFilter !== 'all') url.searchParams.append('time', timeFilter);
-    
-    url.searchParams.append('page', page.toString());
-    url.searchParams.append('limit', '12');
-    
+    if (minRatingFilter !== "0")
+      url.searchParams.append("minRating", minRatingFilter);
+    if (locationFilter) url.searchParams.append("location", locationFilter);
+    if (dayFilter !== "all") url.searchParams.append("day", dayFilter);
+    if (timeFilter !== "all") url.searchParams.append("time", timeFilter);
+
+    url.searchParams.append("page", page.toString());
+    url.searchParams.append("limit", "12");
+
     return url.pathname + url.search;
   };
-  
+
   interface TutorResponse {
     tutors: any[];
     total: number;
@@ -76,13 +115,18 @@ export default function TutorListing() {
   }
 
   // Get tutors with filters
-  const { data: tutorData, isLoading: tutorsLoading } = useQuery<TutorResponse>({
-    queryKey: [buildTutorsUrl()],
-  });
-  
+  const { data: tutorData, isLoading: tutorsLoading } = useQuery<TutorResponse>(
+    {
+      queryKey: [buildTutorsUrl()],
+      refetchOnWindowFocus: true,
+      refetchOnMount: true,
+    }
+  );
+
+  // Ensure we have tutors data
   const tutors = tutorData?.tutors || [];
   const totalPages = tutorData?.total_pages || 1;
-  
+
   // Update URL when filters change
   useEffect(() => {
     const params = new URLSearchParams();
@@ -90,29 +134,32 @@ export default function TutorListing() {
     if (subjectFilter !== "all") params.set("subject", subjectFilter);
     if (levelFilter !== "all") params.set("level", levelFilter);
     if (modeFilter !== "all") params.set("mode", modeFilter);
-    
+
     navigate(`/tutors?${params.toString()}`, { replace: true });
     // We intentionally don't include rateRange to keep URL clean
   }, [searchTerm, subjectFilter, levelFilter, modeFilter, navigate]);
-  
+
   // Apply filters
   const applyFilters = () => {
     setPage(1);
   };
-  
+
   // Handle search submit
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     applyFilters();
   };
-  
+
   const isLoading = tutorsLoading || subjectsLoading || levelsLoading;
-  
+
   return (
     <div>
       <div className="bg-white shadow-md py-6 sticky top-16 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <form onSubmit={handleSearch} className="flex flex-col lg:flex-row gap-4">
+          <form
+            onSubmit={handleSearch}
+            className="flex flex-col lg:flex-row gap-4"
+          >
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
               <Input
@@ -122,7 +169,7 @@ export default function TutorListing() {
                 className="pl-10"
               />
             </div>
-            
+
             <div className="hidden lg:flex gap-2">
               <Select value={subjectFilter} onValueChange={setSubjectFilter}>
                 <SelectTrigger className="w-[150px]">
@@ -132,14 +179,17 @@ export default function TutorListing() {
                   <SelectGroup>
                     <SelectItem value="all">All Subjects</SelectItem>
                     {subjects?.map((subject) => (
-                      <SelectItem key={subject.id} value={subject.id.toString()}>
+                      <SelectItem
+                        key={subject.id}
+                        value={subject.id.toString()}
+                      >
                         {subject.name}
                       </SelectItem>
                     ))}
                   </SelectGroup>
                 </SelectContent>
               </Select>
-              
+
               <Select value={levelFilter} onValueChange={setLevelFilter}>
                 <SelectTrigger className="w-[150px]">
                   <SelectValue placeholder="Level" />
@@ -155,7 +205,7 @@ export default function TutorListing() {
                   </SelectGroup>
                 </SelectContent>
               </Select>
-              
+
               <Select value={modeFilter} onValueChange={setModeFilter}>
                 <SelectTrigger className="w-[150px]">
                   <SelectValue placeholder="Mode" />
@@ -170,7 +220,7 @@ export default function TutorListing() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div className="lg:hidden">
               <Sheet>
                 <SheetTrigger asChild>
@@ -185,44 +235,60 @@ export default function TutorListing() {
                       Narrow down your search with these filters
                     </SheetDescription>
                   </SheetHeader>
-                  
+
                   <div className="mt-6 space-y-4">
                     <div>
                       <h4 className="text-sm font-medium mb-2">Subject</h4>
-                      <Select value={subjectFilter} onValueChange={setSubjectFilter}>
+                      <Select
+                        value={subjectFilter}
+                        onValueChange={setSubjectFilter}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select subject" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">All Subjects</SelectItem>
                           {subjects?.map((subject) => (
-                            <SelectItem key={subject.id} value={subject.id.toString()}>
+                            <SelectItem
+                              key={subject.id}
+                              value={subject.id.toString()}
+                            >
                               {subject.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
-                    
+
                     <div>
-                      <h4 className="text-sm font-medium mb-2">Education Level</h4>
-                      <Select value={levelFilter} onValueChange={setLevelFilter}>
+                      <h4 className="text-sm font-medium mb-2">
+                        Education Level
+                      </h4>
+                      <Select
+                        value={levelFilter}
+                        onValueChange={setLevelFilter}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select level" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">All Levels</SelectItem>
                           {educationLevels?.map((level) => (
-                            <SelectItem key={level.id} value={level.id.toString()}>
+                            <SelectItem
+                              key={level.id}
+                              value={level.id.toString()}
+                            >
                               {level.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
-                    
+
                     <div>
-                      <h4 className="text-sm font-medium mb-2">Teaching Mode</h4>
+                      <h4 className="text-sm font-medium mb-2">
+                        Teaching Mode
+                      </h4>
                       <Select value={modeFilter} onValueChange={setModeFilter}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select mode" />
@@ -235,7 +301,7 @@ export default function TutorListing() {
                         </SelectContent>
                       </Select>
                     </div>
-                    
+
                     <div>
                       <h4 className="text-sm font-medium mb-2">Hourly Rate</h4>
                       <div className="px-2">
@@ -247,21 +313,21 @@ export default function TutorListing() {
                         />
                         <div className="flex justify-between mt-2 text-sm text-muted-foreground">
                           <span>
-                            {new Intl.NumberFormat('vi-VN', { 
-                              style: 'currency', 
-                              currency: 'VND'
+                            {new Intl.NumberFormat("vi-VN", {
+                              style: "currency",
+                              currency: "VND",
                             }).format(rateRange[0])}
                           </span>
                           <span>
-                            {new Intl.NumberFormat('vi-VN', { 
-                              style: 'currency', 
-                              currency: 'VND'
+                            {new Intl.NumberFormat("vi-VN", {
+                              style: "currency",
+                              currency: "VND",
                             }).format(rateRange[1])}
                           </span>
                         </div>
                       </div>
                     </div>
-                    
+
                     <Button className="w-full mt-4" onClick={applyFilters}>
                       Apply Filters
                     </Button>
@@ -269,7 +335,7 @@ export default function TutorListing() {
                 </SheetContent>
               </Sheet>
             </div>
-            
+
             <div className="hidden lg:block">
               <Sheet>
                 <SheetTrigger asChild>
@@ -284,7 +350,7 @@ export default function TutorListing() {
                       Refine your search with additional filters
                     </SheetDescription>
                   </SheetHeader>
-                  
+
                   <div className="mt-6 space-y-6">
                     <div>
                       <h4 className="text-sm font-medium mb-2">Hourly Rate</h4>
@@ -297,15 +363,15 @@ export default function TutorListing() {
                         />
                         <div className="flex justify-between mt-2 text-sm text-muted-foreground">
                           <span>
-                            {new Intl.NumberFormat('vi-VN', { 
-                              style: 'currency', 
-                              currency: 'VND'
+                            {new Intl.NumberFormat("vi-VN", {
+                              style: "currency",
+                              currency: "VND",
                             }).format(rateRange[0])}
                           </span>
                           <span>
-                            {new Intl.NumberFormat('vi-VN', { 
-                              style: 'currency', 
-                              currency: 'VND'
+                            {new Intl.NumberFormat("vi-VN", {
+                              style: "currency",
+                              currency: "VND",
                             }).format(rateRange[1])}
                           </span>
                         </div>
@@ -313,8 +379,13 @@ export default function TutorListing() {
                     </div>
 
                     <div>
-                      <h4 className="text-sm font-medium mb-2">Minimum Years of Experience</h4>
-                      <Select value={minExperienceFilter} onValueChange={setMinExperienceFilter}>
+                      <h4 className="text-sm font-medium mb-2">
+                        Minimum Years of Experience
+                      </h4>
+                      <Select
+                        value={minExperienceFilter}
+                        onValueChange={setMinExperienceFilter}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select experience" />
                         </SelectTrigger>
@@ -331,25 +402,45 @@ export default function TutorListing() {
 
                     <div>
                       <h4 className="text-sm font-medium mb-2">Availability</h4>
-                      <Select value={availabilityFilter} onValueChange={setAvailabilityFilter}>
+                      <Select
+                        value={availabilityFilter}
+                        onValueChange={setAvailabilityFilter}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select availability" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">Any Time</SelectItem>
-                          <SelectItem value="weekday_morning">Weekday Mornings</SelectItem>
-                          <SelectItem value="weekday_afternoon">Weekday Afternoons</SelectItem>
-                          <SelectItem value="weekday_evening">Weekday Evenings</SelectItem>
-                          <SelectItem value="weekend_morning">Weekend Mornings</SelectItem>
-                          <SelectItem value="weekend_afternoon">Weekend Afternoons</SelectItem>
-                          <SelectItem value="weekend_evening">Weekend Evenings</SelectItem>
+                          <SelectItem value="weekday_morning">
+                            Weekday Mornings
+                          </SelectItem>
+                          <SelectItem value="weekday_afternoon">
+                            Weekday Afternoons
+                          </SelectItem>
+                          <SelectItem value="weekday_evening">
+                            Weekday Evenings
+                          </SelectItem>
+                          <SelectItem value="weekend_morning">
+                            Weekend Mornings
+                          </SelectItem>
+                          <SelectItem value="weekend_afternoon">
+                            Weekend Afternoons
+                          </SelectItem>
+                          <SelectItem value="weekend_evening">
+                            Weekend Evenings
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
                     <div>
-                      <h4 className="text-sm font-medium mb-2">Minimum Rating</h4>
-                      <Select value={minRatingFilter} onValueChange={setMinRatingFilter}>
+                      <h4 className="text-sm font-medium mb-2">
+                        Minimum Rating
+                      </h4>
+                      <Select
+                        value={minRatingFilter}
+                        onValueChange={setMinRatingFilter}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select minimum rating" />
                         </SelectTrigger>
@@ -363,11 +454,13 @@ export default function TutorListing() {
                     </div>
 
                     <Separator />
-                    
-                    {(modeFilter === 'offline' || modeFilter === 'both' || modeFilter === 'all') && (
+
+                    {(modeFilter === "offline" ||
+                      modeFilter === "both" ||
+                      modeFilter === "all") && (
                       <div>
                         <h4 className="text-sm font-medium mb-2 flex items-center">
-                          <MapPin className="w-4 h-4 mr-1" /> 
+                          <MapPin className="w-4 h-4 mr-1" />
                           Location (for in-person tutoring)
                         </h4>
                         <Input
@@ -377,18 +470,23 @@ export default function TutorListing() {
                         />
                       </div>
                     )}
-                    
+
                     <Separator />
-                    
+
                     <div>
                       <h4 className="text-sm font-medium mb-2 flex items-center">
-                        <Calendar className="w-4 h-4 mr-1" /> 
+                        <Calendar className="w-4 h-4 mr-1" />
                         Availability
                       </h4>
                       <div className="space-y-3">
                         <div>
-                          <h5 className="text-xs text-muted-foreground mb-1">Day of Week</h5>
-                          <Select value={dayFilter} onValueChange={setDayFilter}>
+                          <h5 className="text-xs text-muted-foreground mb-1">
+                            Day of Week
+                          </h5>
+                          <Select
+                            value={dayFilter}
+                            onValueChange={setDayFilter}
+                          >
                             <SelectTrigger>
                               <SelectValue placeholder="Select day" />
                             </SelectTrigger>
@@ -396,7 +494,9 @@ export default function TutorListing() {
                               <SelectItem value="all">Any Day</SelectItem>
                               <SelectItem value="monday">Monday</SelectItem>
                               <SelectItem value="tuesday">Tuesday</SelectItem>
-                              <SelectItem value="wednesday">Wednesday</SelectItem>
+                              <SelectItem value="wednesday">
+                                Wednesday
+                              </SelectItem>
                               <SelectItem value="thursday">Thursday</SelectItem>
                               <SelectItem value="friday">Friday</SelectItem>
                               <SelectItem value="saturday">Saturday</SelectItem>
@@ -404,37 +504,54 @@ export default function TutorListing() {
                             </SelectContent>
                           </Select>
                         </div>
-                        
+
                         <div>
-                          <h5 className="text-xs text-muted-foreground mb-1">Time of Day</h5>
-                          <Select value={timeFilter} onValueChange={setTimeFilter}>
+                          <h5 className="text-xs text-muted-foreground mb-1">
+                            Time of Day
+                          </h5>
+                          <Select
+                            value={timeFilter}
+                            onValueChange={setTimeFilter}
+                          >
                             <SelectTrigger>
                               <SelectValue placeholder="Select time" />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="all">Any Time</SelectItem>
-                              <SelectItem value="08:00">Morning (8:00 AM)</SelectItem>
-                              <SelectItem value="12:00">Noon (12:00 PM)</SelectItem>
-                              <SelectItem value="14:00">Afternoon (2:00 PM)</SelectItem>
-                              <SelectItem value="17:00">Evening (5:00 PM)</SelectItem>
-                              <SelectItem value="19:00">Night (7:00 PM)</SelectItem>
+                              <SelectItem value="08:00">
+                                Morning (8:00 AM)
+                              </SelectItem>
+                              <SelectItem value="12:00">
+                                Noon (12:00 PM)
+                              </SelectItem>
+                              <SelectItem value="14:00">
+                                Afternoon (2:00 PM)
+                              </SelectItem>
+                              <SelectItem value="17:00">
+                                Evening (5:00 PM)
+                              </SelectItem>
+                              <SelectItem value="19:00">
+                                Night (7:00 PM)
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
                       </div>
                     </div>
-                    
+
                     <Separator />
 
                     <div className="flex items-center space-x-2">
-                      <Switch 
-                        id="certified" 
+                      <Switch
+                        id="certified"
                         checked={hasCertifications}
                         onCheckedChange={setHasCertifications}
                       />
-                      <Label htmlFor="certified">Chỉ giáo viên có chứng chỉ</Label>
+                      <Label htmlFor="certified">
+                        Chỉ giáo viên có chứng chỉ
+                      </Label>
                     </div>
-                    
+
                     <Button className="w-full mt-4" onClick={applyFilters}>
                       Apply Filters
                     </Button>
@@ -442,7 +559,7 @@ export default function TutorListing() {
                 </SheetContent>
               </Sheet>
             </div>
-            
+
             <Button type="submit">
               <Search className="mr-2 h-4 w-4" /> Search
             </Button>
@@ -460,17 +577,30 @@ export default function TutorListing() {
           <>
             <div className="mb-6">
               <h1 className="text-2xl md:text-3xl font-light">
-                Found <span className="font-medium text-primary">{tutorData?.total || 0} tutors</span> for your search
+                Found{" "}
+                <span className="font-medium text-primary">
+                  {tutorData?.total || 0} tutors
+                </span>{" "}
+                for your search
               </h1>
-              {(searchTerm || subjectFilter !== "all" || levelFilter !== "all" || modeFilter !== "all") && (
+              {(searchTerm ||
+                subjectFilter !== "all" ||
+                levelFilter !== "all" ||
+                modeFilter !== "all") && (
                 <p className="text-muted-foreground mt-1">
-                  Filters: {searchTerm && `"${searchTerm}"`} {subjectFilter !== "all" && subjects?.find(s => s.id.toString() === subjectFilter)?.name} 
-                  {levelFilter !== "all" && educationLevels?.find(l => l.id.toString() === levelFilter)?.name} 
+                  Filters: {searchTerm && `"${searchTerm}"`}{" "}
+                  {subjectFilter !== "all" &&
+                    subjects?.find((s) => s.id.toString() === subjectFilter)
+                      ?.name}
+                  {levelFilter !== "all" &&
+                    educationLevels?.find(
+                      (l) => l.id.toString() === levelFilter
+                    )?.name}
                   {modeFilter !== "all" && modeFilter}
                 </p>
               )}
             </div>
-            
+
             {tutors.length > 0 ? (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -478,7 +608,7 @@ export default function TutorListing() {
                     <TutorCard key={tutor.id} tutor={tutor} />
                   ))}
                 </div>
-                
+
                 {/* Pagination */}
                 {totalPages > 1 && (
                   <div className="flex justify-center mt-10">
@@ -490,14 +620,16 @@ export default function TutorListing() {
                       >
                         Previous
                       </Button>
-                      
+
                       <div className="text-sm text-muted-foreground">
                         Page {page} of {totalPages}
                       </div>
-                      
+
                       <Button
                         variant="outline"
-                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                        onClick={() =>
+                          setPage((p) => Math.min(totalPages, p + 1))
+                        }
                         disabled={page === totalPages}
                       >
                         Next
@@ -513,23 +645,27 @@ export default function TutorListing() {
                 </div>
                 <h2 className="text-xl font-medium">No tutors found</h2>
                 <p className="text-muted-foreground mt-2 max-w-md mx-auto">
-                  We couldn't find any tutors matching your search criteria. Try adjusting your filters or search term.
+                  We couldn't find any tutors matching your search criteria. Try
+                  adjusting your filters or search term.
                 </p>
-                <Button className="mt-6" onClick={() => {
-                  setSearchTerm("");
-                  setSubjectFilter("all");
-                  setLevelFilter("all");
-                  setModeFilter("all");
-                  setRateRange([0, 500000]);
-                  setMinExperienceFilter("0");
-                  setAvailabilityFilter("all");
-                  setMinRatingFilter("0");
-                  setLocationFilter("");
-                  setDayFilter("all");
-                  setTimeFilter("all");
-                  setHasCertifications(false);
-                  navigate("/tutors");
-                }}>
+                <Button
+                  className="mt-6"
+                  onClick={() => {
+                    setSearchTerm("");
+                    setSubjectFilter("all");
+                    setLevelFilter("all");
+                    setModeFilter("all");
+                    setRateRange([0, 500000]);
+                    setMinExperienceFilter("0");
+                    setAvailabilityFilter("all");
+                    setMinRatingFilter("0");
+                    setLocationFilter("");
+                    setDayFilter("all");
+                    setTimeFilter("all");
+                    setHasCertifications(false);
+                    navigate("/tutors");
+                  }}
+                >
                   Clear all filters
                 </Button>
               </div>

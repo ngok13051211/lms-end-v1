@@ -2,15 +2,51 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Users, BookOpen, CheckCircle, XCircle, PlusCircle, Search, Filter } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Loader2,
+  Users,
+  BookOpen,
+  CheckCircle,
+  XCircle,
+  PlusCircle,
+  Search,
+  Filter,
+} from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
@@ -23,18 +59,66 @@ export default function AdminDashboard() {
   const [pageSize] = useState(10);
 
   // Fetch users with filters
-  const { data: usersData, isLoading: usersLoading } = useQuery({
-    queryKey: [`/api/v1/admin/users?search=${userSearchTerm}&role=${userFilter}&page=${page}&pageSize=${pageSize}`],
+  const { data: usersData, isLoading: usersLoading } = useQuery<UsersResponse>({
+    queryKey: [
+      `/api/v1/admin/users?search=${userSearchTerm}&role=${userFilter}&page=${page}&pageSize=${pageSize}`,
+    ],
   });
 
   // Fetch tutors verification requests
-  const { data: tutorVerifications, isLoading: tutorsLoading } = useQuery({
-    queryKey: [`/api/v1/admin/tutors/verification?search=${tutorSearchTerm}&status=${tutorFilter}&page=${page}&pageSize=${pageSize}`],
-  });
+  const { data: tutorVerifications, isLoading: tutorsLoading } =
+    useQuery<TutorsResponse>({
+      queryKey: [
+        `/api/v1/admin/tutors/verification?search=${tutorSearchTerm}&status=${tutorFilter}&page=${page}&pageSize=${pageSize}`,
+      ],
+    });
+
+  // Define types
+  interface AdminStats {
+    totalUsers: number;
+    verifiedTutors: number;
+    pendingVerifications: number;
+  }
+
+  interface UsersResponse {
+    users: Array<{
+      id: number;
+      firstName: string;
+      lastName: string;
+      email: string;
+      role: string;
+      active: boolean;
+      avatar?: string;
+      createdAt: string;
+    }>;
+    totalPages: number;
+  }
+
+  interface TutorsResponse {
+    tutors: Array<{
+      id: number;
+      bio: string;
+      education: string;
+      experience: string;
+      hourlyRate: number;
+      isVerified: boolean;
+      status: string;
+      teachingMode: string;
+      subjects: Array<{ id: number; name: string }>;
+      educationLevels: Array<{ id: number; name: string }>;
+      user: {
+        firstName: string;
+        lastName: string;
+        email: string;
+        avatar?: string;
+      };
+    }>;
+    totalPages: number;
+  }
 
   // Fetch stats
-  const { data: stats, isLoading: statsLoading } = useQuery({
-    queryKey: ['/api/v1/admin/stats'],
+  const { data: stats, isLoading: statsLoading } = useQuery<AdminStats>({
+    queryKey: ["/api/v1/admin/stats"],
   });
 
   // Approve tutor verification
@@ -48,7 +132,9 @@ export default function AdminDashboard() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/v1/admin/tutors/verification`] });
+      queryClient.invalidateQueries({
+        queryKey: [`/api/v1/admin/tutors/verification`],
+      });
     },
   });
 
@@ -63,7 +149,9 @@ export default function AdminDashboard() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/v1/admin/tutors/verification`] });
+      queryClient.invalidateQueries({
+        queryKey: [`/api/v1/admin/tutors/verification`],
+      });
     },
   });
 
@@ -92,7 +180,9 @@ export default function AdminDashboard() {
                 <Users className="h-8 w-8 text-primary" />
                 <div className="ml-4">
                   <p className="text-sm text-muted-foreground">Total Users</p>
-                  <p className="text-lg font-medium">{stats?.totalUsers || 0}</p>
+                  <p className="text-lg font-medium">
+                    {stats?.totalUsers || 0}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -103,8 +193,12 @@ export default function AdminDashboard() {
               <div className="flex items-center">
                 <BookOpen className="h-8 w-8 text-primary" />
                 <div className="ml-4">
-                  <p className="text-sm text-muted-foreground">Verified Tutors</p>
-                  <p className="text-lg font-medium">{stats?.verifiedTutors || 0}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Verified Tutors
+                  </p>
+                  <p className="text-lg font-medium">
+                    {stats?.verifiedTutors || 0}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -115,8 +209,12 @@ export default function AdminDashboard() {
               <div className="flex items-center">
                 <CheckCircle className="h-8 w-8 text-primary" />
                 <div className="ml-4">
-                  <p className="text-sm text-muted-foreground">Pending Verifications</p>
-                  <p className="text-lg font-medium">{stats?.pendingVerifications || 0}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Pending Verifications
+                  </p>
+                  <p className="text-lg font-medium">
+                    {stats?.pendingVerifications || 0}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -135,7 +233,9 @@ export default function AdminDashboard() {
             <Card>
               <CardHeader>
                 <CardTitle>User Management</CardTitle>
-                <CardDescription>Manage users registered on HomiTutor</CardDescription>
+                <CardDescription>
+                  Manage users registered on HomiTutor
+                </CardDescription>
                 <div className="flex flex-col md:flex-row gap-4 mt-4">
                   <div className="flex-1 relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -173,29 +273,45 @@ export default function AdminDashboard() {
                       <div className="grid gap-4 py-4">
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <label htmlFor="firstName" className="text-sm font-medium">
+                            <label
+                              htmlFor="firstName"
+                              className="text-sm font-medium"
+                            >
                               First Name
                             </label>
                             <Input id="firstName" className="mt-1" />
                           </div>
                           <div>
-                            <label htmlFor="lastName" className="text-sm font-medium">
+                            <label
+                              htmlFor="lastName"
+                              className="text-sm font-medium"
+                            >
                               Last Name
                             </label>
                             <Input id="lastName" className="mt-1" />
                           </div>
                         </div>
                         <div>
-                          <label htmlFor="email" className="text-sm font-medium">
+                          <label
+                            htmlFor="email"
+                            className="text-sm font-medium"
+                          >
                             Email
                           </label>
                           <Input id="email" type="email" className="mt-1" />
                         </div>
                         <div>
-                          <label htmlFor="password" className="text-sm font-medium">
+                          <label
+                            htmlFor="password"
+                            className="text-sm font-medium"
+                          >
                             Password
                           </label>
-                          <Input id="password" type="password" className="mt-1" />
+                          <Input
+                            id="password"
+                            type="password"
+                            className="mt-1"
+                          />
                         </div>
                         <div>
                           <label htmlFor="role" className="text-sm font-medium">
@@ -239,29 +355,42 @@ export default function AdminDashboard() {
                           <TableCell className="font-medium">
                             <div className="flex items-center gap-2">
                               <Avatar className="h-8 w-8">
-                                <AvatarImage src={user.avatar} alt={user.firstName} />
+                                <AvatarImage
+                                  src={user.avatar}
+                                  alt={user.firstName}
+                                />
                                 <AvatarFallback>
-                                  {user.firstName?.[0]}{user.lastName?.[0]}
+                                  {user.firstName?.[0]}
+                                  {user.lastName?.[0]}
                                 </AvatarFallback>
                               </Avatar>
-                              <span>{user.firstName} {user.lastName}</span>
+                              <span>
+                                {user.firstName} {user.lastName}
+                              </span>
                             </div>
                           </TableCell>
                           <TableCell>{user.email}</TableCell>
                           <TableCell>
                             <Badge
                               variant={
-                                user.role === "admin" ? "default" :
-                                user.role === "tutor" ? "secondary" : "outline"
+                                user.role === "admin"
+                                  ? "default"
+                                  : user.role === "tutor"
+                                  ? "secondary"
+                                  : "outline"
                               }
                             >
                               {user.role}
                             </Badge>
                           </TableCell>
-                          <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
+                          <TableCell>
+                            {new Date(user.createdAt).toLocaleDateString()}
+                          </TableCell>
                           <TableCell>
                             <Badge
-                              variant={user.active ? "success" : "destructive"}
+                              variant={
+                                user.active ? "secondary" : "destructive"
+                              }
                             >
                               {user.active ? "Active" : "Inactive"}
                             </Badge>
@@ -271,15 +400,23 @@ export default function AdminDashboard() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => {/* Implement edit logic */}}
+                                onClick={() => {
+                                  /* Implement edit logic */
+                                }}
                               >
                                 Edit
                               </Button>
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className={user.active ? "text-destructive" : "text-success"}
-                                onClick={() => {/* Implement activation toggle */}}
+                                className={
+                                  user.active
+                                    ? "text-destructive"
+                                    : "text-success"
+                                }
+                                onClick={() => {
+                                  /* Implement activation toggle */
+                                }}
                               >
                                 {user.active ? "Deactivate" : "Activate"}
                               </Button>
@@ -298,7 +435,7 @@ export default function AdminDashboard() {
                   </Table>
                 </div>
                 {/* Pagination */}
-                {usersData?.totalPages > 1 && (
+                {(usersData?.totalPages ?? 0) > 1 && (
                   <div className="flex justify-center mt-6">
                     <div className="flex items-center space-x-2">
                       <Button
@@ -309,12 +446,16 @@ export default function AdminDashboard() {
                         Previous
                       </Button>
                       <span className="text-sm text-muted-foreground">
-                        Page {page} of {usersData.totalPages}
+                        Page {page} of {usersData?.totalPages ?? 1}
                       </span>
                       <Button
                         variant="outline"
-                        onClick={() => setPage((p) => Math.min(usersData.totalPages, p + 1))}
-                        disabled={page === usersData.totalPages}
+                        onClick={() =>
+                          setPage((p) =>
+                            Math.min(usersData?.totalPages || 1, p + 1)
+                          )
+                        }
+                        disabled={page === (usersData?.totalPages || 1)}
                       >
                         Next
                       </Button>
@@ -330,7 +471,9 @@ export default function AdminDashboard() {
             <Card>
               <CardHeader>
                 <CardTitle>Tutor Verification Requests</CardTitle>
-                <CardDescription>Review and approve tutor verification requests</CardDescription>
+                <CardDescription>
+                  Review and approve tutor verification requests
+                </CardDescription>
                 <div className="flex flex-col md:flex-row gap-4 mt-4">
                   <div className="flex-1 relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -373,45 +516,67 @@ export default function AdminDashboard() {
                           <TableCell className="font-medium">
                             <div className="flex items-center gap-2">
                               <Avatar className="h-8 w-8">
-                                <AvatarImage src={tutor.user?.avatar} alt={tutor.user?.firstName} />
+                                <AvatarImage
+                                  src={tutor.user?.avatar}
+                                  alt={tutor.user?.firstName}
+                                />
                                 <AvatarFallback>
-                                  {tutor.user?.firstName?.[0]}{tutor.user?.lastName?.[0]}
+                                  {tutor.user?.firstName?.[0]}
+                                  {tutor.user?.lastName?.[0]}
                                 </AvatarFallback>
                               </Avatar>
-                              <span>{tutor.user?.firstName} {tutor.user?.lastName}</span>
+                              <span>
+                                {tutor.user?.firstName} {tutor.user?.lastName}
+                              </span>
                             </div>
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-wrap gap-1">
-                              {tutor.subjects?.slice(0, 3).map((subject: any) => (
-                                <Badge 
-                                  key={subject.id} 
-                                  variant="outline" 
-                                  className="mr-1"
-                                >
-                                  {subject.name}
-                                </Badge>
-                              ))}
+                              {tutor.subjects
+                                ?.slice(0, 3)
+                                .map((subject: any) => (
+                                  <Badge
+                                    key={subject.id}
+                                    variant="outline"
+                                    className="mr-1"
+                                  >
+                                    {subject.name}
+                                  </Badge>
+                                ))}
                               {tutor.subjects?.length > 3 && (
-                                <Badge variant="outline">+{tutor.subjects.length - 3}</Badge>
+                                <Badge variant="outline">
+                                  +{tutor.subjects.length - 3}
+                                </Badge>
                               )}
                             </div>
                           </TableCell>
-                          <TableCell className="max-w-[200px] truncate" title={tutor.education}>
+                          <TableCell
+                            className="max-w-[200px] truncate"
+                            title={tutor.education}
+                          >
                             {tutor.education}
                           </TableCell>
-                          <TableCell className="max-w-[200px] truncate" title={tutor.experience}>
+                          <TableCell
+                            className="max-w-[200px] truncate"
+                            title={tutor.experience}
+                          >
                             {tutor.experience}
                           </TableCell>
                           <TableCell>
                             <Badge
                               variant={
-                                tutor.isVerified ? "success" :
-                                tutor.status === "rejected" ? "destructive" : "warning"
+                                tutor.isVerified
+                                  ? "secondary"
+                                  : tutor.status === "rejected"
+                                  ? "destructive"
+                                  : "outline"
                               }
                             >
-                              {tutor.isVerified ? "Verified" : 
-                               tutor.status === "rejected" ? "Rejected" : "Pending"}
+                              {tutor.isVerified
+                                ? "Verified"
+                                : tutor.status === "rejected"
+                                ? "Rejected"
+                                : "Pending"}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
@@ -424,7 +589,9 @@ export default function AdminDashboard() {
                                 </DialogTrigger>
                                 <DialogContent className="max-w-3xl">
                                   <DialogHeader>
-                                    <DialogTitle>Tutor Profile Details</DialogTitle>
+                                    <DialogTitle>
+                                      Tutor Profile Details
+                                    </DialogTitle>
                                     <DialogDescription>
                                       Review the tutor's profile information
                                     </DialogDescription>
@@ -433,13 +600,18 @@ export default function AdminDashboard() {
                                     <div>
                                       <div className="flex flex-col items-center">
                                         <Avatar className="h-32 w-32 mb-4">
-                                          <AvatarImage src={tutor.user?.avatar} alt={tutor.user?.firstName} />
+                                          <AvatarImage
+                                            src={tutor.user?.avatar}
+                                            alt={tutor.user?.firstName}
+                                          />
                                           <AvatarFallback className="text-3xl">
-                                            {tutor.user?.firstName?.[0]}{tutor.user?.lastName?.[0]}
+                                            {tutor.user?.firstName?.[0]}
+                                            {tutor.user?.lastName?.[0]}
                                           </AvatarFallback>
                                         </Avatar>
                                         <h3 className="font-medium text-lg">
-                                          {tutor.user?.firstName} {tutor.user?.lastName}
+                                          {tutor.user?.firstName}{" "}
+                                          {tutor.user?.lastName}
                                         </h3>
                                         <p className="text-muted-foreground text-sm">
                                           {tutor.user?.email}
@@ -448,40 +620,60 @@ export default function AdminDashboard() {
                                     </div>
                                     <div className="md:col-span-2 space-y-4">
                                       <div>
-                                        <h4 className="font-medium">Hourly Rate</h4>
+                                        <h4 className="font-medium">
+                                          Hourly Rate
+                                        </h4>
                                         <p className="text-secondary font-medium">
-                                          {new Intl.NumberFormat('vi-VN', { 
-                                            style: 'currency', 
-                                            currency: 'VND'
+                                          {new Intl.NumberFormat("vi-VN", {
+                                            style: "currency",
+                                            currency: "VND",
                                           }).format(Number(tutor.hourlyRate))}
                                         </p>
                                       </div>
                                       <div>
-                                        <h4 className="font-medium">Teaching Mode</h4>
+                                        <h4 className="font-medium">
+                                          Teaching Mode
+                                        </h4>
                                         <p>
-                                          {tutor.teachingMode === "online" ? "Online" : 
-                                          tutor.teachingMode === "offline" ? "In-person" : 
-                                          "Online & In-person"}
+                                          {tutor.teachingMode === "online"
+                                            ? "Online"
+                                            : tutor.teachingMode === "offline"
+                                            ? "In-person"
+                                            : "Online & In-person"}
                                         </p>
                                       </div>
                                       <div>
-                                        <h4 className="font-medium">Subjects</h4>
+                                        <h4 className="font-medium">
+                                          Subjects
+                                        </h4>
                                         <div className="flex flex-wrap gap-2 mt-1">
-                                          {tutor.subjects?.map((subject: any) => (
-                                            <Badge key={subject.id} variant="outline">
-                                              {subject.name}
-                                            </Badge>
-                                          ))}
+                                          {tutor.subjects?.map(
+                                            (subject: any) => (
+                                              <Badge
+                                                key={subject.id}
+                                                variant="outline"
+                                              >
+                                                {subject.name}
+                                              </Badge>
+                                            )
+                                          )}
                                         </div>
                                       </div>
                                       <div>
-                                        <h4 className="font-medium">Education Levels</h4>
+                                        <h4 className="font-medium">
+                                          Education Levels
+                                        </h4>
                                         <div className="flex flex-wrap gap-2 mt-1">
-                                          {tutor.educationLevels?.map((level: any) => (
-                                            <Badge key={level.id} variant="outline">
-                                              {level.name}
-                                            </Badge>
-                                          ))}
+                                          {tutor.educationLevels?.map(
+                                            (level: any) => (
+                                              <Badge
+                                                key={level.id}
+                                                variant="outline"
+                                              >
+                                                {level.name}
+                                              </Badge>
+                                            )
+                                          )}
                                         </div>
                                       </div>
                                     </div>
@@ -494,13 +686,17 @@ export default function AdminDashboard() {
                                       </p>
                                     </div>
                                     <div>
-                                      <h4 className="font-medium mb-2">Education</h4>
+                                      <h4 className="font-medium mb-2">
+                                        Education
+                                      </h4>
                                       <p className="whitespace-pre-line text-muted-foreground">
                                         {tutor.education}
                                       </p>
                                     </div>
                                     <div>
-                                      <h4 className="font-medium mb-2">Experience</h4>
+                                      <h4 className="font-medium mb-2">
+                                        Experience
+                                      </h4>
                                       <p className="whitespace-pre-line text-muted-foreground">
                                         {tutor.experience}
                                       </p>
@@ -509,10 +705,14 @@ export default function AdminDashboard() {
                                   <DialogFooter>
                                     {!tutor.isVerified && (
                                       <>
-                                        <Button 
-                                          variant="destructive" 
-                                          onClick={() => rejectTutorMutation.mutate(tutor.id)}
-                                          disabled={rejectTutorMutation.isPending}
+                                        <Button
+                                          variant="destructive"
+                                          onClick={() =>
+                                            rejectTutorMutation.mutate(tutor.id)
+                                          }
+                                          disabled={
+                                            rejectTutorMutation.isPending
+                                          }
                                         >
                                           {rejectTutorMutation.isPending ? (
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -521,10 +721,16 @@ export default function AdminDashboard() {
                                           )}
                                           Reject
                                         </Button>
-                                        <Button 
-                                          variant="default" 
-                                          onClick={() => approveTutorMutation.mutate(tutor.id)}
-                                          disabled={approveTutorMutation.isPending}
+                                        <Button
+                                          variant="default"
+                                          onClick={() =>
+                                            approveTutorMutation.mutate(
+                                              tutor.id
+                                            )
+                                          }
+                                          disabled={
+                                            approveTutorMutation.isPending
+                                          }
                                         >
                                           {approveTutorMutation.isPending ? (
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -538,33 +744,39 @@ export default function AdminDashboard() {
                                   </DialogFooter>
                                 </DialogContent>
                               </Dialog>
-                              {!tutor.isVerified && tutor.status !== "rejected" && (
-                                <>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-destructive"
-                                    onClick={() => rejectTutorMutation.mutate(tutor.id)}
-                                    disabled={rejectTutorMutation.isPending}
-                                  >
-                                    <XCircle className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="default"
-                                    size="sm"
-                                    className="text-white"
-                                    onClick={() => approveTutorMutation.mutate(tutor.id)}
-                                    disabled={approveTutorMutation.isPending}
-                                  >
-                                    <CheckCircle className="h-4 w-4" />
-                                  </Button>
-                                </>
-                              )}
+                              {!tutor.isVerified &&
+                                tutor.status !== "rejected" && (
+                                  <>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="text-destructive"
+                                      onClick={() =>
+                                        rejectTutorMutation.mutate(tutor.id)
+                                      }
+                                      disabled={rejectTutorMutation.isPending}
+                                    >
+                                      <XCircle className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="default"
+                                      size="sm"
+                                      className="text-white"
+                                      onClick={() =>
+                                        approveTutorMutation.mutate(tutor.id)
+                                      }
+                                      disabled={approveTutorMutation.isPending}
+                                    >
+                                      <CheckCircle className="h-4 w-4" />
+                                    </Button>
+                                  </>
+                                )}
                             </div>
                           </TableCell>
                         </TableRow>
                       ))}
-                      {(!tutorVerifications?.tutors || tutorVerifications.tutors.length === 0) && (
+                      {(!tutorVerifications?.tutors ||
+                        tutorVerifications.tutors.length === 0) && (
                         <TableRow>
                           <TableCell colSpan={6} className="h-24 text-center">
                             No tutor verification requests found.
@@ -575,7 +787,7 @@ export default function AdminDashboard() {
                   </Table>
                 </div>
                 {/* Pagination */}
-                {tutorVerifications?.totalPages > 1 && (
+                {(tutorVerifications?.totalPages ?? 0) > 1 && (
                   <div className="flex justify-center mt-6">
                     <div className="flex items-center space-x-2">
                       <Button
@@ -586,12 +798,18 @@ export default function AdminDashboard() {
                         Previous
                       </Button>
                       <span className="text-sm text-muted-foreground">
-                        Page {page} of {tutorVerifications.totalPages}
+                        Page {page} of {tutorVerifications?.totalPages ?? 1}
                       </span>
                       <Button
                         variant="outline"
-                        onClick={() => setPage((p) => Math.min(tutorVerifications.totalPages, p + 1))}
-                        disabled={page === tutorVerifications.totalPages}
+                        onClick={() =>
+                          setPage((p) =>
+                            Math.min(tutorVerifications?.totalPages || 1, p + 1)
+                          )
+                        }
+                        disabled={
+                          page === (tutorVerifications?.totalPages || 1)
+                        }
                       >
                         Next
                       </Button>
@@ -607,60 +825,108 @@ export default function AdminDashboard() {
             <Card>
               <CardHeader>
                 <CardTitle>Platform Settings</CardTitle>
-                <CardDescription>Configure platform-wide settings</CardDescription>
+                <CardDescription>
+                  Configure platform-wide settings
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
                   <div className="grid md:grid-cols-2 gap-6">
                     <div>
-                      <h3 className="text-lg font-medium mb-4">General Settings</h3>
+                      <h3 className="text-lg font-medium mb-4">
+                        General Settings
+                      </h3>
                       <div className="space-y-4">
                         <div>
-                          <label className="text-sm font-medium">Platform Name</label>
+                          <label className="text-sm font-medium">
+                            Platform Name
+                          </label>
                           <Input defaultValue="HomiTutor" className="mt-1" />
                         </div>
                         <div>
-                          <label className="text-sm font-medium">Contact Email</label>
-                          <Input defaultValue="support@homitutor.vn" className="mt-1" type="email" />
+                          <label className="text-sm font-medium">
+                            Contact Email
+                          </label>
+                          <Input
+                            defaultValue="support@homitutor.vn"
+                            className="mt-1"
+                            type="email"
+                          />
                         </div>
                         <div>
-                          <label className="text-sm font-medium">Support Phone</label>
+                          <label className="text-sm font-medium">
+                            Support Phone
+                          </label>
                           <Input defaultValue="1900 xxxx" className="mt-1" />
                         </div>
                       </div>
                     </div>
                     <div>
-                      <h3 className="text-lg font-medium mb-4">Commission Settings</h3>
+                      <h3 className="text-lg font-medium mb-4">
+                        Commission Settings
+                      </h3>
                       <div className="space-y-4">
                         <div>
-                          <label className="text-sm font-medium">Platform Fee (%)</label>
-                          <Input defaultValue="10" className="mt-1" type="number" min="0" max="100" />
+                          <label className="text-sm font-medium">
+                            Platform Fee (%)
+                          </label>
+                          <Input
+                            defaultValue="10"
+                            className="mt-1"
+                            type="number"
+                            min="0"
+                            max="100"
+                          />
                         </div>
                         <div>
-                          <label className="text-sm font-medium">Minimum Withdrawal Amount (VND)</label>
-                          <Input defaultValue="100000" className="mt-1" type="number" />
+                          <label className="text-sm font-medium">
+                            Minimum Withdrawal Amount (VND)
+                          </label>
+                          <Input
+                            defaultValue="100000"
+                            className="mt-1"
+                            type="number"
+                          />
                         </div>
                       </div>
                     </div>
                   </div>
                   <div>
-                    <h3 className="text-lg font-medium mb-4">Email Notifications</h3>
+                    <h3 className="text-lg font-medium mb-4">
+                      Email Notifications
+                    </h3>
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <label>New User Registration</label>
-                        <input type="checkbox" defaultChecked className="toggle" />
+                        <input
+                          type="checkbox"
+                          defaultChecked
+                          className="toggle"
+                        />
                       </div>
                       <div className="flex items-center justify-between">
                         <label>Tutor Verification Requests</label>
-                        <input type="checkbox" defaultChecked className="toggle" />
+                        <input
+                          type="checkbox"
+                          defaultChecked
+                          className="toggle"
+                        />
                       </div>
                       <div className="flex items-center justify-between">
                         <label>New Message Notifications</label>
-                        <input type="checkbox" defaultChecked className="toggle" />
+                        <input
+                          type="checkbox"
+                          defaultChecked
+                          className="toggle"
+                        />
                       </div>
                       <div className="flex items-center justify-between">
                         <label>Payment Notifications</label>
-                        <input type="checkbox" defaultChecked className="toggle" />
+                        <input
+                          type="checkbox"
+                          defaultChecked
+                          className="toggle"
+                        />
                       </div>
                     </div>
                   </div>

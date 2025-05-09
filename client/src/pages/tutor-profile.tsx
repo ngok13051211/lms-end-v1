@@ -4,7 +4,18 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Mail, Clock, Book, Award, Star, MapPin, Users, Heart, Calendar } from "lucide-react";
+import {
+  Loader2,
+  Mail,
+  Clock,
+  Book,
+  Award,
+  Star,
+  MapPin,
+  Users,
+  Heart,
+  Calendar,
+} from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -20,45 +31,137 @@ export default function TutorProfile() {
   const { user } = useSelector((state: RootState) => state.auth);
   const { toast } = useToast();
   const [isFavorite, setIsFavorite] = useState(false);
-  
+
   // Get tutor details
-  const { data: tutor, isLoading: tutorLoading } = useQuery({
+  const { data: tutor, isLoading: tutorLoading } = useQuery<TutorProfile>({
     queryKey: [`/api/v1/tutors/${id}`],
   });
-  
+
   // Get tutor's courses
-  const { data: tutorCourses, isLoading: coursesLoading } = useQuery({
+  interface TutorCourse {
+    id: string;
+    title: string;
+    description: string;
+    subject?: { name: string };
+    level?: { name: string };
+    teaching_mode: string; // Đổi từ teachingMode sang teaching_mode để phù hợp với server
+    hourly_rate: number | string; // Đổi từ hourlyRate sang hourly_rate để phù hợp với server
+  }
+
+  const { data: tutorCourses, isLoading: coursesLoading } = useQuery<
+    TutorCourse[]
+  >({
     queryKey: [`/api/v1/tutors/${id}/courses`],
   });
-  
+
+  // Define type for reviews data
+  interface Review {
+    id: string;
+    rating: number;
+    comment: string;
+    created_at: string;
+    student?: {
+      name?: string;
+      first_name?: string;
+      last_name?: string;
+      avatar?: string;
+    };
+  }
+
   // Get tutor's reviews
-  const { data: reviews, isLoading: reviewsLoading } = useQuery({
+  const { data: reviews, isLoading: reviewsLoading } = useQuery<Review[]>({
     queryKey: [`/api/v1/tutors/${id}/reviews`],
   });
-  
+
   // Get similar tutors
-  const { data: similarTutors, isLoading: similarLoading } = useQuery({
+  const { data: similarTutors, isLoading: similarLoading } = useQuery<
+    TutorProfile[]
+  >({
     queryKey: [`/api/v1/tutors/similar/${id}`],
     enabled: !!tutor,
   });
-  
+
+  // Define type for tutor data
+  interface TutorProfile {
+    id: string;
+    user?: {
+      name?: string;
+      first_name?: string;
+      last_name?: string;
+      avatar?: string;
+    };
+    bio?: string;
+    rating: number;
+    total_reviews?: number;
+    is_verified: boolean;
+  }
+
+  // Define type for favorite check response
+  interface FavoriteCheckResponse {
+    isFavorite: boolean;
+  }
+
   // Check if tutor is in favorites
-  const { data: checkFavoriteData, isLoading: checkFavoriteLoading } = useQuery({
-    queryKey: [`/api/v1/students/favorite-tutors/check/${id}`],
-    enabled: !!user && user.role === 'student',
-  });
-  
+  const { data: checkFavoriteData, isLoading: checkFavoriteLoading } =
+    useQuery<FavoriteCheckResponse>({
+      queryKey: [`/api/v1/students/favorite-tutors/check/${id}`],
+      enabled: !!user && user.role === "student",
+    });
+
   // Update favorite status when data changes
   useEffect(() => {
     if (checkFavoriteData) {
       setIsFavorite(checkFavoriteData.isFavorite || false);
     }
   }, [checkFavoriteData]);
-  
+
+  // Helper function to format currency
+  const formatPrice = (price: number | string) => {
+    // Đảm bảo giá trị price được chuyển đổi thành số
+    const numericPrice = typeof price === "string" ? parseFloat(price) : price;
+
+    // Kiểm tra nếu giá trị không phải là số hợp lệ
+    if (isNaN(numericPrice)) {
+      return "Liên hệ";
+    }
+
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+    }).format(numericPrice);
+  };
+
+  // Get minimum hourly rate from tutor courses
+  const getMinHourlyRate = () => {
+    if (!tutorCourses || tutorCourses.length === 0) return null;
+
+    // Chuyển đổi tất cả hourly_rate thành số để so sánh
+    const numericRates = tutorCourses.map((course) => {
+      const rate =
+        typeof course.hourly_rate === "string"
+          ? parseFloat(course.hourly_rate)
+          : course.hourly_rate;
+
+      return isNaN(rate) ? Infinity : rate; // Bỏ qua giá trị không phải số
+    });
+
+    // Lọc bỏ các giá trị Infinity và lấy giá trị nhỏ nhất
+    const validRates = numericRates.filter((rate) => rate !== Infinity);
+    return validRates.length > 0 ? Math.min(...validRates) : null;
+  };
+
+  // Get unique teaching modes from tutor courses
+  const getTeachingModes = () => {
+    if (!tutorCourses || tutorCourses.length === 0) return [];
+    return Array.from(
+      new Set(tutorCourses.map((course) => course.teaching_mode))
+    );
+  };
+
   // Add tutor to favorites
   const addToFavoritesMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest('POST', `/api/v1/students/favorite-tutors/${id}`);
+      return await apiRequest("POST", `/api/v1/students/favorite-tutors/${id}`);
     },
     onSuccess: () => {
       setIsFavorite(true);
@@ -68,8 +171,12 @@ export default function TutorProfile() {
         variant: "default",
       });
       // Invalidate relevant queries
-      queryClient.invalidateQueries({ queryKey: [`/api/v1/students/favorite-tutors/check/${id}`] });
-      queryClient.invalidateQueries({ queryKey: ['/api/v1/students/favorite-tutors'] });
+      queryClient.invalidateQueries({
+        queryKey: [`/api/v1/students/favorite-tutors/check/${id}`],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/v1/students/favorite-tutors"],
+      });
     },
     onError: (error) => {
       console.error("Error adding to favorites:", error);
@@ -78,13 +185,16 @@ export default function TutorProfile() {
         description: "Không thể thêm gia sư vào danh sách yêu thích.",
         variant: "destructive",
       });
-    }
+    },
   });
-  
+
   // Remove tutor from favorites
   const removeFromFavoritesMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest('DELETE', `/api/v1/students/favorite-tutors/${id}`);
+      return await apiRequest(
+        "DELETE",
+        `/api/v1/students/favorite-tutors/${id}`
+      );
     },
     onSuccess: () => {
       setIsFavorite(false);
@@ -94,8 +204,12 @@ export default function TutorProfile() {
         variant: "default",
       });
       // Invalidate relevant queries
-      queryClient.invalidateQueries({ queryKey: [`/api/v1/students/favorite-tutors/check/${id}`] });
-      queryClient.invalidateQueries({ queryKey: ['/api/v1/students/favorite-tutors'] });
+      queryClient.invalidateQueries({
+        queryKey: [`/api/v1/students/favorite-tutors/check/${id}`],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/v1/students/favorite-tutors"],
+      });
     },
     onError: (error) => {
       console.error("Error removing from favorites:", error);
@@ -104,32 +218,32 @@ export default function TutorProfile() {
         description: "Không thể xóa gia sư khỏi danh sách yêu thích.",
         variant: "destructive",
       });
-    }
+    },
   });
-  
+
   // Handle favorite toggle
   const toggleFavorite = () => {
     if (!user) {
       navigate("/login");
       return;
     }
-    
+
     if (isFavorite) {
       removeFromFavoritesMutation.mutate();
     } else {
       addToFavoritesMutation.mutate();
     }
   };
-  
+
   const isLoading = tutorLoading || coursesLoading || reviewsLoading;
-  
+
   // Redirect if tutor not found
   useEffect(() => {
     if (!tutorLoading && !tutor) {
       navigate("/tutors");
     }
   }, [tutor, tutorLoading, navigate]);
-  
+
   if (isLoading) {
     return (
       <div>
@@ -140,16 +254,16 @@ export default function TutorProfile() {
       </div>
     );
   }
-  
+
   if (!tutor) return null;
-  
+
   // Start a conversation with the tutor
   const startConversation = async () => {
     if (!user) {
       navigate("/login");
       return;
     }
-    
+
     try {
       // Create or retrieve conversation
       const response = await fetch(`/api/v1/conversations/tutor/${id}`, {
@@ -159,7 +273,7 @@ export default function TutorProfile() {
         },
         credentials: "include",
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         navigate(`/dashboard/student/messages/${data.conversationId}`);
@@ -168,7 +282,7 @@ export default function TutorProfile() {
       console.error("Error starting conversation:", error);
     }
   };
-  
+
   return (
     <div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -179,32 +293,77 @@ export default function TutorProfile() {
               <CardContent className="p-6">
                 <div className="flex flex-col md:flex-row md:items-center">
                   <Avatar className="h-24 w-24 border-2 border-primary">
-                    <AvatarImage 
-                      src={tutor.user?.avatar} 
-                      alt={tutor.user?.name || (tutor.user?.first_name ? `${tutor.user.first_name} ${tutor.user.last_name}` : "Tutor")} 
+                    <AvatarImage
+                      src={tutor.user?.avatar ?? undefined}
+                      alt={
+                        tutor.user?.name ||
+                        (tutor.user?.first_name
+                          ? `${tutor.user.first_name} ${tutor.user.last_name}`
+                          : "Tutor")
+                      }
                     />
                     <AvatarFallback className="text-2xl">
-                      {tutor.user?.name ? tutor.user.name[0] : 
-                       (tutor.user?.first_name ? `${tutor.user.first_name[0]}${tutor.user.last_name?.[0] || ''}` : "T")}
+                      {tutor.user?.name
+                        ? tutor.user.name[0]
+                        : tutor.user?.first_name
+                        ? `${tutor.user.first_name[0]}${
+                            tutor.user.last_name?.[0] || ""
+                          }`
+                        : "T"}
                     </AvatarFallback>
                   </Avatar>
-                  
+
                   <div className="ml-0 md:ml-6 mt-4 md:mt-0 flex-1">
                     <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-2">
                       <h1 className="text-2xl md:text-3xl font-medium">
-                        {tutor.user?.name || (tutor.user?.first_name ? `${tutor.user.first_name} ${tutor.user.last_name}` : "Tutor")}
+                        {tutor.user?.name ||
+                          (tutor.user?.first_name
+                            ? `${tutor.user.first_name} ${tutor.user.last_name}`
+                            : "Tutor")}
                       </h1>
-                      
+
                       <div className="flex items-center mt-2 md:mt-0">
-                        <Star className="h-5 w-5 text-warning" fill="currentColor" />
-                        <span className="ml-1 text-lg font-medium">{tutor.rating}</span>
-                        <span className="text-gray-500 ml-1">({tutor.total_reviews || 0} reviews)</span>
+                        <Star
+                          className="h-5 w-5 text-warning"
+                          fill="currentColor"
+                        />
+                        <span className="ml-1 text-lg font-medium">
+                          {tutor.rating}
+                        </span>
+                        <span className="text-gray-500 ml-1">
+                          ({tutor.total_reviews || 0} reviews)
+                        </span>
                       </div>
                     </div>
-                    
+
+                    {/* Hiển thị các teaching modes từ courses */}
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {getTeachingModes().map((mode, index) => (
+                        <Badge
+                          key={`header-mode-${index}-${mode}`}
+                          className="bg-primary-light/20 text-primary-dark hover:bg-primary-light/30"
+                        >
+                          {mode === "online"
+                            ? "Online"
+                            : mode === "offline"
+                            ? "Tại nhà"
+                            : "Online & Tại nhà"}
+                        </Badge>
+                      ))}
+                    </div>
+
+                    {/* Hiển thị giá tối thiểu từ courses */}
+                    {getMinHourlyRate() && (
+                      <div className="mt-2 text-xl font-semibold">
+                        Học phí từ {formatPrice(getMinHourlyRate() as number)}
+                        <span className="text-sm text-muted-foreground">
+                          /giờ
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
-                
+
                 <div className="mt-6 flex flex-wrap gap-3">
                   {tutor.is_verified && (
                     <div className="flex items-center text-success">
@@ -215,15 +374,19 @@ export default function TutorProfile() {
                 </div>
               </CardContent>
             </Card>
-            
+
             {/* Tabs Section */}
             <Tabs defaultValue="about" className="mb-8">
               <TabsList className="grid grid-cols-3 w-full">
                 <TabsTrigger value="about">About</TabsTrigger>
-                <TabsTrigger value="courses">Khóa học ({tutorCourses?.length || 0})</TabsTrigger>
-                <TabsTrigger value="reviews">Reviews ({tutor.total_reviews || 0})</TabsTrigger>
+                <TabsTrigger value="courses">
+                  Khóa học ({tutorCourses?.length || 0})
+                </TabsTrigger>
+                <TabsTrigger value="reviews">
+                  Reviews ({tutor.total_reviews || 0})
+                </TabsTrigger>
               </TabsList>
-              
+
               {/* About Tab */}
               <TabsContent value="about" className="pt-4">
                 <Card>
@@ -233,7 +396,7 @@ export default function TutorProfile() {
                   </CardContent>
                 </Card>
               </TabsContent>
-              
+
               {/* Courses Tab */}
               <TabsContent value="courses" className="pt-4">
                 <Card>
@@ -241,40 +404,63 @@ export default function TutorProfile() {
                     {tutorCourses && tutorCourses.length > 0 ? (
                       <div className="grid gap-6">
                         {tutorCourses.map((course) => (
-                          <div key={course.id} className="border rounded-lg p-4 hover:border-primary transition-colors">
-                            <h3 className="text-lg font-medium mb-2">{course.title}</h3>
-                            <p className="text-muted-foreground mb-4">{course.description}</p>
-                            
+                          <div
+                            key={course.id}
+                            className="border rounded-lg p-4 hover:border-primary transition-colors"
+                          >
+                            <h3 className="text-lg font-medium mb-2">
+                              {course.title}
+                            </h3>
+                            <p className="text-muted-foreground mb-4">
+                              {course.description}
+                            </p>
+
                             <div className="flex flex-wrap gap-2 mb-4">
                               {course.subject && (
-                                <Badge className="bg-primary-light/20 text-primary-dark hover:bg-primary-light/30">
+                                <Badge
+                                  key={`subject-${course.id}`}
+                                  className="bg-primary-light/20 text-primary-dark hover:bg-primary-light/30"
+                                >
                                   {course.subject.name}
                                 </Badge>
                               )}
-                              
+
                               {course.level && (
-                                <Badge className="bg-primary-light/20 text-primary-dark hover:bg-primary-light/30">
+                                <Badge
+                                  key={`level-${course.id}`}
+                                  className="bg-primary-light/20 text-primary-dark hover:bg-primary-light/30"
+                                >
                                   {course.level.name}
                                 </Badge>
                               )}
-                              
-                              <Badge className="bg-secondary-light/20 text-secondary-dark hover:bg-secondary-light/30">
-                                {course.teachingMode === "online" ? "Online" : 
-                                 course.teachingMode === "offline" ? "In-person" : 
-                                 "Online & In-person"}
+
+                              <Badge
+                                key={`mode-${course.id}`}
+                                className="bg-secondary-light/20 text-secondary-dark hover:bg-secondary-light/30"
+                              >
+                                {course.teaching_mode === "online"
+                                  ? "Online"
+                                  : course.teaching_mode === "offline"
+                                  ? "In-person"
+                                  : "Online & In-person"}
                               </Badge>
                             </div>
-                            
+
                             <div className="flex justify-between items-center">
                               <span className="font-medium text-secondary">
-                                {new Intl.NumberFormat('vi-VN', { 
-                                  style: 'currency', 
-                                  currency: 'VND' 
-                                }).format(Number(course.hourlyRate))}<span className="text-sm text-muted-foreground">/hour</span>
+                                {formatPrice(course.hourly_rate)}
+                                <span className="text-sm text-muted-foreground">
+                                  /hour
+                                </span>
                               </span>
-                              
-                              <Button onClick={startConversation} className="bg-primary hover:bg-primary-dark">
-                                Contact Tutor
+
+                              <Button
+                                onClick={() =>
+                                  navigate(`/book/${id}?course=${course.id}`)
+                                }
+                                className="bg-primary hover:bg-primary-dark"
+                              >
+                                Đặt lịch học
                               </Button>
                             </div>
                           </div>
@@ -291,7 +477,7 @@ export default function TutorProfile() {
                   </CardContent>
                 </Card>
               </TabsContent>
-              
+
               {/* Reviews Tab */}
               <TabsContent value="reviews" className="pt-4">
                 <Card>
@@ -299,42 +485,66 @@ export default function TutorProfile() {
                     {reviews && reviews.length > 0 ? (
                       <div className="space-y-6">
                         {reviews.map((review) => (
-                          <div key={review.id} className="border-b pb-6 last:border-b-0">
+                          <div
+                            key={review.id}
+                            className="border-b pb-6 last:border-b-0"
+                          >
                             <div className="flex items-start mb-4">
                               <Avatar className="h-10 w-10">
-                                <AvatarImage 
-                                  src={review.student?.avatar} 
-                                  alt={review.student?.name || (review.student?.first_name ? `${review.student.first_name} ${review.student.last_name}` : "Student")} 
+                                <AvatarImage
+                                  src={review.student?.avatar ?? undefined}
+                                  alt={
+                                    review.student?.name ||
+                                    (review.student?.first_name
+                                      ? `${review.student.first_name} ${review.student.last_name}`
+                                      : "Student")
+                                  }
                                 />
                                 <AvatarFallback>
-                                  {review.student?.name ? review.student.name[0] : 
-                                   (review.student?.first_name ? `${review.student.first_name[0]}${review.student.last_name?.[0] || ''}` : "S")}
+                                  {review.student?.name
+                                    ? review.student.name[0]
+                                    : review.student?.first_name
+                                    ? `${review.student.first_name[0]}${
+                                        review.student.last_name?.[0] || ""
+                                      }`
+                                    : "S"}
                                 </AvatarFallback>
                               </Avatar>
-                              
+
                               <div className="ml-3">
                                 <div className="flex items-center">
                                   <h4 className="font-medium">
-                                    {review.student?.name || (review.student?.first_name ? `${review.student.first_name} ${review.student.last_name}` : "Student")}
+                                    {review.student?.name ||
+                                      (review.student?.first_name
+                                        ? `${review.student.first_name} ${review.student.last_name}`
+                                        : "Student")}
                                   </h4>
                                   <span className="ml-2 text-sm text-muted-foreground">
-                                    {new Date(review.created_at).toLocaleDateString()}
+                                    {new Date(
+                                      review.created_at
+                                    ).toLocaleDateString()}
                                   </span>
                                 </div>
-                                
+
                                 <div className="flex text-warning mt-1">
                                   {Array.from({ length: 5 }).map((_, i) => (
                                     <Star
-                                      key={i}
+                                      key={`star-${review.id}-${i}`}
                                       className="h-4 w-4"
-                                      fill={i < review.rating ? "currentColor" : "none"}
+                                      fill={
+                                        i < review.rating
+                                          ? "currentColor"
+                                          : "none"
+                                      }
                                     />
                                   ))}
                                 </div>
                               </div>
                             </div>
-                            
-                            <p className="text-muted-foreground">{review.comment}</p>
+
+                            <p className="text-muted-foreground">
+                              {review.comment}
+                            </p>
                           </div>
                         ))}
                       </div>
@@ -351,19 +561,21 @@ export default function TutorProfile() {
               </TabsContent>
             </Tabs>
           </div>
-          
+
           {/* Sidebar */}
           <div>
             {/* Contact Card */}
             <Card className="mb-8">
               <CardContent className="p-6">
                 <h3 className="text-xl font-medium mb-4">
-                  Contact {tutor.user?.name || (tutor.user?.first_name ? `${tutor.user.first_name}` : "Tutor")}
+                  Contact{" "}
+                  {tutor.user?.name ||
+                    (tutor.user?.first_name
+                      ? `${tutor.user.first_name}`
+                      : "Tutor")}
                 </h3>
-                
 
-                
-                {user && user.role === "student" && (
+                {/* {user && user.role === "student" && (
                   <Button
                     onClick={() => navigate(`/book/${id}`)}
                     className="w-full mb-3"
@@ -371,32 +583,47 @@ export default function TutorProfile() {
                   >
                     <Calendar className="mr-2 h-4 w-4" /> Đặt lịch học
                   </Button>
-                )}
+                )} */}
 
-                <Button onClick={startConversation} className="w-full mb-3" variant="secondary">
+                <Button
+                  onClick={startConversation}
+                  className="w-full mb-3"
+                  variant="secondary"
+                >
                   <Mail className="mr-2 h-4 w-4" /> Nhắn tin với gia sư
                 </Button>
-                
+
                 {user && user.role === "student" && (
-                  <Button 
+                  <Button
                     variant={isFavorite ? "outline" : "secondary"}
-                    className={`w-full mb-3 ${isFavorite ? "border-primary text-primary hover:bg-primary/5" : ""}`}
+                    className={`w-full mb-3 ${
+                      isFavorite
+                        ? "border-primary text-primary hover:bg-primary/5"
+                        : ""
+                    }`}
                     onClick={toggleFavorite}
-                    disabled={addToFavoritesMutation.isPending || removeFromFavoritesMutation.isPending}
+                    disabled={
+                      addToFavoritesMutation.isPending ||
+                      removeFromFavoritesMutation.isPending
+                    }
                   >
-                    <Heart 
-                      className={`mr-2 h-4 w-4 ${isFavorite ? "fill-primary" : ""}`} 
+                    <Heart
+                      className={`mr-2 h-4 w-4 ${
+                        isFavorite ? "fill-primary" : ""
+                      }`}
                     />
-                    {isFavorite ? "Đã thêm vào yêu thích" : "Thêm vào yêu thích"}
+                    {isFavorite
+                      ? "Đã thêm vào yêu thích"
+                      : "Thêm vào yêu thích"}
                   </Button>
                 )}
-                
+
                 <p className="text-xs text-center text-muted-foreground">
                   Usually responds within 24 hours
                 </p>
               </CardContent>
             </Card>
-            
+
             {/* Similar Tutors */}
             {!similarLoading && similarTutors && similarTutors.length > 0 && (
               <div>

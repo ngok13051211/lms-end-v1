@@ -15,7 +15,8 @@ import {
   X,
   ChevronRight,
   Users,
-  Settings
+  Settings,
+  Calendar, // Added Calendar icon for the schedule
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useDispatch } from "react-redux";
@@ -42,7 +43,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const handleLogout = () => {
     // Clear React Query cache before logout to prevent stale data issues
     queryClient.clear();
-    
+
     dispatch(logout() as any);
     navigate("/");
   };
@@ -51,25 +52,82 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const getSidebarItems = () => {
     if (user.role === "tutor") {
       return [
-        { label: "Dashboard", icon: <Home className="h-5 w-5" />, href: "/dashboard/tutor" },
-        { label: "Profile", icon: <User className="h-5 w-5" />, href: "/dashboard/tutor/profile" },
-        { label: "Khóa học", icon: <BookOpen className="h-5 w-5" />, href: "/dashboard/tutor/courses" },
-        { label: "Messages", icon: <MessageSquare className="h-5 w-5" />, href: "/dashboard/tutor/messages" },
-        { label: "Statistics", icon: <PieChart className="h-5 w-5" />, href: "/dashboard/tutor/stats" }
+        {
+          label: "Dashboard",
+          icon: <Home className="h-5 w-5" />,
+          href: "/dashboard/tutor",
+        },
+        {
+          label: "Profile",
+          icon: <User className="h-5 w-5" />,
+          href: "/dashboard/tutor/profile",
+        },
+        {
+          label: "Khóa học",
+          icon: <BookOpen className="h-5 w-5" />,
+          href: "/dashboard/tutor/courses",
+        },
+        {
+          label: "Messages",
+          icon: <MessageSquare className="h-5 w-5" />,
+          href: "/dashboard/tutor/messages",
+        },
+        {
+          label: "Statistics",
+          icon: <PieChart className="h-5 w-5" />,
+          href: "/dashboard/tutor/stats",
+        },
+        {
+          label: "Lịch dạy",
+          icon: <Calendar className="h-5 w-5" />,
+          href: "/dashboard/tutor/schedule",
+        }, // Added "Lịch dạy" menu item
       ];
     } else if (user.role === "student") {
       return [
-        { label: "Dashboard", icon: <Home className="h-5 w-5" />, href: "/dashboard/student" },
-        { label: "Profile", icon: <User className="h-5 w-5" />, href: "/dashboard/student/profile" },
-        { label: "My Tutors", icon: <Users className="h-5 w-5" />, href: "/dashboard/student/tutors" },
-        { label: "Messages", icon: <MessageSquare className="h-5 w-5" />, href: "/dashboard/student/messages" }
+        {
+          label: "Dashboard",
+          icon: <Home className="h-5 w-5" />,
+          href: "/dashboard/student",
+        },
+        {
+          label: "Profile",
+          icon: <User className="h-5 w-5" />,
+          href: "/dashboard/student/profile",
+        },
+        {
+          label: "My Tutors",
+          icon: <Users className="h-5 w-5" />,
+          href: "/dashboard/student/tutors",
+        },
+        {
+          label: "Messages",
+          icon: <MessageSquare className="h-5 w-5" />,
+          href: "/dashboard/student/messages",
+        },
       ];
     } else if (user.role === "admin") {
       return [
-        { label: "Dashboard", icon: <Home className="h-5 w-5" />, href: "/dashboard/admin" },
-        { label: "Users", icon: <Users className="h-5 w-5" />, href: "/dashboard/admin/users" },
-        { label: "Tutors", icon: <User className="h-5 w-5" />, href: "/dashboard/admin/tutors" },
-        { label: "Settings", icon: <Settings className="h-5 w-5" />, href: "/dashboard/admin/settings" }
+        {
+          label: "Dashboard",
+          icon: <Home className="h-5 w-5" />,
+          href: "/dashboard/admin",
+        },
+        {
+          label: "Users",
+          icon: <Users className="h-5 w-5" />,
+          href: "/dashboard/admin/users",
+        },
+        {
+          label: "Tutors",
+          icon: <User className="h-5 w-5" />,
+          href: "/dashboard/admin/tutors",
+        },
+        {
+          label: "Settings",
+          icon: <Settings className="h-5 w-5" />,
+          href: "/dashboard/admin/settings",
+        },
       ];
     }
     return [];
@@ -81,9 +139,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const renderSidebarContent = () => (
     <div className="flex flex-col h-full">
       <div className="p-6 border-b">
-        <div 
-          className="flex items-center cursor-pointer" 
-          onClick={() => window.location.href = '/'}
+        <div
+          className="flex items-center cursor-pointer"
+          onClick={() => (window.location.href = "/")}
         >
           <span className="text-primary text-2xl font-medium">
             Homi<span className="text-secondary">Tutor</span>
@@ -94,7 +152,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       <div className="flex items-center p-6 border-b">
         <Avatar className="h-10 w-10">
           <AvatarImage src={user.avatar || undefined} alt={user.first_name} />
-          <AvatarFallback>{user.first_name?.[0]}{user.last_name?.[0]}</AvatarFallback>
+          <AvatarFallback>
+            {user.first_name?.[0]}
+            {user.last_name?.[0]}
+          </AvatarFallback>
         </Avatar>
         <div className="ml-3">
           <p className="font-medium">
@@ -154,9 +215,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Mobile navigation */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-background border-b p-4 flex items-center justify-between">
-        <div 
-          className="flex items-center cursor-pointer" 
-          onClick={() => window.location.href = '/'}
+        <div
+          className="flex items-center cursor-pointer"
+          onClick={() => (window.location.href = "/")}
         >
           <span className="text-primary text-xl font-medium">
             Homi<span className="text-secondary">Tutor</span>
@@ -185,9 +246,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Main content */}
       <main className="flex-1 overflow-auto md:ml-64 pt-0 md:pt-0">
-        <div className="pt-16 md:pt-0">
-          {children}
-        </div>
+        <div className="pt-16 md:pt-0">{children}</div>
       </main>
     </div>
   );

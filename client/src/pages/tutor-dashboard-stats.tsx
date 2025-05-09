@@ -1,20 +1,58 @@
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, UserCheck, BookOpen, MessageSquare, Eye, Users, Star, BadgeCheck } from "lucide-react";
+import {
+  Loader2,
+  UserCheck,
+  BookOpen,
+  MessageSquare,
+  Eye,
+  Users,
+  Star,
+  BadgeCheck,
+} from "lucide-react";
 import TutorDashboardLayout from "@/components/layout/TutorDashboardLayout";
 import { Progress } from "@/components/ui/progress";
 import { Link } from "wouter";
 
-export default function TutorDashboardStats() {  
+interface TutorProfile {
+  isVerified?: boolean;
+  created_at?: string;
+  subjects?: any[];
+  educationLevels?: any[];
+  hourlyRate?: number | string;
+}
+
+export default function TutorDashboardStats() {
   // Get tutor profile
-  const { data: tutorProfile, isLoading: profileLoading } = useQuery({
-    queryKey: [`/api/v1/tutors/profile`],
-    retry: false,
-  });
-  
+  const { data: tutorProfile, isLoading: profileLoading } =
+    useQuery<TutorProfile>({
+      queryKey: [`/api/v1/tutors/profile`],
+      retry: false,
+    });
+
+  // Define stats interface
+  interface TutorStats {
+    profile_status?: string;
+    profile_views?: number;
+    active_conversations?: number;
+    rating?: number | string;
+    reviews?: number;
+    active_courses?: number;
+    unread_messages?: number;
+    response_rate?: number;
+    average_response_time?: string;
+    courses_created?: number;
+  }
+
   // Get tutor's stats
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  const { data: stats, isLoading: statsLoading } = useQuery<TutorStats>({
     queryKey: [`/api/v1/tutors/stats`],
     enabled: !!tutorProfile,
   });
@@ -39,12 +77,11 @@ export default function TutorDashboardStats() {
           <BadgeCheck className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <h2 className="text-xl font-medium mb-2">Hoàn thiện hồ sơ gia sư</h2>
           <p className="text-muted-foreground max-w-md mx-auto mb-6">
-            Bạn cần hoàn thiện hồ sơ gia sư trước khi xem thống kê. Hoàn thiện hồ sơ để bắt đầu nhận học viên.
+            Bạn cần hoàn thiện hồ sơ gia sư trước khi xem thống kê. Hoàn thiện
+            hồ sơ để bắt đầu nhận học viên.
           </p>
           <Button asChild>
-            <Link href="/dashboard/tutor/profile">
-              Hoàn thiện hồ sơ
-            </Link>
+            <Link href="/dashboard/tutor/profile">Hoàn thiện hồ sơ</Link>
           </Button>
         </div>
       </TutorDashboardLayout>
@@ -58,48 +95,59 @@ export default function TutorDashboardStats() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Trạng thái hồ sơ</CardTitle>
-              <BadgeCheck className={`h-4 w-4 ${tutorProfile.isVerified ? "text-green-500" : "text-yellow-500"}`} />
+              <CardTitle className="text-sm font-medium">
+                Trạng thái hồ sơ
+              </CardTitle>
+              <BadgeCheck
+                className={`h-4 w-4 ${
+                  tutorProfile.isVerified ? "text-green-500" : "text-yellow-500"
+                }`}
+              />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
                 {stats?.profile_status || "Chờ xác minh"}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                {tutorProfile.isVerified 
+                {tutorProfile.isVerified
                   ? "Hồ sơ của bạn đã được xác minh"
-                  : "Hồ sơ của bạn đang được xem xét"
-                }
+                  : "Hồ sơ của bạn đang được xem xét"}
               </p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Lượt xem hồ sơ</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Lượt xem hồ sơ
+              </CardTitle>
               <Eye className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.profile_views || 0}</div>
+              <div className="text-2xl font-bold">
+                {stats?.profile_views || 0}
+              </div>
               <p className="text-xs text-muted-foreground mt-1">
                 Số lượt xem hồ sơ của bạn
               </p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">Học viên</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.active_conversations || 0}</div>
+              <div className="text-2xl font-bold">
+                {stats?.active_conversations || 0}
+              </div>
               <p className="text-xs text-muted-foreground mt-1">
                 Học viên đang trao đổi với bạn
               </p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">Đánh giá</CardTitle>
@@ -107,10 +155,12 @@ export default function TutorDashboardStats() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {stats?.rating 
-                  ? `${typeof stats.rating === 'number' 
-                      ? stats.rating.toFixed(1) 
-                      : stats.rating}/5.0` 
+                {stats?.rating
+                  ? `${
+                      typeof stats.rating === "number"
+                        ? stats.rating.toFixed(1)
+                        : stats.rating
+                    }/5.0`
                   : "Chưa có"}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
@@ -140,27 +190,30 @@ export default function TutorDashboardStats() {
                   </div>
                   <BookOpen className="h-5 w-5 text-muted-foreground" />
                 </div>
-                
+
                 <div className="flex items-center gap-2">
-                  <Progress value={(stats?.active_courses || 0) * 20} className="h-2" />
+                  <Progress
+                    value={(stats?.active_courses || 0) * 20}
+                    className="h-2"
+                  />
                   <span className="text-sm text-muted-foreground w-8">
                     {stats?.active_courses || 0}/5
                   </span>
                 </div>
-                
+
                 <Button variant="outline" size="sm" asChild>
-                  <Link href="/dashboard/tutor/courses">
-                    Quản lý khóa học
-                  </Link>
+                  <Link href="/dashboard/tutor/courses">Quản lý khóa học</Link>
                 </Button>
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader>
               <CardTitle>Tin nhắn</CardTitle>
-              <CardDescription>Tin nhắn và tương tác với học viên</CardDescription>
+              <CardDescription>
+                Tin nhắn và tương tác với học viên
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -175,29 +228,35 @@ export default function TutorDashboardStats() {
                   </div>
                   <MessageSquare className="h-5 w-5 text-muted-foreground" />
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex flex-col">
-                    <span className="text-2xl font-bold">{stats?.active_conversations || 0}</span>
-                    <span className="text-sm text-muted-foreground">Hội thoại</span>
+                    <span className="text-2xl font-bold">
+                      {stats?.active_conversations || 0}
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      Hội thoại
+                    </span>
                   </div>
-                  
+
                   <div className="flex flex-col">
-                    <span className="text-2xl font-bold">{stats?.response_rate || 100}%</span>
-                    <span className="text-sm text-muted-foreground">Tỉ lệ phản hồi</span>
+                    <span className="text-2xl font-bold">
+                      {stats?.response_rate || 100}%
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      Tỉ lệ phản hồi
+                    </span>
                   </div>
                 </div>
-                
+
                 <Button variant="outline" size="sm" asChild>
-                  <Link href="/dashboard/tutor/messages">
-                    Xem tin nhắn
-                  </Link>
+                  <Link href="/dashboard/tutor/messages">Xem tin nhắn</Link>
                 </Button>
               </div>
             </CardContent>
           </Card>
         </div>
-        
+
         {/* Stats Table */}
         <Card>
           <CardHeader>
@@ -219,36 +278,46 @@ export default function TutorDashboardStats() {
                   <tr className="border-b">
                     <td className="py-3">Ngày tham gia</td>
                     <td className="text-right">
-                      {tutorProfile?.created_at 
-                        ? new Date(tutorProfile.created_at).toLocaleDateString('vi-VN')
-                        : new Date().toLocaleDateString('vi-VN')}
+                      {tutorProfile?.created_at
+                        ? new Date(tutorProfile.created_at).toLocaleDateString(
+                            "vi-VN"
+                          )
+                        : new Date().toLocaleDateString("vi-VN")}
                     </td>
                   </tr>
                   <tr className="border-b">
                     <td className="py-3">Thời gian phản hồi trung bình</td>
-                    <td className="text-right">{stats?.average_response_time || "24 giờ"}</td>
+                    <td className="text-right">
+                      {stats?.average_response_time || "24 giờ"}
+                    </td>
                   </tr>
                   <tr className="border-b">
                     <td className="py-3">Số môn học</td>
-                    <td className="text-right">{tutorProfile.subjects?.length || 0}</td>
+                    <td className="text-right">
+                      {tutorProfile.subjects?.length || 0}
+                    </td>
                   </tr>
                   <tr className="border-b">
                     <td className="py-3">Số cấp độ giảng dạy</td>
-                    <td className="text-right">{tutorProfile.educationLevels?.length || 0}</td>
+                    <td className="text-right">
+                      {tutorProfile.educationLevels?.length || 0}
+                    </td>
                   </tr>
                   <tr className="border-b">
                     <td className="py-3">Khóa học đã tạo</td>
-                    <td className="text-right">{stats?.courses_created || 0}</td>
+                    <td className="text-right">
+                      {stats?.courses_created || 0}
+                    </td>
                   </tr>
                   <tr>
                     <td className="py-3">Học phí tham khảo</td>
                     <td className="text-right">
-                      {tutorProfile?.hourlyRate 
-                        ? new Intl.NumberFormat('vi-VN', { 
-                            style: 'currency', 
-                            currency: 'VND' 
-                          }).format(Number(tutorProfile.hourlyRate)) + '/giờ'
-                        : 'Chưa đặt'}
+                      {tutorProfile?.hourlyRate
+                        ? new Intl.NumberFormat("vi-VN", {
+                            style: "currency",
+                            currency: "VND",
+                          }).format(Number(tutorProfile.hourlyRate)) + "/giờ"
+                        : "Chưa đặt"}
                     </td>
                   </tr>
                 </tbody>
@@ -256,7 +325,7 @@ export default function TutorDashboardStats() {
             </div>
           </CardContent>
         </Card>
-        
+
         {/* Tips for improvement */}
         <Card>
           <CardHeader>
@@ -278,40 +347,41 @@ export default function TutorDashboardStats() {
                   </div>
                 </li>
               )}
-              
+
               {(stats?.active_courses || 0) < 3 && (
                 <li className="flex items-start">
                   <BookOpen className="h-5 w-5 text-primary mr-2 mt-0.5" />
                   <div>
                     <p className="font-medium">Tạo thêm khóa học</p>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Tạo thêm khóa học cho các môn học và cấp độ khác nhau để tiếp cận nhiều học viên hơn.
+                      Tạo thêm khóa học cho các môn học và cấp độ khác nhau để
+                      tiếp cận nhiều học viên hơn.
                     </p>
                     <Button variant="link" className="px-0 h-auto mt-1" asChild>
-                      <Link href="/dashboard/tutor/courses">
-                        Tạo khóa học
-                      </Link>
+                      <Link href="/dashboard/tutor/courses">Tạo khóa học</Link>
                     </Button>
                   </div>
                 </li>
               )}
-              
+
               <li className="flex items-start">
                 <Star className="h-5 w-5 text-primary mr-2 mt-0.5" />
                 <div>
                   <p className="font-medium">Yêu cầu đánh giá từ học viên</p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Đánh giá tốt giúp tăng khả năng hiển thị hồ sơ và tạo niềm tin với học viên mới.
+                    Đánh giá tốt giúp tăng khả năng hiển thị hồ sơ và tạo niềm
+                    tin với học viên mới.
                   </p>
                 </div>
               </li>
-              
+
               <li className="flex items-start">
                 <MessageSquare className="h-5 w-5 text-primary mr-2 mt-0.5" />
                 <div>
                   <p className="font-medium">Phản hồi tin nhắn nhanh chóng</p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Phản hồi nhanh chóng giúp tăng tỉ lệ chuyển đổi từ người quan tâm thành học viên.
+                    Phản hồi nhanh chóng giúp tăng tỉ lệ chuyển đổi từ người
+                    quan tâm thành học viên.
                   </p>
                   <Button variant="link" className="px-0 h-auto mt-1" asChild>
                     <Link href="/dashboard/tutor/messages">

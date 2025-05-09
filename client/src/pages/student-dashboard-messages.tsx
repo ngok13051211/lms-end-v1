@@ -1,335 +1,421 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import DashboardLayout from "@/components/layout/DashboardLayout";
-import { useSelector } from "react-redux";
-import { RootState } from "@/store";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useLocation } from "wouter";
+import { queryClient } from "@/lib/queryClient";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { useSelector } from "react-redux";
+import { RootState } from "@/store";
 import { apiRequest } from "@/lib/queryClient";
-import { queryClient } from "@/lib/queryClient";
-import { Loader2, Send, ChevronRight, MessageSquare, Search } from "lucide-react";
-import { Link, useRoute, useLocation } from "wouter";
+import { Loader2, MessageSquare, Send, ArrowLeft, User } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import DashboardLayout from "@/components/layout/TutorDashboardLayout";
+import { Link } from "wouter";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 
-export default function StudentDashboardMessages() {
+// Định nghĩa rõ cấu trúc dữ liệu để giải quyết lỗi type
+interface ConversationUser {
+  id: number;
+  firstName?: string;
+  lastName?: string;
+  avatar?: string;
+  email?: string;
+}
+
+interface ConversationMessage {
+  id: number;
+  sender_id: number;
+  content: string;
+  created_at: string;
+}
+
+interface Conversation {
+  id: string | number;
+  student?: ConversationUser;
+  tutor?: ConversationUser;
+  messages?: ConversationMessage[];
+  last_message_at?: string;
+  last_message?: {
+    content?: string;
+  };
+  unread_count?: number;
+}
+
+export default function TutorDashboardMessages() {
   const { user } = useSelector((state: RootState) => state.auth);
   const [, navigate] = useLocation();
-  const [match, params] = useRoute("/dashboard/student/messages/:id");
   const { toast } = useToast();
-  const conversationId = match ? params.id : null;
-  const [messageContent, setMessageContent] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [conversation, setConversation] = useState<Conversation | null>(null);
+  const [message, setMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
-  // Get conversations list
-  const { data: conversations, isLoading: conversationsLoading } = useQuery({
-    queryKey: ['/api/v1/conversations'],
-  });
-  
-  // Get selected conversation details if ID is provided
-  const { data: conversation, isLoading: conversationLoading } = useQuery({
-    queryKey: ['/api/v1/conversations', conversationId],
-    enabled: !!conversationId,
+
+  // Get tutor profile
+  const { data: tutorProfile, isLoading: profileLoading } = useQuery({
+    queryKey: [`/api/v1/tutors/profile`],
+    retry: false,
   });
 
-  // Filter conversations by search query
-  const filteredConversations = Array.isArray(conversations) 
-    ? conversations.filter((conv: any) => {
-        if (!conv || !conv.tutor) return false;
-        const tutorName = `${conv.tutor.first_name || ''} ${conv.tutor.last_name || ''}`.toLowerCase();
-        const searchLower = searchQuery.toLowerCase();
-        // Search by tutor name or last message content
-        return tutorName.includes(searchLower) || 
-               (conv.lastMessage?.content && conv.lastMessage.content.toLowerCase().includes(searchLower));
-      })
-    : [];
-  
-  // Send message mutation
+  // Get all conversations
+  const { data: conversations, isLoading: conversationsLoading } = useQuery<
+    Conversation[]
+  >({
+    queryKey: [`/api/v1/conversations`],
+    enabled: !!tutorProfile,
+  });
+
+  // Get a specific conversation if ID is provided
+  const { data: conversationData, isLoading: conversationLoading } =
+    useQuery<Conversation>({
+      queryKey: [`/api/v1/conversations/${conversationId}`],
+      enabled: !!conversationId && !!tutorProfile,
+    });
+
+  // Sử dụng useEffect để cập nhật state khi data từ API thay đổi
+  // Thay thế cho onSuccess trong useQuery
+  useEffect(() => {
+    if (conversationData) {
+      setConversation(conversationData);
+    }
+  }, [conversationData]);
+
+  // Send a message mutation
   const sendMessageMutation = useMutation({
-    mutationFn: async ({ content }: { content: string }) => {
-      if (!conversationId) throw new Error("No conversation selected");
-      return apiRequest("POST", `/api/v1/conversations/${conversationId}/messages`, { content });
+    mutationFn: async ({
+      conversationId,
+      content,
+    }: {
+      conversationId: string;
+      content: string;
+    }) => {
+      const res = await apiRequest(
+        "POST",
+        `/api/v1/conversations/${conversationId}/messages`,
+        { content }
+      );
+      return res.json();
     },
     onSuccess: () => {
-      setMessageContent("");
-      queryClient.invalidateQueries({ queryKey: ['/api/v1/conversations', conversationId] });
-      queryClient.invalidateQueries({ queryKey: ['/api/v1/conversations'] });
+      queryClient.invalidateQueries({
+        queryKey: [`/api/v1/conversations/${conversationId}`],
+      });
+      queryClient.invalidateQueries({ queryKey: [`/api/v1/conversations`] });
+      setMessage("");
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
-        title: "Lỗi gửi tin nhắn",
-        description: error.message || "Không thể gửi tin nhắn. Vui lòng thử lại sau.",
+        title: "Lỗi",
+        description: "Không thể gửi tin nhắn. Vui lòng thử lại sau.",
         variant: "destructive",
       });
-    }
+    },
   });
-  
-  // Scroll to bottom of messages when conversation changes or new messages arrive
+
+  // Scroll to bottom of messages
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [conversation]);
-  
-  // Handle send message
-  const handleSendMessage = (e: React.FormEvent) => {
+  }, [conversation?.messages]);
+
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!messageContent.trim()) return;
-    sendMessageMutation.mutate({ content: messageContent });
+    if (!message.trim() || !conversationId) return;
+
+    try {
+      await sendMessageMutation.mutateAsync({
+        conversationId,
+        content: message,
+      });
+    } catch (error) {
+      console.error("Error sending message:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể gửi tin nhắn",
+        variant: "destructive",
+      });
+    }
   };
-  
-  // Format date for display
+
+  const isLoading = profileLoading || (conversationId && conversationLoading);
+
+  // Format date to display
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  // Format date for conversation list
   const formatMessageDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
-    
-    // If today, show time only
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    // If today
     if (date.toDateString() === now.toDateString()) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return date.toLocaleTimeString("vi-VN", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
     }
-    
-    // If this year, show month and day
-    if (date.getFullYear() === now.getFullYear()) {
-      return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+
+    // If yesterday
+    if (date.toDateString() === yesterday.toDateString()) {
+      return "Hôm qua";
     }
-    
-    // Full date otherwise
-    return date.toLocaleDateString();
+
+    // Otherwise show date
+    return date.toLocaleDateString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+    });
   };
-  
-  if (conversationsLoading || (conversationId && conversationLoading)) {
-    return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          <span className="ml-2 text-xl">Đang tải tin nhắn...</span>
-        </div>
-      </DashboardLayout>
-    );
-  }
-  
+
   return (
-    <DashboardLayout>
-      <div className="p-6 max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-medium">Tin nhắn</h1>
-          <div className="flex gap-2">
-            <Link href="/dashboard/student/profile">
-              <Button variant="outline">Hồ sơ</Button>
-            </Link>
-            <Link href="/dashboard/student/tutors">
-              <Button variant="outline">Gia sư yêu thích</Button>
-            </Link>
-          </div>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Conversations list */}
-          <Card className="md:col-span-1 overflow-hidden">
-            <CardHeader className="p-4">
-              <CardTitle className="text-lg">Cuộc trò chuyện</CardTitle>
-              <div className="relative mt-2">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Tìm kiếm cuộc trò chuyện..."
-                  className="pl-8"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
+    <DashboardLayout activePage="messages">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Conversations list */}
+        <div className="lg:col-span-1">
+          <Card className="h-full">
+            <CardHeader>
+              <CardTitle>Hội thoại</CardTitle>
+              <CardDescription>Tin nhắn từ học viên của bạn</CardDescription>
             </CardHeader>
-            
-            <ScrollArea className="h-[calc(80vh-13rem)]">
-              <CardContent className="p-0">
-                {filteredConversations.length > 0 ? (
-                  <div className="divide-y">
-                    {filteredConversations.map((conv: any) => (
-                      <div 
-                        key={conv.id} 
-                        className={`p-4 hover:bg-muted cursor-pointer ${conversationId === conv.id ? 'bg-muted' : ''}`}
-                        onClick={() => navigate(`/dashboard/student/messages/${conv.id}`)}
+
+            <CardContent>
+              {conversationsLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : conversations && conversations.length > 0 ? (
+                <div className="space-y-2">
+                  {conversations.map((conv) => (
+                    <Link
+                      key={conv.id}
+                      href={`/dashboard/tutor/messages/${conv.id}`}
+                    >
+                      <a
+                        className={`flex items-center p-4 border rounded-lg transition-colors hover:border-primary ${
+                          conversationId === String(conv.id)
+                            ? "border-primary bg-primary/5"
+                            : ""
+                        }`}
                       >
-                        <div className="flex items-center">
-                          <Avatar className="h-10 w-10">
-                            <AvatarImage src={conv.tutor?.avatar} alt={conv.tutor?.first_name} />
-                            <AvatarFallback>
-                              {conv.tutor?.first_name?.[0]}{conv.tutor?.last_name?.[0]}
-                            </AvatarFallback>
-                          </Avatar>
-                          
-                          <div className="ml-3 flex-1 overflow-hidden">
-                            <div className="flex items-center justify-between">
-                              <h4 className="font-medium truncate">
-                                {conv.tutor?.first_name} {conv.tutor?.last_name}
-                              </h4>
-                              <span className="text-xs text-muted-foreground">
-                                {formatMessageDate(conv.lastMessageAt || conv.createdAt)}
-                              </span>
-                            </div>
-                            
-                            <p className="text-sm text-muted-foreground truncate">
-                              {conv.lastMessage?.content || "Bắt đầu cuộc trò chuyện"}
-                            </p>
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage
+                            src={conv.student?.avatar}
+                            alt={conv.student?.firstName}
+                          />
+                          <AvatarFallback>
+                            {(conv.student?.firstName?.[0] || "") +
+                              (conv.student?.lastName?.[0] || "")}
+                          </AvatarFallback>
+                        </Avatar>
+
+                        <div className="ml-4 flex-1 overflow-hidden">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-medium truncate">
+                              {conv.student?.firstName} {conv.student?.lastName}
+                            </h4>
+                            <span className="text-xs text-muted-foreground whitespace-nowrap ml-2">
+                              {conv.last_message_at
+                                ? formatMessageDate(conv.last_message_at)
+                                : ""}
+                            </span>
                           </div>
+
+                          <p className="text-sm text-muted-foreground truncate">
+                            {conv.last_message?.content ||
+                              "Bắt đầu cuộc trò chuyện"}
+                          </p>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : searchQuery ? (
-                  <div className="text-center py-8">
-                    <Search className="h-8 w-8 mx-auto text-muted-foreground" />
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      Không tìm thấy cuộc trò chuyện nào với "{searchQuery}"
+
+                        {conv.unread_count && conv.unread_count > 0 && (
+                          <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center">
+                            {conv.unread_count}
+                          </Badge>
+                        )}
+                      </a>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground" />
+                  <h2 className="mt-4 text-xl font-medium">
+                    Không có tin nhắn
+                  </h2>
+                  <p className="mt-2 text-muted-foreground max-w-md mx-auto">
+                    Bạn chưa nhận được tin nhắn từ học viên. Hoàn thiện hồ sơ và
+                    tạo thông báo dạy để học viên liên hệ.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Message content */}
+        <div className="lg:col-span-2">
+          {conversationId && conversation ? (
+            <Card className="h-full flex flex-col">
+              <CardHeader className="pb-3 border-b">
+                <div className="flex items-center">
+                  <Link href="/dashboard/tutor/messages">
+                    <a className="mr-2 lg:hidden">
+                      <ArrowLeft className="h-5 w-5" />
+                    </a>
+                  </Link>
+
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage
+                      src={conversation.student?.avatar || undefined}
+                      alt={conversation.student?.firstName || "Student"}
+                    />
+                    <AvatarFallback>
+                      {(conversation.student?.firstName?.[0] || "") +
+                        (conversation.student?.lastName?.[0] || "")}
+                    </AvatarFallback>
+                  </Avatar>
+
+                  <div className="ml-3">
+                    <CardTitle className="text-base">
+                      {conversation.student
+                        ? `${conversation.student.firstName || ""} ${
+                            conversation.student.lastName || ""
+                          }`
+                        : "Học viên"}
+                    </CardTitle>
+                    <p className="text-xs text-muted-foreground">
+                      {conversation.student?.email || ""}
                     </p>
                   </div>
+                </div>
+              </CardHeader>
+
+              <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
+                {conversation.messages && conversation.messages.length > 0 ? (
+                  conversation.messages.map((msg) => (
+                    <div
+                      key={msg.id}
+                      className={`flex ${
+                        msg.sender_id === user?.id
+                          ? "justify-end"
+                          : "justify-start"
+                      }`}
+                    >
+                      {msg.sender_id !== user?.id && (
+                        <Avatar className="h-8 w-8 mr-2 mt-1">
+                          <AvatarImage
+                            src={conversation.student?.avatar || undefined}
+                            alt="Avatar"
+                          />
+                          <AvatarFallback>
+                            <User className="h-4 w-4" />
+                          </AvatarFallback>
+                        </Avatar>
+                      )}
+
+                      <div
+                        className={`max-w-[75%] ${
+                          msg.sender_id === user?.id
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted"
+                        } rounded-lg p-3`}
+                      >
+                        <p>{msg.content}</p>
+                        <p
+                          className={`text-xs mt-1 ${
+                            msg.sender_id === user?.id
+                              ? "text-primary-foreground/70"
+                              : "text-muted-foreground"
+                          }`}
+                        >
+                          {formatDate(msg.created_at)}
+                        </p>
+                      </div>
+
+                      {msg.sender_id === user?.id && (
+                        <Avatar className="h-8 w-8 ml-2 mt-1">
+                          <AvatarImage
+                            src={user?.avatar || undefined}
+                            alt="Your avatar"
+                          />
+                          <AvatarFallback>
+                            <User className="h-4 w-4" />
+                          </AvatarFallback>
+                        </Avatar>
+                      )}
+                    </div>
+                  ))
                 ) : (
-                  <div className="text-center py-8">
-                    <MessageSquare className="h-8 w-8 mx-auto text-muted-foreground" />
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      Chưa có cuộc trò chuyện nào
+                  <div className="text-center py-12">
+                    <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground" />
+                    <h2 className="mt-4 text-lg font-medium">
+                      Không có tin nhắn
+                    </h2>
+                    <p className="mt-2 text-muted-foreground max-w-md mx-auto">
+                      Bắt đầu cuộc trò chuyện với học viên
                     </p>
                   </div>
                 )}
+                <div ref={messagesEndRef} />
               </CardContent>
-            </ScrollArea>
-          </Card>
-          
-          {/* Selected conversation or empty state */}
-          <Card className="md:col-span-2 flex flex-col">
-            {conversationId && conversation && typeof conversation === 'object' ? (
-              <>
-                <CardHeader className="p-4 border-b">
-                  <div className="flex items-center">
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage src={conversation.tutor && conversation.tutor.avatar ? conversation.tutor.avatar : undefined} alt={(conversation.tutor && conversation.tutor.first_name) || "Gia sư"} />
-                      <AvatarFallback>
-                        {conversation.tutor && conversation.tutor.first_name ? conversation.tutor.first_name[0] : ''}
-                        {conversation.tutor && conversation.tutor.last_name ? conversation.tutor.last_name[0] : ''}
-                      </AvatarFallback>
-                    </Avatar>
-                    
-                    <div className="ml-3">
-                      <CardTitle className="text-lg">
-                        {conversation.tutor ? `${conversation.tutor.first_name || ''} ${conversation.tutor.last_name || ''}` : 'Gia sư'}
-                      </CardTitle>
-                      <CardDescription>
-                        {conversation.tutor && conversation.tutor.bio 
-                          ? conversation.tutor.bio.substring(0, 50) + (conversation.tutor.bio.length > 50 ? '...' : '') 
-                          : 'Gia sư'}
-                      </CardDescription>
-                    </div>
-                    
-                    {conversation.tutor && (
-                      <Link href={`/tutors/${conversation.tutor.id}`} className="ml-auto">
-                        <Button variant="ghost" size="sm" className="gap-1">
-                          Xem hồ sơ <ChevronRight className="h-4 w-4" />
-                        </Button>
-                      </Link>
+
+              <CardFooter className="p-4 border-t">
+                <form
+                  onSubmit={handleSendMessage}
+                  className="flex w-full gap-2"
+                >
+                  <Input
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="Nhập tin nhắn..."
+                    className="flex-1"
+                  />
+                  <Button
+                    type="submit"
+                    disabled={!message.trim() || sendMessageMutation.isPending}
+                  >
+                    {sendMessageMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
                     )}
-                  </div>
-                </CardHeader>
-                
-                <CardContent className="p-0 flex-1 overflow-hidden">
-                  <ScrollArea className="h-[calc(80vh-17rem)]">
-                    <div className="p-4 space-y-4">
-                      {conversation.messages && Array.isArray(conversation.messages) && conversation.messages.length > 0 ? (
-                        conversation.messages.map((message: any) => {
-                          const isCurrentUser = message.senderId === user?.id;
-                          
-                          return (
-                            <div 
-                              key={message.id} 
-                              className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'}`}
-                            >
-                              <div className="flex items-end gap-2">
-                                {!isCurrentUser && conversation.tutor && (
-                                  <Avatar className="h-8 w-8">
-                                    <AvatarImage src={conversation.tutor.avatar || undefined} alt={conversation.tutor.first_name || "Gia sư"} />
-                                    <AvatarFallback>
-                                      {conversation.tutor.first_name?.[0] || ""}{conversation.tutor.last_name?.[0] || ""}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                )}
-                                
-                                <div 
-                                  className={`px-4 py-2 rounded-lg max-w-md break-words ${
-                                    isCurrentUser 
-                                      ? 'bg-primary text-primary-foreground' 
-                                      : 'bg-muted'
-                                  }`}
-                                >
-                                  <p>{message.content}</p>
-                                  <div 
-                                    className={`text-xs mt-1 ${
-                                      isCurrentUser ? 'text-primary-foreground/70' : 'text-muted-foreground'
-                                    }`}
-                                  >
-                                    {formatMessageDate(message.createdAt)}
-                                  </div>
-                                </div>
-                                
-                                {isCurrentUser && (
-                                  <Avatar className="h-8 w-8">
-                                    <AvatarImage src={user?.avatar || undefined} alt={user?.first_name} />
-                                    <AvatarFallback>
-                                      {user?.first_name?.[0]}{user?.last_name?.[0]}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })
-                      ) : (
-                        <div className="text-center py-8">
-                          <MessageSquare className="h-8 w-8 mx-auto text-muted-foreground" />
-                          <p className="mt-2 text-muted-foreground">
-                            {conversation.tutor ? 
-                              `Bắt đầu cuộc trò chuyện với ${conversation.tutor.first_name || ''} ${conversation.tutor.last_name || ''}` :
-                              'Bắt đầu cuộc trò chuyện mới'
-                            }
-                          </p>
-                        </div>
-                      )}
-                      <div ref={messagesEndRef} />
-                    </div>
-                  </ScrollArea>
-                </CardContent>
-                
-                <CardFooter className="p-4 border-t">
-                  <form onSubmit={handleSendMessage} className="flex gap-2 w-full">
-                    <Input
-                      placeholder="Nhập tin nhắn..."
-                      value={messageContent}
-                      onChange={(e) => setMessageContent(e.target.value)}
-                      disabled={sendMessageMutation.isPending}
-                    />
-                    <Button type="submit" disabled={!messageContent.trim() || sendMessageMutation.isPending}>
-                      {sendMessageMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Send className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </form>
-                </CardFooter>
-              </>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-[calc(80vh-13rem)]">
-                <MessageSquare className="h-16 w-16 text-muted-foreground" />
-                <h2 className="mt-4 text-xl font-medium">Chọn một cuộc trò chuyện</h2>
-                <p className="mt-2 text-center text-muted-foreground max-w-sm">
-                  Chọn một cuộc trò chuyện từ danh sách bên trái hoặc bắt đầu cuộc trò chuyện mới với gia sư
+                    <span className="ml-2 sr-only md:not-sr-only">Gửi</span>
+                  </Button>
+                </form>
+              </CardFooter>
+            </Card>
+          ) : (
+            <div className="h-full flex items-center justify-center bg-muted/30 rounded-lg p-6">
+              <div className="text-center">
+                <MessageSquare className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                <h2 className="text-xl font-medium mb-2">
+                  Chọn một cuộc trò chuyện
+                </h2>
+                <p className="text-muted-foreground max-w-md mx-auto">
+                  Chọn một cuộc trò chuyện từ danh sách bên trái để xem tin nhắn
                 </p>
-                <Button className="mt-6" onClick={() => navigate("/tutors")}>
-                  Tìm gia sư
-                </Button>
               </div>
-            )}
-          </Card>
+            </div>
+          )}
         </div>
       </div>
     </DashboardLayout>

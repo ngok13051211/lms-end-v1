@@ -8,12 +8,33 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import MainLayout from "@/components/layout/MainLayout";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { CheckboxGroup, CheckboxItem } from "@/components/ui/checkbox-group";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -26,7 +47,9 @@ const tutorProfileSchema = z.object({
   education: z.string().min(20, "Thông tin học vấn cần ít nhất 20 ký tự"),
   experience: z.string().min(20, "Kinh nghiệm giảng dạy cần ít nhất 20 ký tự"),
   experience_years: z.coerce.number().min(0, "Số năm kinh nghiệm không hợp lệ"),
-  hourly_rate: z.coerce.number().min(10000, "Học phí tối thiểu là 10.000 VND/giờ"),
+  hourly_rate: z.coerce
+    .number()
+    .min(10000, "Học phí tối thiểu là 10.000 VND/giờ"),
   teaching_mode: z.enum(["online", "offline", "both"]),
   certifications: z.string().optional(),
   availability: z.string().min(5, "Vui lòng cung cấp thời gian bạn có thể dạy"),
@@ -38,7 +61,7 @@ export default function BecomeTutor() {
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
   const [step, setStep] = useState(1);
-  
+
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!user) {
@@ -54,11 +77,13 @@ export default function BecomeTutor() {
   }, [user, navigate]);
 
   // Get subjects and education levels for selection
-  const { data: subjects = [], isLoading: subjectsLoading } = useQuery({
+  const { data: subjects = [], isLoading: subjectsLoading } = useQuery<any[]>({
     queryKey: [`/api/v1/subjects`],
   });
-  
-  const { data: educationLevels = [], isLoading: levelsLoading } = useQuery({
+
+  const { data: educationLevels = [], isLoading: levelsLoading } = useQuery<
+    any[]
+  >({
     queryKey: [`/api/v1/education-levels`],
   });
 
@@ -80,15 +105,11 @@ export default function BecomeTutor() {
   // Create tutor profile mutation
   const createProfileMutation = useMutation({
     mutationFn: async (data: z.infer<typeof tutorProfileSchema>) => {
-      const response = await apiRequest(
-        "POST",
-        "/api/v1/tutors/profile",
-        {
-          ...data,
-          subject_ids: selectedSubjects,
-          level_ids: selectedLevels,
-        }
-      );
+      const response = await apiRequest("POST", "/api/v1/tutors/profile", {
+        ...data,
+        subject_ids: selectedSubjects,
+        level_ids: selectedLevels,
+      });
       return response.json();
     },
     onSuccess: () => {
@@ -105,20 +126,20 @@ export default function BecomeTutor() {
       if (selectedSubjects.length === 0) {
         return alert("Vui lòng chọn ít nhất một môn học");
       }
-      
+
       if (selectedLevels.length === 0) {
         return alert("Vui lòng chọn ít nhất một cấp độ giảng dạy");
       }
-      
+
       createProfileMutation.mutate(data);
     }
   };
 
   // Handle checkbox selection
   const handleSubjectChange = (id: string) => {
-    setSelectedSubjects(prev => {
+    setSelectedSubjects((prev) => {
       if (prev.includes(id)) {
-        return prev.filter(item => item !== id);
+        return prev.filter((item) => item !== id);
       } else {
         return [...prev, id];
       }
@@ -126,9 +147,9 @@ export default function BecomeTutor() {
   };
 
   const handleLevelChange = (id: string) => {
-    setSelectedLevels(prev => {
+    setSelectedLevels((prev) => {
       if (prev.includes(id)) {
-        return prev.filter(item => item !== id);
+        return prev.filter((item) => item !== id);
       } else {
         return [...prev, id];
       }
@@ -158,15 +179,34 @@ export default function BecomeTutor() {
                 {step === 3 && "Đăng ký thành công"}
               </CardTitle>
               <div className="flex items-center text-sm text-muted-foreground">
-                <span className={`flex items-center justify-center h-6 w-6 rounded-full mr-2 ${step >= 1 ? "bg-primary text-white" : "bg-muted"}`}>1</span>
+                <span
+                  className={`flex items-center justify-center h-6 w-6 rounded-full mr-2 ${
+                    step >= 1 ? "bg-primary text-white" : "bg-muted"
+                  }`}
+                >
+                  1
+                </span>
                 <span className="mr-2">―</span>
-                <span className={`flex items-center justify-center h-6 w-6 rounded-full mr-2 ${step >= 2 ? "bg-primary text-white" : "bg-muted"}`}>2</span>
+                <span
+                  className={`flex items-center justify-center h-6 w-6 rounded-full mr-2 ${
+                    step >= 2 ? "bg-primary text-white" : "bg-muted"
+                  }`}
+                >
+                  2
+                </span>
                 <span className="mr-2">―</span>
-                <span className={`flex items-center justify-center h-6 w-6 rounded-full ${step >= 3 ? "bg-primary text-white" : "bg-muted"}`}>3</span>
+                <span
+                  className={`flex items-center justify-center h-6 w-6 rounded-full ${
+                    step >= 3 ? "bg-primary text-white" : "bg-muted"
+                  }`}
+                >
+                  3
+                </span>
               </div>
             </div>
             <CardDescription>
-              {step === 1 && "Vui lòng cung cấp thông tin chi tiết để tạo hồ sơ gia sư của bạn"}
+              {step === 1 &&
+                "Vui lòng cung cấp thông tin chi tiết để tạo hồ sơ gia sư của bạn"}
               {step === 2 && "Chọn các môn học và cấp độ bạn có thể giảng dạy"}
               {step === 3 && "Hồ sơ của bạn đã được gửi và đang chờ xét duyệt"}
             </CardDescription>
@@ -178,10 +218,13 @@ export default function BecomeTutor() {
                 <div className="inline-flex items-center justify-center h-24 w-24 rounded-full bg-green-50 text-green-500 mb-6">
                   <CheckCircle className="h-12 w-12" />
                 </div>
-                <h3 className="text-xl font-medium mb-2">Đăng ký thành công!</h3>
+                <h3 className="text-xl font-medium mb-2">
+                  Đăng ký thành công!
+                </h3>
                 <p className="text-muted-foreground mb-8 max-w-lg mx-auto">
-                  Hồ sơ gia sư của bạn đã được gửi đi và đang chờ xét duyệt từ đội ngũ quản trị viên. 
-                  Chúng tôi sẽ thông báo cho bạn ngay khi hồ sơ được phê duyệt.
+                  Hồ sơ gia sư của bạn đã được gửi đi và đang chờ xét duyệt từ
+                  đội ngũ quản trị viên. Chúng tôi sẽ thông báo cho bạn ngay khi
+                  hồ sơ được phê duyệt.
                 </p>
                 <Button onClick={() => navigate("/tutor-dashboard")}>
                   Đi đến trang quản lý gia sư
@@ -190,7 +233,10 @@ export default function BecomeTutor() {
               </div>
             ) : (
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <form
+                  onSubmit={form.handleSubmit(onSubmit)}
+                  className="space-y-6"
+                >
                   {step === 1 && (
                     <>
                       <FormField
@@ -213,7 +259,7 @@ export default function BecomeTutor() {
                           </FormItem>
                         )}
                       />
-                      
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <FormField
                           control={form.control}
@@ -232,7 +278,7 @@ export default function BecomeTutor() {
                             </FormItem>
                           )}
                         />
-                        
+
                         <FormField
                           control={form.control}
                           name="experience"
@@ -251,7 +297,7 @@ export default function BecomeTutor() {
                           )}
                         />
                       </div>
-                      
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <FormField
                           control={form.control}
@@ -260,17 +306,13 @@ export default function BecomeTutor() {
                             <FormItem>
                               <FormLabel>Số năm kinh nghiệm</FormLabel>
                               <FormControl>
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  {...field}
-                                />
+                                <Input type="number" min="0" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
                         />
-                        
+
                         <FormField
                           control={form.control}
                           name="hourly_rate"
@@ -293,7 +335,7 @@ export default function BecomeTutor() {
                           )}
                         />
                       </div>
-                      
+
                       <FormField
                         control={form.control}
                         name="teaching_mode"
@@ -308,15 +350,33 @@ export default function BecomeTutor() {
                               >
                                 <div className="flex items-center space-x-2">
                                   <RadioGroupItem value="online" id="online" />
-                                  <label htmlFor="online" className="cursor-pointer">Trực tuyến</label>
+                                  <label
+                                    htmlFor="online"
+                                    className="cursor-pointer"
+                                  >
+                                    Trực tuyến
+                                  </label>
                                 </div>
                                 <div className="flex items-center space-x-2">
-                                  <RadioGroupItem value="offline" id="offline" />
-                                  <label htmlFor="offline" className="cursor-pointer">Trực tiếp</label>
+                                  <RadioGroupItem
+                                    value="offline"
+                                    id="offline"
+                                  />
+                                  <label
+                                    htmlFor="offline"
+                                    className="cursor-pointer"
+                                  >
+                                    Trực tiếp
+                                  </label>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                   <RadioGroupItem value="both" id="both" />
-                                  <label htmlFor="both" className="cursor-pointer">Cả hai</label>
+                                  <label
+                                    htmlFor="both"
+                                    className="cursor-pointer"
+                                  >
+                                    Cả hai
+                                  </label>
                                 </div>
                               </RadioGroup>
                             </FormControl>
@@ -324,7 +384,7 @@ export default function BecomeTutor() {
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={form.control}
                         name="certifications"
@@ -342,7 +402,7 @@ export default function BecomeTutor() {
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={form.control}
                         name="availability"
@@ -362,11 +422,13 @@ export default function BecomeTutor() {
                       />
                     </>
                   )}
-                  
+
                   {step === 2 && (
                     <>
                       <div className="mb-6">
-                        <h3 className="text-lg font-medium mb-4">Môn học có thể dạy</h3>
+                        <h3 className="text-lg font-medium mb-4">
+                          Môn học có thể dạy
+                        </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                           {subjectsLoading ? (
                             <div className="col-span-full py-4 text-center">
@@ -375,18 +437,32 @@ export default function BecomeTutor() {
                             </div>
                           ) : (
                             subjects?.map((subject: any) => (
-                              <div key={subject.id} className="flex items-start space-x-2">
+                              <div
+                                key={subject.id}
+                                className="flex items-start space-x-2"
+                              >
                                 <input
                                   type="checkbox"
                                   id={`subject-${subject.id}`}
                                   className="h-4 w-4 mt-1"
-                                  checked={selectedSubjects.includes(subject.id.toString())}
-                                  onChange={() => handleSubjectChange(subject.id.toString())}
+                                  checked={selectedSubjects.includes(
+                                    subject.id.toString()
+                                  )}
+                                  onChange={() =>
+                                    handleSubjectChange(subject.id.toString())
+                                  }
                                 />
-                                <label htmlFor={`subject-${subject.id}`} className="cursor-pointer">
-                                  <div className="font-medium">{subject.name}</div>
+                                <label
+                                  htmlFor={`subject-${subject.id}`}
+                                  className="cursor-pointer"
+                                >
+                                  <div className="font-medium">
+                                    {subject.name}
+                                  </div>
                                   {subject.description && (
-                                    <div className="text-sm text-muted-foreground">{subject.description}</div>
+                                    <div className="text-sm text-muted-foreground">
+                                      {subject.description}
+                                    </div>
                                   )}
                                 </label>
                               </div>
@@ -394,14 +470,18 @@ export default function BecomeTutor() {
                           )}
                         </div>
                         {selectedSubjects.length === 0 && (
-                          <p className="text-destructive text-sm mt-2">Vui lòng chọn ít nhất một môn học</p>
+                          <p className="text-destructive text-sm mt-2">
+                            Vui lòng chọn ít nhất một môn học
+                          </p>
                         )}
                       </div>
-                      
+
                       <Separator className="my-6" />
-                      
+
                       <div>
-                        <h3 className="text-lg font-medium mb-4">Cấp độ giảng dạy</h3>
+                        <h3 className="text-lg font-medium mb-4">
+                          Cấp độ giảng dạy
+                        </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                           {levelsLoading ? (
                             <div className="col-span-full py-4 text-center">
@@ -410,18 +490,32 @@ export default function BecomeTutor() {
                             </div>
                           ) : (
                             educationLevels?.map((level: any) => (
-                              <div key={level.id} className="flex items-start space-x-2">
+                              <div
+                                key={level.id}
+                                className="flex items-start space-x-2"
+                              >
                                 <input
                                   type="checkbox"
                                   id={`level-${level.id}`}
                                   className="h-4 w-4 mt-1"
-                                  checked={selectedLevels.includes(level.id.toString())}
-                                  onChange={() => handleLevelChange(level.id.toString())}
+                                  checked={selectedLevels.includes(
+                                    level.id.toString()
+                                  )}
+                                  onChange={() =>
+                                    handleLevelChange(level.id.toString())
+                                  }
                                 />
-                                <label htmlFor={`level-${level.id}`} className="cursor-pointer">
-                                  <div className="font-medium">{level.name}</div>
+                                <label
+                                  htmlFor={`level-${level.id}`}
+                                  className="cursor-pointer"
+                                >
+                                  <div className="font-medium">
+                                    {level.name}
+                                  </div>
                                   {level.description && (
-                                    <div className="text-sm text-muted-foreground">{level.description}</div>
+                                    <div className="text-sm text-muted-foreground">
+                                      {level.description}
+                                    </div>
                                   )}
                                 </label>
                               </div>
@@ -429,24 +523,32 @@ export default function BecomeTutor() {
                           )}
                         </div>
                         {selectedLevels.length === 0 && (
-                          <p className="text-destructive text-sm mt-2">Vui lòng chọn ít nhất một cấp độ giảng dạy</p>
+                          <p className="text-destructive text-sm mt-2">
+                            Vui lòng chọn ít nhất một cấp độ giảng dạy
+                          </p>
                         )}
                       </div>
                     </>
                   )}
-                    
+
                   <div className="flex justify-between pt-4">
                     {step === 2 && (
-                      <Button type="button" variant="outline" onClick={() => setStep(1)}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setStep(1)}
+                      >
                         Quay lại
                       </Button>
                     )}
-                    
-                    <Button 
-                      type="submit" 
+
+                    <Button
+                      type="submit"
                       className="ml-auto"
                       disabled={
-                        (step === 2 && (selectedSubjects.length === 0 || selectedLevels.length === 0)) || 
+                        (step === 2 &&
+                          (selectedSubjects.length === 0 ||
+                            selectedLevels.length === 0)) ||
                         createProfileMutation.isPending
                       }
                     >
@@ -455,8 +557,10 @@ export default function BecomeTutor() {
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           Đang xử lý...
                         </>
+                      ) : step === 1 ? (
+                        "Tiếp theo"
                       ) : (
-                        step === 1 ? "Tiếp theo" : "Hoàn tất đăng ký"
+                        "Hoàn tất đăng ký"
                       )}
                     </Button>
                   </div>
@@ -465,13 +569,15 @@ export default function BecomeTutor() {
             )}
           </CardContent>
         </Card>
-        
+
         {/* Information boxes */}
         {step < 3 && (
           <div className="grid md:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Lợi ích khi trở thành gia sư</CardTitle>
+                <CardTitle className="text-lg">
+                  Lợi ích khi trở thành gia sư
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2">
@@ -481,7 +587,9 @@ export default function BecomeTutor() {
                   </li>
                   <li className="flex items-start">
                     <CheckCircle className="h-5 w-5 text-green-500 mr-2 shrink-0" />
-                    <span>Lịch dạy linh hoạt phù hợp với thời gian của bạn</span>
+                    <span>
+                      Lịch dạy linh hoạt phù hợp với thời gian của bạn
+                    </span>
                   </li>
                   <li className="flex items-start">
                     <CheckCircle className="h-5 w-5 text-green-500 mr-2 shrink-0" />
@@ -494,7 +602,7 @@ export default function BecomeTutor() {
                 </ul>
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Quy trình xét duyệt</CardTitle>
@@ -502,24 +610,36 @@ export default function BecomeTutor() {
               <CardContent>
                 <ul className="space-y-4">
                   <li className="flex items-start">
-                    <div className="flex items-center justify-center rounded-full bg-primary/10 text-primary h-6 w-6 mr-3 shrink-0">1</div>
+                    <div className="flex items-center justify-center rounded-full bg-primary/10 text-primary h-6 w-6 mr-3 shrink-0">
+                      1
+                    </div>
                     <div>
                       <p className="font-medium">Đăng ký hồ sơ</p>
-                      <p className="text-sm text-muted-foreground">Cung cấp thông tin chi tiết về bạn và khả năng giảng dạy</p>
+                      <p className="text-sm text-muted-foreground">
+                        Cung cấp thông tin chi tiết về bạn và khả năng giảng dạy
+                      </p>
                     </div>
                   </li>
                   <li className="flex items-start">
-                    <div className="flex items-center justify-center rounded-full bg-primary/10 text-primary h-6 w-6 mr-3 shrink-0">2</div>
+                    <div className="flex items-center justify-center rounded-full bg-primary/10 text-primary h-6 w-6 mr-3 shrink-0">
+                      2
+                    </div>
                     <div>
                       <p className="font-medium">Xét duyệt hồ sơ</p>
-                      <p className="text-sm text-muted-foreground">Đội ngũ quản trị viên sẽ xem xét thông tin của bạn</p>
+                      <p className="text-sm text-muted-foreground">
+                        Đội ngũ quản trị viên sẽ xem xét thông tin của bạn
+                      </p>
                     </div>
                   </li>
                   <li className="flex items-start">
-                    <div className="flex items-center justify-center rounded-full bg-primary/10 text-primary h-6 w-6 mr-3 shrink-0">3</div>
+                    <div className="flex items-center justify-center rounded-full bg-primary/10 text-primary h-6 w-6 mr-3 shrink-0">
+                      3
+                    </div>
                     <div>
                       <p className="font-medium">Kích hoạt tài khoản</p>
-                      <p className="text-sm text-muted-foreground">Sau khi được duyệt, bạn có thể bắt đầu nhận học sinh</p>
+                      <p className="text-sm text-muted-foreground">
+                        Sau khi được duyệt, bạn có thể bắt đầu nhận học sinh
+                      </p>
                     </div>
                   </li>
                 </ul>

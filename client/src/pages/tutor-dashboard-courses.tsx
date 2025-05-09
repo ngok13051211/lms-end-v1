@@ -1,22 +1,60 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
-import { Loader2, PlusCircle, Edit, Trash2, DollarSign, BookOpen, Home } from "lucide-react";
+import {
+  Loader2,
+  PlusCircle,
+  Edit,
+  Trash2,
+  DollarSign,
+  BookOpen,
+  Home,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import TutorDashboardLayout from "@/components/layout/TutorDashboardLayout";
 import { useToast } from "@/hooks/use-toast";
+import { TutorProfile } from "@shared/schema";
 
 // Form schema for course
 const courseSchema = z.object({
@@ -24,7 +62,9 @@ const courseSchema = z.object({
   description: z.string().min(20, "Description must be at least 20 characters"),
   subject_id: z.string().min(1, "Subject is required"),
   level_id: z.string().min(1, "Education level is required"),
-  hourly_rate: z.coerce.number().min(10000, "Hourly rate must be at least 10,000 VND"),
+  hourly_rate: z.coerce
+    .number()
+    .min(10000, "Hourly rate must be at least 10,000 VND"),
   teaching_mode: z.enum(["online", "offline", "both"]),
   status: z.enum(["active", "inactive"]).default("active"),
 });
@@ -33,26 +73,33 @@ export default function TutorDashboardCourses() {
   const { toast } = useToast();
   const [courseDialogOpen, setCourseDialogOpen] = useState(false);
   const [editingCourseId, setEditingCourseId] = useState<number | null>(null);
-  
+
   // Get tutor profile
-  const { data: tutorProfile, isLoading: profileLoading } = useQuery({
-    queryKey: [`/api/v1/tutors/profile`],
-    retry: false,
-  });
-  
+
+  const { data: tutorProfile, isLoading: profileLoading } =
+    useQuery<TutorProfile>({
+      queryKey: [`/api/v1/tutors/profile`],
+      retry: false,
+    });
+
   // Get subjects and education levels for course creation
-  const { data: subjects } = useQuery({
+
+  const { data: subjects = [] } = useQuery<any[]>({
     queryKey: [`/api/v1/subjects`],
     enabled: true,
   });
-  
-  const { data: educationLevels } = useQuery({
+
+  const { data: educationLevels = [] } = useQuery<any[]>({
     queryKey: [`/api/v1/education-levels`],
     enabled: true,
   });
-  
+
   // Get tutor's courses
-  const { data: courses, isLoading: coursesLoading, refetch: refetchCourses } = useQuery({
+  const {
+    data: courses = [],
+    isLoading: coursesLoading,
+    refetch: refetchCourses,
+  } = useQuery<any[]>({
     queryKey: [`/api/v1/tutors/courses`],
     enabled: !!tutorProfile,
   });
@@ -65,19 +112,19 @@ export default function TutorDashboardCourses() {
       description: "",
       subject_id: "",
       level_id: "",
-      hourly_rate: 200000, // Default hourly rate in VND 
+      hourly_rate: 200000, // Default hourly rate in VND
       teaching_mode: "online",
       status: "active",
     },
   });
-  
+
   // Get subject ID from URL if available (for direct creation from subject page)
   const urlParams = new URLSearchParams(window.location.search);
-  const subjectIdFromUrl = urlParams.get('subject_id');
-  
+  const subjectIdFromUrl = urlParams.get("subject_id");
+
   // Set subject_id if it exists in URL
-  if (subjectIdFromUrl && !courseForm.getValues('subject_id')) {
-    courseForm.setValue('subject_id', subjectIdFromUrl);
+  if (subjectIdFromUrl && !courseForm.getValues("subject_id")) {
+    courseForm.setValue("subject_id", subjectIdFromUrl);
   }
 
   // Create course
@@ -90,9 +137,13 @@ export default function TutorDashboardCourses() {
         level_id: data.level_id ? parseInt(data.level_id) : undefined,
         hourly_rate: data.hourly_rate ? data.hourly_rate.toString() : undefined,
       };
-      
+
       console.log("Sending data to API:", formattedData);
-      const res = await apiRequest("POST", `/api/v1/tutors/courses`, formattedData);
+      const res = await apiRequest(
+        "POST",
+        `/api/v1/tutors/courses`,
+        formattedData
+      );
       return res.json();
     },
     onSuccess: () => {
@@ -116,7 +167,13 @@ export default function TutorDashboardCourses() {
 
   // Update course
   const updateCourseMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: z.infer<typeof courseSchema> }) => {
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: z.infer<typeof courseSchema>;
+    }) => {
       // Format data for API
       const formattedData = {
         ...data,
@@ -124,9 +181,13 @@ export default function TutorDashboardCourses() {
         level_id: data.level_id ? parseInt(data.level_id) : undefined,
         hourly_rate: data.hourly_rate ? data.hourly_rate.toString() : undefined,
       };
-      
+
       console.log("Updating course with data:", formattedData);
-      const res = await apiRequest("PATCH", `/api/v1/tutors/courses/${id}`, formattedData);
+      const res = await apiRequest(
+        "PATCH",
+        `/api/v1/tutors/courses/${id}`,
+        formattedData
+      );
       return res.json();
     },
     onSuccess: () => {
@@ -185,7 +246,7 @@ export default function TutorDashboardCourses() {
 
   const handleEditCourse = (course: any) => {
     setEditingCourseId(course.id);
-    
+
     courseForm.reset({
       title: course.title,
       description: course.description,
@@ -195,7 +256,7 @@ export default function TutorDashboardCourses() {
       teaching_mode: course.teaching_mode,
       status: course.status || "active",
     });
-    
+
     setCourseDialogOpen(true);
   };
 
@@ -206,12 +267,30 @@ export default function TutorDashboardCourses() {
   };
 
   const openNewCourseDialog = () => {
+    if (!tutorProfile) {
+      toast({
+        title: "Không thể tạo khóa học",
+        description: "Bạn cần hoàn thành hồ sơ gia sư trước khi tạo khóa học.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!tutorProfile.is_verified) {
+      toast({
+        title: "Không thể tạo khóa học",
+        description:
+          "Hồ sơ gia sư của bạn cần được xác minh trước khi tạo khóa học.",
+        variant: "destructive",
+      });
+      return;
+    }
     setEditingCourseId(null);
-    
+
     // Try to get subject_id from URL query parameters
     const urlParams = new URLSearchParams(window.location.search);
-    const subjectIdFromUrl = urlParams.get('subject_id');
-    
+    const subjectIdFromUrl = urlParams.get("subject_id");
+
     courseForm.reset({
       title: "",
       description: "",
@@ -221,10 +300,10 @@ export default function TutorDashboardCourses() {
       teaching_mode: "online",
       status: "active",
     });
-    
+
     setCourseDialogOpen(true);
   };
-  
+
   // Get the status badge color
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -261,11 +340,13 @@ export default function TutorDashboardCourses() {
             Tạo và quản lý các khóa học của bạn để thu hút học viên
           </p>
         </div>
-        
-        <Button 
-          onClick={openNewCourseDialog} 
+
+        <Button
+          onClick={openNewCourseDialog}
           className="mt-4 sm:mt-0"
-          disabled={!tutorProfile}
+          disabled={
+            !tutorProfile || (tutorProfile && !tutorProfile.is_verified)
+          }
         >
           <PlusCircle className="mr-2 h-4 w-4" />
           Thêm khóa học mới
@@ -278,8 +359,15 @@ export default function TutorDashboardCourses() {
             Bạn cần hoàn thành hồ sơ gia sư trước khi tạo khóa học.
           </AlertDescription>
         </Alert>
+      ) : tutorProfile && !tutorProfile.is_verified ? (
+        <Alert className="mb-6">
+          <AlertDescription>
+            Hồ sơ gia sư của bạn đang chờ xác minh. Bạn chỉ có thể tạo khóa học
+            sau khi hồ sơ được quản trị viên xác minh.
+          </AlertDescription>
+        </Alert>
       ) : null}
-      
+
       {courses && courses.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {courses.map((course: any) => (
@@ -290,21 +378,22 @@ export default function TutorDashboardCourses() {
                     {{
                       active: "Đang hiển thị",
                       pending: "Đang xem xét",
-                      expired: "Hết hạn"
-                    }[course.status]}
+                      expired: "Hết hạn",
+                    }[course.status as "active" | "pending" | "expired"] ||
+                      "Unknown"}
                   </Badge>
-                  
+
                   <div className="flex space-x-2">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={() => handleEditCourse(course)}
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={() => handleDeleteCourse(course.id)}
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />
@@ -313,7 +402,7 @@ export default function TutorDashboardCourses() {
                 </div>
                 <CardTitle className="text-lg mt-2">{course.title}</CardTitle>
               </CardHeader>
-              
+
               <CardContent className="pb-3">
                 <div className="flex space-x-2 mb-2">
                   <Badge variant="outline" className="flex items-center">
@@ -322,38 +411,41 @@ export default function TutorDashboardCourses() {
                   </Badge>
                   <Badge variant="outline" className="flex items-center">
                     <Home className="h-3 w-3 mr-1" />
-                    {{
-                      online: "Trực tuyến",
-                      offline: "Tại chỗ",
-                      both: "Cả hai"
-                    }[course.teaching_mode]}
+                    {
+                      {
+                        online: "Trực tuyến",
+                        offline: "Tại chỗ",
+                        both: "Cả hai",
+                      }[course.teaching_mode as "online" | "offline" | "both"]
+                    }
                   </Badge>
                 </div>
-                
+
                 <p className="text-muted-foreground mb-4 line-clamp-3">
                   {course.description}
                 </p>
-                
+
                 <div className="flex justify-between items-center">
                   <div>
                     <p className="text-sm text-muted-foreground">Cấp độ</p>
                     <p className="font-medium">{course.level.name}</p>
                   </div>
-                  
+
                   <div className="text-right">
                     <p className="text-sm text-muted-foreground">Học phí</p>
                     <p className="font-medium">
-                      {new Intl.NumberFormat('vi-VN', { 
-                        style: 'currency', 
-                        currency: 'VND' 
-                      }).format(Number(course.hourly_rate))}<span className="text-xs">/giờ</span>
+                      {new Intl.NumberFormat("vi-VN", {
+                        style: "currency",
+                        currency: "VND",
+                      }).format(Number(course.hourly_rate))}
+                      <span className="text-xs">/giờ</span>
                     </p>
                   </div>
                 </div>
               </CardContent>
-              
+
               <CardFooter className="text-xs text-muted-foreground pt-2">
-                {new Date(course.created_at).toLocaleDateString('vi-VN')}
+                {new Date(course.created_at).toLocaleDateString("vi-VN")}
               </CardFooter>
             </Card>
           ))}
@@ -363,15 +455,23 @@ export default function TutorDashboardCourses() {
           <BookOpen className="h-12 w-12 mx-auto text-muted-foreground" />
           <h2 className="mt-4 text-xl font-medium">Chưa có khóa học nào</h2>
           <p className="mt-2 text-muted-foreground max-w-md mx-auto">
-            Bạn chưa tạo khóa học nào. Tạo khóa học để học viên có thể tìm thấy bạn.
+            Bạn chưa tạo khóa học nào. Tạo khóa học để học viên có thể tìm thấy
+            bạn.
           </p>
-          <Button className="mt-6" onClick={openNewCourseDialog}>
+
+          <Button
+            onClick={openNewCourseDialog}
+            className="mt-4 sm:mt-0"
+            disabled={
+              !tutorProfile || (tutorProfile && !tutorProfile.is_verified)
+            }
+          >
             <PlusCircle className="mr-2 h-4 w-4" />
-            Tạo khóa học
+            Thêm khóa học mới
           </Button>
         </div>
       )}
-      
+
       {/* Course Create/Edit Dialog */}
       <Dialog open={courseDialogOpen} onOpenChange={setCourseDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -380,14 +480,17 @@ export default function TutorDashboardCourses() {
               {editingCourseId ? "Chỉnh sửa khóa học" : "Tạo khóa học mới"}
             </DialogTitle>
             <DialogDescription>
-              {editingCourseId 
-                ? "Cập nhật thông tin khóa học của bạn" 
+              {editingCourseId
+                ? "Cập nhật thông tin khóa học của bạn"
                 : "Tạo khóa học để học viên có thể tìm thấy bạn"}
             </DialogDescription>
           </DialogHeader>
-          
+
           <Form {...courseForm}>
-            <form onSubmit={courseForm.handleSubmit(onSubmitCourse)} className="space-y-6">
+            <form
+              onSubmit={courseForm.handleSubmit(onSubmitCourse)}
+              className="space-y-6"
+            >
               <FormField
                 control={courseForm.control}
                 name="title"
@@ -395,7 +498,10 @@ export default function TutorDashboardCourses() {
                   <FormItem>
                     <FormLabel>Tiêu đề</FormLabel>
                     <FormControl>
-                      <Input placeholder="VD: Khóa học Hóa học lớp 10, 11, 12" {...field} />
+                      <Input
+                        placeholder="VD: Khóa học Hóa học lớp 10, 11, 12"
+                        {...field}
+                      />
                     </FormControl>
                     <FormDescription>
                       Tiêu đề ngắn gọn, hấp dẫn để thu hút học viên
@@ -404,7 +510,7 @@ export default function TutorDashboardCourses() {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={courseForm.control}
                 name="description"
@@ -412,20 +518,18 @@ export default function TutorDashboardCourses() {
                   <FormItem>
                     <FormLabel>Mô tả</FormLabel>
                     <FormControl>
-                      <Textarea 
-                        placeholder="Mô tả chi tiết về khóa học, phương pháp giảng dạy, lợi ích khi học với bạn..." 
+                      <Textarea
+                        placeholder="Mô tả chi tiết về khóa học, phương pháp giảng dạy, lợi ích khi học với bạn..."
                         className="min-h-24"
-                        {...field} 
+                        {...field}
                       />
                     </FormControl>
-                    <FormDescription>
-                      Tối thiểu 20 ký tự
-                    </FormDescription>
+                    <FormDescription>Tối thiểu 20 ký tự</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={courseForm.control}
@@ -433,7 +537,10 @@ export default function TutorDashboardCourses() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Môn học</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Chọn môn học" />
@@ -441,7 +548,10 @@ export default function TutorDashboardCourses() {
                         </FormControl>
                         <SelectContent>
                           {subjects?.map((subject: any) => (
-                            <SelectItem key={subject.id} value={subject.id.toString()}>
+                            <SelectItem
+                              key={subject.id}
+                              value={subject.id.toString()}
+                            >
                               {subject.name}
                             </SelectItem>
                           ))}
@@ -451,14 +561,17 @@ export default function TutorDashboardCourses() {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={courseForm.control}
                   name="level_id"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Cấp độ</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Chọn cấp độ" />
@@ -466,7 +579,10 @@ export default function TutorDashboardCourses() {
                         </FormControl>
                         <SelectContent>
                           {educationLevels?.map((level: any) => (
-                            <SelectItem key={level.id} value={level.id.toString()}>
+                            <SelectItem
+                              key={level.id}
+                              value={level.id.toString()}
+                            >
                               {level.name}
                             </SelectItem>
                           ))}
@@ -477,7 +593,7 @@ export default function TutorDashboardCourses() {
                   )}
                 />
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={courseForm.control}
@@ -498,14 +614,17 @@ export default function TutorDashboardCourses() {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={courseForm.control}
                   name="teaching_mode"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Hình thức dạy</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Chọn hình thức" />
@@ -522,14 +641,17 @@ export default function TutorDashboardCourses() {
                   )}
                 />
               </div>
-              
+
               <FormField
                 control={courseForm.control}
                 name="status"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Trạng thái</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Chọn trạng thái" />
@@ -541,13 +663,14 @@ export default function TutorDashboardCourses() {
                       </SelectContent>
                     </Select>
                     <FormDescription>
-                      Khóa học ở trạng thái "Đang hiển thị" sẽ được hiển thị cho học viên
+                      Khóa học ở trạng thái "Đang hiển thị" sẽ được hiển thị cho
+                      học viên
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              
+
               <DialogFooter>
                 <Button
                   type="button"
@@ -559,11 +682,15 @@ export default function TutorDashboardCourses() {
                 >
                   Hủy
                 </Button>
-                <Button 
+                <Button
                   type="submit"
-                  disabled={createCourseMutation.isPending || updateCourseMutation.isPending}
+                  disabled={
+                    createCourseMutation.isPending ||
+                    updateCourseMutation.isPending
+                  }
                 >
-                  {(createCourseMutation.isPending || updateCourseMutation.isPending) && (
+                  {(createCourseMutation.isPending ||
+                    updateCourseMutation.isPending) && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   )}
                   {editingCourseId ? "Cập nhật" : "Tạo"}

@@ -10,27 +10,29 @@ async function throwIfResNotOk(res: Response) {
 export async function apiRequest(
   method: string,
   url: string,
-  data?: unknown | undefined,
+  data?: unknown | undefined
 ): Promise<Response> {
   // Get token from localStorage
   const token = localStorage.getItem("token");
-  const headers: HeadersInit = data ? { "Content-Type": "application/json" } : {};
-  
+  const headers: HeadersInit = data
+    ? { "Content-Type": "application/json" }
+    : {};
+
   // Add Authorization header if token exists
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
-  
-  console.log(`API Request: ${method} ${url} - Headers:`, headers);
-  
+
+  // console.log(`API Request: ${method} ${url} - Headers:`, headers);
+
   const res = await fetch(url, {
     method,
     headers,
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
-  
-  console.log(`API Response: ${res.status} ${res.statusText}`);
+
+  // console.log(`API Response: ${res.status} ${res.statusText}`);
 
   await throwIfResNotOk(res);
   return res;
@@ -46,12 +48,12 @@ export const getQueryFn: <T>(options: {
     // Get token from localStorage
     const token = localStorage.getItem("token");
     const headers: HeadersInit = {};
-    
+
     // Add Authorization header if token exists
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
     }
-    
+
     // Build URL with query parameters if provided
     let url = queryKey[0] as string;
     if (params) {
@@ -66,15 +68,15 @@ export const getQueryFn: <T>(options: {
         url = `${url}?${queryString}`;
       }
     }
-    
-    console.log(`Query Request: GET ${url} - Headers:`, headers);
-    
+
+    // console.log(`Query Request: GET ${url} - Headers:`, headers);
+
     const res = await fetch(url, {
       credentials: "include",
-      headers
+      headers,
     });
-    
-    console.log(`Query Response: ${res.status} ${res.statusText}`);
+
+    // console.log(`Query Response: ${res.status} ${res.statusText}`);
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
       return null;

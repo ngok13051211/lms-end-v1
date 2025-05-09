@@ -14,6 +14,7 @@ import TutorDashboardProfile from "@/pages/tutor-dashboard-profile";
 import TutorDashboardCourses from "@/pages/tutor-dashboard-courses";
 import TutorDashboardMessages from "@/pages/tutor-dashboard-messages";
 import TutorDashboardStats from "@/pages/tutor-dashboard-stats";
+import TutorDashboardSchedule from "@/pages/tutor-dashboard-schedule";
 import StudentDashboard from "@/pages/student-dashboard";
 import StudentDashboardProfile from "@/pages/student-dashboard-profile";
 import StudentDashboardTutors from "@/pages/student-dashboard-tutors";
@@ -40,7 +41,7 @@ function withMainLayout(Component: React.ComponentType<any>): React.FC<any> {
 
 function Router() {
   const { user, isLoading } = useSelector((state: RootState) => state.auth);
-  
+
   // Show loading spinner during authentication check
   if (isLoading) {
     return (
@@ -61,89 +62,100 @@ function Router() {
       <Route path="/subjects/:id" component={withMainLayout(SubjectDetail)} />
       <Route path="/become-tutor" component={withMainLayout(BecomeTutor)} />
       <Route path="/book/:tutorId" component={withMainLayout(BookingForm)} />
-      <Route path="/book/:tutorId/:courseId" component={withMainLayout(BookingForm)} />
-      
+      <Route
+        path="/book/:tutorId/:courseId"
+        component={withMainLayout(BookingForm)}
+      />
+
       {/* Legacy routes - keeping for backward compatibility */}
       <Route path="/tutor-dashboard">
         <PrivateRoute role="tutor" component={TutorDashboard} />
       </Route>
-      
+
       <Route path="/tutor-dashboard/profile">
         <PrivateRoute role="tutor" component={TutorDashboardProfile} />
       </Route>
-      
+
       <Route path="/tutor-dashboard/courses">
         <PrivateRoute role="tutor" component={TutorDashboardCourses} />
       </Route>
-      
+
       <Route path="/tutor-dashboard/ads">
         <PrivateRoute role="tutor" component={TutorDashboardCourses} />
       </Route>
-      
+
       <Route path="/tutor-dashboard/messages">
         <PrivateRoute role="tutor" component={TutorDashboardMessages} />
       </Route>
-      
+
       <Route path="/tutor-dashboard/messages/:id">
         <PrivateRoute role="tutor" component={TutorDashboardMessages} />
       </Route>
-      
+
       <Route path="/tutor-dashboard/stats">
         <PrivateRoute role="tutor" component={TutorDashboardStats} />
       </Route>
-      
+
+      <Route path="/tutor-dashboard/schedule">
+        <PrivateRoute role="tutor" component={TutorDashboardSchedule} />
+      </Route>
+
       {/* Main tutor dashboard route */}
       <Route path="/dashboard/tutor">
         <PrivateRoute role="tutor" component={TutorDashboard} />
       </Route>
-      
+
       {/* Tutor dashboard sections */}
       <Route path="/dashboard/tutor/profile">
         <PrivateRoute role="tutor" component={TutorDashboardProfile} />
       </Route>
-      
+
       <Route path="/dashboard/tutor/courses">
         <PrivateRoute role="tutor" component={TutorDashboardCourses} />
       </Route>
-      
+
       <Route path="/dashboard/tutor/messages">
         <PrivateRoute role="tutor" component={TutorDashboardMessages} />
       </Route>
-      
+
       <Route path="/dashboard/tutor/messages/:id">
         <PrivateRoute role="tutor" component={TutorDashboardMessages} />
       </Route>
-      
+
       <Route path="/dashboard/tutor/stats">
         <PrivateRoute role="tutor" component={TutorDashboardStats} />
       </Route>
-      
+
+      <Route path="/dashboard/tutor/schedule">
+        <PrivateRoute role="tutor" component={TutorDashboardSchedule} />
+      </Route>
+
       {/* Student dashboard */}
       <Route path="/dashboard/student">
         <PrivateRoute role="student" component={StudentDashboard} />
       </Route>
-      
+
       <Route path="/dashboard/student/profile">
         <PrivateRoute role="student" component={StudentDashboardProfile} />
       </Route>
-      
+
       <Route path="/dashboard/student/tutors">
         <PrivateRoute role="student" component={StudentDashboardTutors} />
       </Route>
-      
+
       <Route path="/dashboard/student/messages">
         <PrivateRoute role="student" component={StudentDashboardMessages} />
       </Route>
-      
+
       <Route path="/dashboard/student/messages/:id">
         <PrivateRoute role="student" component={StudentDashboardMessages} />
       </Route>
-      
+
       {/* Admin dashboard */}
       <Route path="/dashboard/admin">
         <PrivateRoute role="admin" component={AdminDashboard} />
       </Route>
-      
+
       <Route component={NotFound} />
     </Switch>
   );
