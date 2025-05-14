@@ -9,6 +9,7 @@ import Register from "@/pages/register";
 import TutorProfile from "@/pages/tutor-profile";
 import TutorListing from "@/pages/tutor-listing";
 import SubjectDetail from "@/pages/subject-detail";
+import Subjects from "@/pages/subjects";
 import TutorDashboard from "@/pages/tutor-dashboard";
 import TutorDashboardProfile from "@/pages/tutor-dashboard-profile";
 import TutorDashboardCourses from "@/pages/tutor-dashboard-courses";
@@ -59,6 +60,7 @@ function Router() {
       <Route path="/register" component={Register} />
       <Route path="/tutors" component={withMainLayout(TutorListing)} />
       <Route path="/tutors/:id" component={withMainLayout(TutorProfile)} />
+      <Route path="/subjects" component={withMainLayout(Subjects)} />
       <Route path="/subjects/:id" component={withMainLayout(SubjectDetail)} />
       <Route path="/become-tutor" component={withMainLayout(BecomeTutor)} />
       <Route path="/book/:tutorId" component={withMainLayout(BookingForm)} />
