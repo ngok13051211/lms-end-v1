@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import {
   Card,
   CardContent,
@@ -40,7 +40,6 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { apiRequest } from "@/lib/queryClient";
 import {
   Loader2,
   PlusCircle,
@@ -49,12 +48,15 @@ import {
   DollarSign,
   BookOpen,
   Home,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import TutorDashboardLayout from "@/components/layout/TutorDashboardLayout";
 import { useToast } from "@/hooks/use-toast";
 import { TutorProfile } from "@shared/schema";
+import React from "react";
 
 // Form schema for course
 const courseSchema = z.object({
@@ -75,7 +77,6 @@ export default function TutorDashboardCourses() {
   const [editingCourseId, setEditingCourseId] = useState<number | null>(null);
 
   // Get tutor profile
-
   const { data: tutorProfile, isLoading: profileLoading } =
     useQuery<TutorProfile>({
       queryKey: [`/api/v1/tutors/profile`],
@@ -83,7 +84,6 @@ export default function TutorDashboardCourses() {
     });
 
   // Get subjects and education levels for course creation
-
   const { data: subjects = [] } = useQuery<any[]>({
     queryKey: [`/api/v1/subjects`],
     enabled: true,
@@ -94,15 +94,45 @@ export default function TutorDashboardCourses() {
     enabled: true,
   });
 
-  // Get tutor's courses
+  // Define the type for course response
+  interface CourseResponse {
+    courses: any[];
+  }
+
+  // Get tutor's courses with better error handling
   const {
-    data: courses = [],
+    data: coursesResponse,
     isLoading: coursesLoading,
+    isError,
+    error,
     refetch: refetchCourses,
-  } = useQuery<any[]>({
+  } = useQuery<CourseResponse>({
     queryKey: [`/api/v1/tutors/courses`],
     enabled: !!tutorProfile,
+    retry: 1,
+    gcTime: 0,
+    staleTime: 0,
   });
+
+  // Handle error with useEffect
+  React.useEffect(() => {
+    if (isError && error) {
+      console.error("Failed to load courses:", error);
+      toast({
+        title: "Không thể tải khóa học",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Đã xảy ra lỗi khi tải thông tin khóa học",
+        variant: "destructive",
+      });
+    }
+  }, [isError, error, toast]);
+
+  // Extract courses from response with safety check
+  const courses = Array.isArray(coursesResponse?.courses)
+    ? coursesResponse.courses
+    : [];
 
   // Course form
   const courseForm = useForm<z.infer<typeof courseSchema>>({
@@ -139,11 +169,7 @@ export default function TutorDashboardCourses() {
       };
 
       console.log("Sending data to API:", formattedData);
-      const res = await apiRequest(
-        "POST",
-        `/api/v1/tutors/courses`,
-        formattedData
-      );
+      const res = await apiRequest("POST", `/api/v1/courses`, formattedData);
       return res.json();
     },
     onSuccess: () => {
@@ -151,15 +177,15 @@ export default function TutorDashboardCourses() {
       setCourseDialogOpen(false);
       courseForm.reset();
       toast({
-        title: "Success",
-        description: "Course created successfully",
+        title: "Thành công",
+        description: "Khóa học đã được tạo thành công",
       });
     },
     onError: (error: any) => {
       console.error("Course creation error:", error);
       toast({
-        title: "Error creating course",
-        description: error.message || "Something went wrong",
+        title: "Lỗi tạo khóa học",
+        description: error.message || "Đã xảy ra lỗi, vui lòng thử lại sau",
         variant: "destructive",
       });
     },
@@ -196,15 +222,15 @@ export default function TutorDashboardCourses() {
       setEditingCourseId(null);
       courseForm.reset();
       toast({
-        title: "Success",
-        description: "Course updated successfully",
+        title: "Thành công",
+        description: "Khóa học đã được cập nhật thành công",
       });
     },
     onError: (error: any) => {
       console.error("Course update error:", error);
       toast({
-        title: "Error updating course",
-        description: error.message || "Something went wrong",
+        title: "Lỗi cập nhật khóa học",
+        description: error.message || "Đã xảy ra lỗi, vui lòng thử lại sau",
         variant: "destructive",
       });
     },
@@ -213,20 +239,28 @@ export default function TutorDashboardCourses() {
   // Delete course
   const deleteCourseMutation = useMutation({
     mutationFn: async (id: number) => {
-      const res = await apiRequest("DELETE", `/api/v1/tutors/courses/${id}`);
-      return res.json();
+      const res = await apiRequest("DELETE", `/api/v1/courses/${id}`);
+
+      // Kiểm tra nếu phản hồi có nội dung để parse
+      const contentType = res.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        return res.json();
+      } else {
+        // Trả về một đối tượng mặc định nếu không có dữ liệu JSON
+        return { success: true };
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/v1/tutors/courses`] });
       toast({
-        title: "Success",
-        description: "Course deleted successfully",
+        title: "Thành công",
+        description: "Khóa học đã được xóa thành công",
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Error deleting course",
-        description: error.message || "Something went wrong",
+        title: "Lỗi xóa khóa học",
+        description: error.message || "Đã xảy ra lỗi, vui lòng thử lại sau",
         variant: "destructive",
       });
     },
@@ -320,12 +354,36 @@ export default function TutorDashboardCourses() {
 
   const isLoading = profileLoading || coursesLoading;
 
+  // Loading state
   if (isLoading) {
     return (
       <TutorDashboardLayout activePage="courses">
         <div className="flex items-center justify-center min-h-[60vh]">
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          <span className="ml-2 text-xl">Loading...</span>
+          <span className="ml-2 text-xl">Đang tải...</span>
+        </div>
+      </TutorDashboardLayout>
+    );
+  }
+
+  // Error state - show error with retry button
+  if (isError) {
+    return (
+      <TutorDashboardLayout activePage="courses">
+        <div className="p-6">
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Lỗi tải dữ liệu</AlertTitle>
+            <AlertDescription>
+              {error instanceof Error
+                ? error.message
+                : "Không thể tải thông tin khóa học. Vui lòng thử lại sau."}
+            </AlertDescription>
+          </Alert>
+          <Button onClick={() => refetchCourses()} variant="outline">
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Thử lại
+          </Button>
         </div>
       </TutorDashboardLayout>
     );
@@ -428,7 +486,9 @@ export default function TutorDashboardCourses() {
                 <div className="flex justify-between items-center">
                   <div>
                     <p className="text-sm text-muted-foreground">Cấp độ</p>
-                    <p className="font-medium">{course.level.name}</p>
+                    <p className="font-medium">
+                      {course.level?.name || "Chưa xác định"}
+                    </p>
                   </div>
 
                   <div className="text-right">

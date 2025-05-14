@@ -7,8 +7,22 @@ import { useDispatch, useSelector } from "react-redux";
 import { loginUser } from "@/features/auth/authSlice";
 import { RootState } from "@/store";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
 import { Link } from "wouter";
@@ -37,9 +51,28 @@ export default function Login() {
   });
 
   const onSubmit = async (values: LoginFormValues) => {
-    const result = await dispatch(loginUser(values) as any);
-    if (result.meta.requestStatus === "fulfilled") {
-      navigate("/");
+    try {
+      const result = await dispatch(loginUser(values) as any);
+
+      console.log("Login result:", result);
+
+      if (result.meta.requestStatus === "fulfilled") {
+        // Lấy thông tin người dùng đã đăng nhập
+        const user = result.payload;
+
+        // Chuyển hướng dựa trên vai trò
+        if (user.role === "tutor") {
+          navigate("/");
+        } else if (user.role === "student") {
+          navigate("/");
+        } else if (user.role === "admin") {
+          navigate("/admin-dashboard");
+        } else {
+          navigate("/");
+        }
+      }
+    } catch (error) {
+      console.error("Login error:", error);
     }
   };
 
@@ -49,9 +82,13 @@ export default function Login() {
         <Card className="w-full max-w-md">
           <CardHeader className="space-y-1">
             <div className="flex justify-center mb-4">
-              <span className="text-primary text-2xl font-medium">Homi<span className="text-secondary">Tutor</span></span>
+              <span className="text-primary text-2xl font-medium">
+                Homi<span className="text-secondary">Tutor</span>
+              </span>
             </div>
-            <CardTitle className="text-2xl text-center">Login to your account</CardTitle>
+            <CardTitle className="text-2xl text-center">
+              Login to your account
+            </CardTitle>
             <CardDescription className="text-center">
               Enter your email and password to access your account
             </CardDescription>
@@ -65,7 +102,10 @@ export default function Login() {
             )}
 
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-4"
+              >
                 <FormField
                   control={form.control}
                   name="email"
@@ -73,7 +113,11 @@ export default function Login() {
                     <FormItem>
                       <FormLabel>Email</FormLabel>
                       <FormControl>
-                        <Input placeholder="you@example.com" type="email" {...field} />
+                        <Input
+                          placeholder="you@example.com"
+                          type="email"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -88,12 +132,12 @@ export default function Login() {
                       <FormLabel>Password</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <Input 
-                            placeholder="Your password" 
+                          <Input
+                            placeholder="Your password"
                             type={showPassword ? "text" : "password"}
-                            {...field} 
+                            {...field}
                           />
-                          <button 
+                          <button
                             type="button"
                             className="absolute right-3 top-2.5 text-gray-500"
                             onClick={() => setShowPassword(!showPassword)}
@@ -107,12 +151,14 @@ export default function Login() {
                   )}
                 />
 
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   className="w-full bg-primary hover:bg-primary-dark"
                   disabled={isLoading}
                 >
-                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  {isLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : null}
                   Sign in
                 </Button>
               </form>
@@ -121,7 +167,10 @@ export default function Login() {
 
           <CardFooter className="flex flex-col space-y-4">
             <div className="text-center text-sm">
-              <Link href="/forgot-password" className="text-primary hover:underline">
+              <Link
+                href="/forgot-password"
+                className="text-primary hover:underline"
+              >
                 Forgot your password?
               </Link>
             </div>

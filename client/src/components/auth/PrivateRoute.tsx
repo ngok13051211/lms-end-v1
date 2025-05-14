@@ -11,7 +11,10 @@ interface PrivateRouteProps {
   role?: "student" | "tutor" | "admin";
 }
 
-export default function PrivateRoute({ component: Component, role }: PrivateRouteProps) {
+export default function PrivateRoute({
+  component: Component,
+  role,
+}: PrivateRouteProps) {
   const { user, isLoading } = useSelector((state: RootState) => state.auth);
   const [, navigate] = useLocation();
   const dispatch = useDispatch();
@@ -20,22 +23,33 @@ export default function PrivateRoute({ component: Component, role }: PrivateRout
   // On mount, check if token exists but user is not loaded (page refresh case)
   useEffect(() => {
     const token = localStorage.getItem("token");
-    
+
     // If token exists but no user (after page refresh), try to load user
     if (token && !user && !isLoading && !authChecked) {
-      dispatch(loadUser() as any);
+      console.log("Token exists but no user, loading user data");
+      dispatch(loadUser() as any)
+        .unwrap()
+        .then((userData) => {
+          console.log("User loaded successfully:", userData);
+          setAuthChecked(true);
+        })
+        .catch((err) => {
+          console.error("Failed to load user:", err);
+          // Nếu không thể tải user, xóa token và chuyển hướng đến trang đăng nhập
+          localStorage.removeItem("token");
+          navigate("/login");
+        });
+    } else {
+      setAuthChecked(true);
     }
-    
-    // Mark auth as checked to prevent infinite loop
-    setAuthChecked(true);
-  }, [user, isLoading, dispatch, authChecked]);
+  }, [user, isLoading, dispatch, authChecked, navigate]);
 
   // Show loading spinner during authentication check
   if (isLoading || (localStorage.getItem("token") && !user && !authChecked)) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <span className="ml-2 text-xl">Loading...</span>
+        <span className="ml-2 text-xl">Đang tải dữ liệu người dùng...</span>
       </div>
     );
   }

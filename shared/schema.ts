@@ -9,6 +9,7 @@ import {
   decimal,
   date,
   time,
+  varchar,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -105,13 +106,32 @@ export const courses = pgTable("courses", {
   tutor_id: integer("tutor_id")
     .notNull()
     .references(() => tutorProfiles.id),
-  title: text("title").notNull(),
-  description: text("description").notNull(),
-  subject_id: integer("subject_id").references(() => subjects.id),
-  level_id: integer("level_id").references(() => educationLevels.id),
+  subject_id: integer("subject_id")
+    .notNull()
+    .references(() => subjects.id),
+  level_id: integer("level_id") // Đảm bảo field này tồn tại
+    .notNull()
+    .references(() => educationLevels.id),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
   hourly_rate: decimal("hourly_rate", { precision: 10, scale: 2 }).notNull(),
-  teaching_mode: text("teaching_mode").notNull(), // "online", "offline", "both"
-  status: text("status").notNull().default("active"), // "active", "inactive"
+  teaching_mode: varchar("teaching_mode", { length: 50 })
+    .notNull()
+    .default("online"),
+  status: varchar("status", { length: 50 }).notNull().default("active"),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+// Course Levels (many-to-many relationship between courses and levels)
+export const courseLevels = pgTable("course_levels", {
+  id: serial("id").primaryKey(),
+  course_id: integer("course_id")
+    .notNull()
+    .references(() => courses.id),
+  level_id: integer("level_id")
+    .notNull()
+    .references(() => educationLevels.id),
   created_at: timestamp("created_at").defaultNow().notNull(),
   updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -152,6 +172,8 @@ export const reviews = pgTable("reviews", {
   tutor_id: integer("tutor_id")
     .notNull()
     .references(() => tutorProfiles.id),
+  // Make course_id optional
+  course_id: integer("course_id").references(() => courses.id),
   rating: integer("rating").notNull(),
   comment: text("comment"),
   created_at: timestamp("created_at").defaultNow().notNull(),
@@ -343,8 +365,8 @@ export const tutorProfilesRelations = relations(
       fields: [tutorProfiles.user_id],
       references: [users.id],
     }),
-    subjects: many(tutorSubjects),
-    levels: many(tutorEducationLevels),
+    tutorSubjects: many(tutorSubjects),
+    tutorEducationLevels: many(tutorEducationLevels),
     courses: many(courses),
     reviews: many(reviews),
     favoritedBy: many(favoriteTutors),
@@ -396,7 +418,20 @@ export const coursesRelations = relations(courses, ({ one, many }) => ({
     fields: [courses.level_id],
     references: [educationLevels.id],
   }),
+  // Thêm mối quan hệ với courseLevels
+  course_levels: many(courseLevels),
   teachingSchedules: many(teachingSchedules), // Relation to teaching schedules
+}));
+
+export const courseLevelsRelations = relations(courseLevels, ({ one }) => ({
+  course: one(courses, {
+    fields: [courseLevels.course_id],
+    references: [courses.id],
+  }),
+  level: one(educationLevels, {
+    fields: [courseLevels.level_id],
+    references: [educationLevels.id],
+  }),
 }));
 
 export const tutorEducationLevelsRelations = relations(
@@ -419,6 +454,7 @@ export const educationLevelsRelations = relations(
     tutors: many(tutorEducationLevels),
     courses: many(courses),
     subjects: many(subjectEducationLevels),
+    course_levels: many(courseLevels),
   })
 );
 
@@ -456,6 +492,10 @@ export const reviewsRelations = relations(reviews, ({ one }) => ({
   tutor: one(tutorProfiles, {
     fields: [reviews.tutor_id],
     references: [tutorProfiles.id],
+  }),
+  course: one(courses, {
+    fields: [reviews.course_id],
+    references: [courses.id],
   }),
 }));
 
@@ -513,6 +553,13 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
+// Schema cho cập nhật thông tin người dùng
+export const updateProfileSchema = z.object({
+  first_name: z.string().min(2, "Tên phải có ít nhất 2 ký tự").optional(),
+  last_name: z.string().min(2, "Họ phải có ít nhất 2 ký tự").optional(),
+  phone: z.string().optional(),
+});
+
 export const userInsertSchema = createInsertSchema(users);
 export const userSelectSchema = createSelectSchema(users);
 
@@ -520,8 +567,45 @@ export const userSelectSchema = createSelectSchema(users);
 export const tutorProfileInsertSchema = createInsertSchema(tutorProfiles);
 export const tutorProfileSelectSchema = createSelectSchema(tutorProfiles);
 
+// Schema cho tạo/cập nhật hồ sơ gia sư
+export const tutorProfileSchema = z.object({
+  bio: z.string().min(50, "Giới thiệu phải có ít nhất 50 ký tự"),
+  date_of_birth: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Định dạng ngày sinh phải là YYYY-MM-DD")
+    .optional(),
+  address: z.string().optional(),
+  certifications: z.string().optional(), // JSON string chứa URLs
+  availability: z.string().optional(), // JSON string
+});
+
 export const courseInsertSchema = createInsertSchema(courses);
 export const courseSelectSchema = createSelectSchema(courses);
+
+// Schema cho tạo khóa học mới
+export const courseSchema = z.object({
+  title: z.string().min(3, "Tiêu đề phải có ít nhất 3 ký tự"),
+  description: z.string().min(10, "Mô tả phải có ít nhất 10 ký tự"),
+  subject_id: z.number(),
+  level_id: z.number(),
+  hourly_rate: z.coerce.number().min(10000, "Minimum is 10,000 VND"),
+  teaching_mode: z.enum(["online", "offline", "both"]),
+  status: z.enum(["active", "inactive"]).default("active"),
+});
+
+// Schema cho việc cập nhật khóa học (cho phép các trường optional)
+export const courseUpdateSchema = z.object({
+  title: z.string().min(3, "Tiêu đề phải có ít nhất 3 ký tự").optional(),
+  description: z.string().min(10, "Mô tả phải có ít nhất 10 ký tự").optional(),
+  subject_id: z.number().optional(),
+  level_id: z.number().optional(),
+  hourly_rate: z
+    .number()
+    .or(z.string().transform((val) => parseFloat(val)))
+    .optional(),
+  teaching_mode: z.enum(["online", "offline", "both"]).optional(),
+  status: z.enum(["active", "inactive"]).optional(),
+});
 
 export const subjectInsertSchema = createInsertSchema(subjects);
 export const subjectSelectSchema = createSelectSchema(subjects);
@@ -534,6 +618,11 @@ export const testimonialSelectSchema = createSelectSchema(testimonials);
 
 export const messageInsertSchema = createInsertSchema(messages);
 export const messageSelectSchema = createSelectSchema(messages);
+
+// Schema cho việc gửi tin nhắn mới
+export const messageSchema = z.object({
+  content: z.string().min(1, "Nội dung tin nhắn không được để trống"),
+});
 
 export const reviewInsertSchema = createInsertSchema(reviews);
 export const reviewSelectSchema = createSelectSchema(reviews);
@@ -568,34 +657,143 @@ export const bookingValidationSchema = z.object({
 });
 export const bookingSelectSchema = createSelectSchema(bookings);
 
+// Schema cho cập nhật trạng thái booking
+export const bookingStatusSchema = z.object({
+  status: z.enum(
+    ["pending", "confirmed", "completed", "cancelled", "rejected"],
+    {
+      errorMap: () => ({ message: "Trạng thái không hợp lệ" }),
+    }
+  ),
+  reason: z.string().optional(), // Lý do nếu từ chối hoặc hủy
+});
+
 export const paymentInsertSchema = createInsertSchema(payments);
 export const paymentSelectSchema = createSelectSchema(payments);
 
-// Validation schema cho thanh toán
-export const paymentValidationSchema = z.object({
+// Schema cho tạo thanh toán từ client
+export const paymentSchema = z.object({
   booking_id: z.number(),
-  transaction_id: z.string().optional(),
-  amount: z.number().or(z.string().transform((val) => parseFloat(val))),
-  fee: z
-    .number()
-    .or(z.string().transform((val) => parseFloat(val)))
-    .optional(),
-  net_amount: z.number().or(z.string().transform((val) => parseFloat(val))),
-  payer_id: z.number(),
-  payee_id: z.number(),
-  status: z.string().default("pending"),
-  payment_method: z.string(),
-  payment_data: z.any().optional(),
+  payment_method: z.enum(["vnpay", "bank_transfer", "wallet"], {
+    errorMap: () => ({ message: "Phương thức thanh toán không hợp lệ" }),
+  }),
+  return_url: z.string().url("URL trả về không hợp lệ").optional(),
 });
 
 export const sessionNoteInsertSchema = createInsertSchema(sessionNotes);
 export const sessionNoteSelectSchema = createSelectSchema(sessionNotes);
+
+// Schema cho thêm ghi chú buổi học
+export const sessionNotesSchema = z.object({
+  tutor_notes: z.string().optional(),
+  student_rating: z.number().min(1).max(5).optional(),
+  student_feedback: z.string().optional(),
+});
 
 // Schema for teaching schedules
 export const teachingScheduleInsertSchema =
   createInsertSchema(teachingSchedules);
 export const teachingScheduleSelectSchema =
   createSelectSchema(teachingSchedules);
+
+// Schema validation cho lịch dạy
+export const scheduleSchema = z.object({
+  tutor_id: z.number().optional(), // Có thể lấy từ JWT token
+  course_id: z.number().optional(),
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Định dạng ngày phải là YYYY-MM-DD"),
+  start_time: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Định dạng giờ phải là HH:MM"),
+  end_time: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Định dạng giờ phải là HH:MM"),
+  mode: z.enum(["online", "offline"], {
+    errorMap: () => ({ message: "Chế độ dạy phải là online hoặc offline" }),
+  }),
+  location: z.string().optional(),
+  is_recurring: z.boolean().default(false),
+  status: z
+    .enum(["available", "booked", "completed", "cancelled"])
+    .default("available"),
+});
+
+// Schema cho việc tạo nhiều lịch cùng lúc (nếu cần)
+export const batchScheduleSchema = z.object({
+  schedules: z.array(scheduleSchema),
+});
+
+// Schema cho param id
+export const idSchema = z.object({
+  id: z.string().regex(/^\d+$/, "ID phải là một số").transform(Number),
+});
+
+// Schema cho bookings với thông tin đầy đủ (khác với bookingValidationSchema)
+export const bookingSchema = z.object({
+  title: z.string().min(3, "Tiêu đề phải có ít nhất 3 ký tự"),
+  description: z.string().optional(),
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Định dạng ngày phải là YYYY-MM-DD"),
+  start_time: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Định dạng giờ phải là HH:MM"),
+  end_time: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Định dạng giờ phải là HH:MM"),
+  tutor_id: z.number(),
+  course_id: z.number().optional(),
+  location: z.string().optional(),
+  meeting_url: z.string().optional(),
+  hourly_rate: z.number().or(z.string().transform((val) => parseFloat(val))),
+});
+
+// Schema cho lịch một buổi (không định kỳ)
+const singleScheduleSchema = z.object({
+  date: z.string({ required_error: "date is required" }),
+  start_time: z.string({ required_error: "start_time is required" }),
+  end_time: z.string({ required_error: "end_time is required" }),
+  is_recurring: z.literal(false),
+  mode: z.enum(["online", "offline"]),
+  location: z.string().optional(),
+});
+
+// Schema cho lịch định kỳ
+const recurringScheduleSchema = z.object({
+  is_recurring: z.literal(true),
+  start_date: z.string({ required_error: "start_date is required" }),
+  end_date: z.string({ required_error: "end_date is required" }),
+  repeat_schedule: z.record(
+    z.string(),
+    z.array(
+      z.object({
+        startTime: z.string({ required_error: "startTime is required" }),
+        endTime: z.string({ required_error: "endTime is required" }),
+      })
+    )
+  ),
+  // Các trường dưới đây optional để chấp nhận nếu frontend gửi thừa
+  date: z.string().optional(),
+  start_time: z.string().optional(),
+  end_time: z.string().optional(),
+  mode: z.enum(["online", "offline"]),
+  location: z.string().optional(),
+});
+
+// Export schema dùng cho validate middleware
+export const createScheduleSchema = z.union([
+  singleScheduleSchema,
+  recurringScheduleSchema,
+]);
+
+export const schema = {
+  users,
+  tutorProfiles,
+  subjects,
+  educationLevels,
+  courses,
+};
 
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;

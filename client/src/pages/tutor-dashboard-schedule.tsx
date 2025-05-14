@@ -86,7 +86,7 @@ interface ScheduleEvent {
   time: string;
   date: Date;
   location?: string;
-  type: "available" | "booked";
+  type: "available" | "booked" | "cancelled";
   sessionType?: "online" | "offline";
 }
 
@@ -99,95 +99,245 @@ interface CreateSingleSessionInput {
 }
 
 interface CreateRecurringSessionInput {
-  courseType: string;
-  durationType: string;
   startDate: Date;
   endDate: Date;
-  weekdays: string[];
-  timeSlots: {
-    startTime: string;
-    endTime: string;
-  }[];
+  schedule: {
+    [key: string]: {
+      startTime: string;
+      endTime: string;
+    }[];
+  };
   sessionType: "online" | "offline";
   location?: string;
 }
 
 // API function to create a single session schedule
 const createSingleSession = async (data: CreateSingleSessionInput) => {
-  const response = await fetch("/api/v1/schedules/create", {
+  const response = await fetch("/api/v1/schedules", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
+    credentials: "include",
     body: JSON.stringify({
       date: format(data.date, "yyyy-MM-dd"),
       start_time: data.startTime,
       end_time: data.endTime,
       mode: data.sessionType,
-      location: data.location,
+      location: data.location || "",
       is_recurring: false,
     }),
   });
 
   if (!response.ok) {
-    throw new Error("Failed to create schedule");
+    const errorData = await response.json();
+    throw new Error(errorData.message || "Failed to create schedule");
   }
 
   return response.json();
 };
 
-// API function to create recurring sessions
 const createRecurringSessions = async (data: CreateRecurringSessionInput) => {
-  const response = await fetch("/api/v1/schedules/create", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      start_date: format(data.startDate, "yyyy-MM-dd"),
-      end_date: format(data.endDate, "yyyy-MM-dd"),
-      repeat_days: data.weekdays,
-      start_time: data.timeSlots[0].startTime,
-      end_time: data.timeSlots[0].endTime,
-      mode: data.sessionType,
-      location: data.location,
+  try {
+    // Debug input
+    console.log("Creating recurring sessions with input:", data);
+
+    // Kiểm tra và đảm bảo dữ liệu ngày là hợp lệ
+    if (
+      !data.startDate ||
+      !data.endDate ||
+      isNaN(data.startDate.getTime()) ||
+      isNaN(data.endDate.getTime())
+    ) {
+      throw new Error("Ngày bắt đầu hoặc kết thúc không hợp lệ");
+    }
+
+    const startDateStr = format(data.startDate, "yyyy-MM-dd");
+    const endDateStr = format(data.endDate, "yyyy-MM-dd");
+
+    // Kiểm tra schedule có dữ liệu không
+    const dayKeys = Object.keys(data.schedule);
+    if (dayKeys.length === 0) {
+      throw new Error("Cần chọn ít nhất một ngày trong tuần");
+    }
+
+    // Lấy khung giờ đầu tiên từ ngày đầu tiên trong schedule
+    const firstDay = dayKeys[0];
+    const firstTimeSlot = data.schedule[firstDay][0] || {
+      startTime: "08:00",
+      endTime: "09:00",
+    };
+
+    // Tạo payload đầy đủ và chính xác theo yêu cầu schema
+    // QUAN TRỌNG: Đảm bảo không có thuộc tính nào undefined
+    const payload = {
       is_recurring: true,
-    }),
-  });
+      start_date: startDateStr,
+      end_date: endDateStr,
+      repeat_schedule: data.schedule || {}, // Đảm bảo không undefined
+      mode: data.sessionType || "online", // Đảm bảo không undefined
+      location: data.location || "",
+      // Các trường bắt buộc cho schema validation
+      date: startDateStr,
+      start_time: firstTimeSlot.startTime,
+      end_time: firstTimeSlot.endTime,
+    };
 
-  if (!response.ok) {
-    throw new Error("Failed to create recurring schedule");
+    // Log payload chi tiết để debug
+    console.log("Sending payload:", JSON.stringify(payload, null, 2));
+
+    // QUAN TRỌNG: Đảm bảo gửi đúng định dạng dữ liệu
+    const formattedPayload = JSON.stringify(payload);
+    console.log("FormattedPayload:", formattedPayload);
+
+    // Gửi yêu cầu với token (nếu có)
+    const token = localStorage.getItem("token");
+    const response = await fetch("/api/v1/schedules", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      credentials: "include",
+      body: formattedPayload,
+    });
+
+    // Kiểm tra response status
+    console.log("Response status:", response.status);
+
+    const responseData = await response.json();
+    console.log("Response data:", responseData);
+
+    // Log chi tiết hơn về lỗi nếu có
+    if (!response.ok) {
+      console.error("API Error:", responseData);
+      if (responseData.errors) {
+        console.error("Validation errors:", responseData.errors);
+        const errorDetails = responseData.errors
+          .map((e: any) => `${e.path?.join(".")}: ${e.message}`)
+          .join("; ");
+        throw new Error(`Validation error: ${errorDetails}`);
+      }
+      throw new Error(
+        responseData.message || "Failed to create recurring schedule"
+      );
+    }
+
+    return responseData;
+  } catch (error) {
+    console.error("Error in createRecurringSessions:", error);
+    throw error;
   }
-
-  return response.json();
 };
 
 // API function to fetch tutor schedules
 const fetchTutorSchedules = async () => {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    throw new Error("No authentication token found");
+  }
+
   const response = await fetch("/api/v1/schedules/tutor", {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${localStorage.getItem("token")}`,
+      Authorization: `Bearer ${token}`,
     },
-    credentials: "include", // Đảm bảo cookies được gửi trong request
+    credentials: "include", // cookies được gửi trong request
   });
 
   if (!response.ok) {
-    throw new Error("Failed to fetch schedules");
+    const errorData = await response.json();
+    throw new Error(errorData.message || "Failed to fetch schedules");
   }
 
   return response.json();
 };
 
-// API function to cancel a schedule
+// API function hủy lịch
 const cancelSchedule = async (scheduleId: number) => {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    throw new Error("No authentication token found");
+  }
+
   const response = await fetch(`/api/v1/schedules/${scheduleId}`, {
     method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    credentials: "include",
   });
 
   if (!response.ok) {
-    throw new Error("Failed to cancel schedule");
+    const errorData = await response.json();
+    // Log debug
+    console.error("Cancel schedule error:", errorData);
+    throw new Error(errorData.message || "Failed to cancel schedule");
+  }
+
+  return response.json();
+};
+// API function hủy lịch
+// const cancelSchedule = async (scheduleId: number) => {
+//   const token = localStorage.getItem("token");
+//   if (!token) {
+//     throw new Error("No authentication token found");
+//   }
+
+//   // Sử dụng URL tương đối hoặc tuyệt đối, nhưng đảm bảo có tiền tố /api
+//   // Lưu ý: Không dùng window.location.origin kết hợp với pathname
+//   const url = `/api/v1/schedules/${scheduleId}`;
+
+//   console.log("Sending DELETE request to:", url);
+
+//   try {
+//     const response = await fetch(url, {
+//       method: "DELETE",
+//       headers: {
+//         "Content-Type": "application/json",
+//         Authorization: `Bearer ${token}`,
+//       },
+//       credentials: "include",
+//     });
+
+//     console.log("Response status:", response.status);
+//     console.log("Response headers:", [...response.headers.entries()]);
+
+//     if (!response.ok) {
+//       const errorData = await response.json();
+//       console.error("Cancel schedule error:", errorData);
+//       throw new Error(errorData.error?.message || "Failed to cancel schedule");
+//     }
+
+//     return response.json();
+//   } catch (error) {
+//     console.error("Fetch error:", error);
+//     throw error;
+//   }
+// };
+
+// API function xóa lịch đã hủy
+const deleteSchedule = async (scheduleId: number) => {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    throw new Error("No authentication token found");
+  }
+
+  const response = await fetch(`/api/v1/schedules/${scheduleId}/permanent`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    console.error("Delete schedule error:", errorData);
+    throw new Error(errorData.error?.message || "Failed to delete schedule");
   }
 
   return response.json();
@@ -258,17 +408,12 @@ export default function TutorSchedulePage() {
       endTime: "10:00",
       sessionType: "online",
       location: "",
-    });
-
-  // Recurring session form state
+    }); // Recurring session form state
   const [recurringSessionForm, setRecurringSessionForm] =
     useState<CreateRecurringSessionInput>({
-      courseType: "basic",
-      durationType: "short",
       startDate: new Date(),
       endDate: addDays(new Date(), 30),
-      weekdays: [],
-      timeSlots: [{ startTime: "08:00", endTime: "10:00" }],
+      schedule: {},
       sessionType: "online",
       location: "",
     });
@@ -291,7 +436,11 @@ export default function TutorSchedulePage() {
   // Mutation for creating a single session
   const createSingleSessionMutation = useMutation({
     mutationFn: createSingleSession,
-    onSuccess: () => {
+    onMutate: (variables) => {
+      console.log("Creating single session with data:", variables);
+    },
+    onSuccess: (data) => {
+      console.log("Single session created successfully:", data);
       // Invalidate and refetch schedules query
       queryClient.invalidateQueries({ queryKey: ["tutorSchedules"] });
       setIsDialogOpen(false);
@@ -301,6 +450,7 @@ export default function TutorSchedulePage() {
       });
     },
     onError: (error) => {
+      console.error("Error creating single session:", error);
       toast({
         title: "Lỗi",
         description: `Không thể tạo lịch: ${error.message}`,
@@ -312,7 +462,11 @@ export default function TutorSchedulePage() {
   // Mutation for creating recurring sessions
   const createRecurringSessionsMutation = useMutation({
     mutationFn: createRecurringSessions,
-    onSuccess: () => {
+    onMutate: (variables) => {
+      console.log("Creating recurring sessions with data:", variables);
+    },
+    onSuccess: (data) => {
+      console.log("Recurring sessions created successfully:", data);
       queryClient.invalidateQueries({ queryKey: ["tutorSchedules"] });
       setIsDialogOpen(false);
       toast({
@@ -348,6 +502,25 @@ export default function TutorSchedulePage() {
     },
   });
 
+  // Mutation for delete a schedule
+  const deleteScheduleMutation = useMutation({
+    mutationFn: deleteSchedule,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tutorSchedules"] });
+      toast({
+        title: "Xóa lịch thành công",
+        description: "Lịch đã được xóa khỏi hệ thống",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Lỗi",
+        description: `Không thể xóa lịch: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
   // Process schedules data
   const schedules: Schedule[] = scheduleData?.schedules || [];
 
@@ -372,61 +545,247 @@ export default function TutorSchedulePage() {
     (event) => date && isSameDay(event.date, date)
   );
 
-  // Handle single session form submission
+  // Thêm validation cho form tạo lịch đơn lẻ
   const handleSingleSessionSubmit = () => {
+    // Validate input data
+    if (!singleSessionForm.date) {
+      toast({
+        title: "Lỗi",
+        description: "Vui lòng chọn ngày",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (singleSessionForm.startTime >= singleSessionForm.endTime) {
+      toast({
+        title: "Lỗi",
+        description: "Thời gian bắt đầu phải trước thời gian kết thúc",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (
+      singleSessionForm.sessionType === "offline" &&
+      !singleSessionForm.location
+    ) {
+      toast({
+        title: "Lỗi",
+        description: "Vui lòng nhập địa điểm học đối với hình thức offline",
+        variant: "destructive",
+      });
+      return;
+    }
+
     createSingleSessionMutation.mutate(singleSessionForm);
-  };
-
-  // Handle recurring session form submission
+  }; // Thêm validation cho form tạo lịch định kỳ
   const handleRecurringSessionSubmit = () => {
-    createRecurringSessionsMutation.mutate(recurringSessionForm);
+    try {
+      // Validate input data
+      const selectedDays = Object.keys(recurringSessionForm.schedule);
+
+      if (selectedDays.length === 0) {
+        toast({
+          title: "Lỗi",
+          description: "Vui lòng chọn ít nhất một ngày trong tuần",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Kiểm tra ngày bắt đầu và kết thúc
+      if (
+        !recurringSessionForm.startDate ||
+        !recurringSessionForm.endDate ||
+        isNaN(recurringSessionForm.startDate.getTime()) ||
+        isNaN(recurringSessionForm.endDate.getTime())
+      ) {
+        toast({
+          title: "Lỗi",
+          description: "Ngày bắt đầu hoặc kết thúc không hợp lệ",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (recurringSessionForm.startDate >= recurringSessionForm.endDate) {
+        toast({
+          title: "Lỗi",
+          description: "Ngày bắt đầu phải trước ngày kết thúc",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Kiểm tra chi tiết cho mỗi ngày đã chọn
+      let hasError = false;
+      selectedDays.forEach((day) => {
+        const slots = recurringSessionForm.schedule[day];
+
+        if (!slots || slots.length === 0) {
+          toast({
+            title: "Lỗi",
+            description: `Cần có ít nhất một khung giờ cho ${getVietnameseDay(
+              day
+            )}`,
+            variant: "destructive",
+          });
+          hasError = true;
+          return;
+        }
+
+        // Kiểm tra từng khung giờ trong ngày
+        slots.forEach((slot, index) => {
+          if (!slot.startTime || !slot.endTime) {
+            toast({
+              title: "Lỗi",
+              description: `Khung giờ ${index + 1} của ${getVietnameseDay(
+                day
+              )} thiếu thông tin`,
+              variant: "destructive",
+            });
+            hasError = true;
+            return;
+          }
+
+          if (slot.startTime >= slot.endTime) {
+            toast({
+              title: "Lỗi",
+              description: `Thời gian bắt đầu phải trước thời gian kết thúc (${getVietnameseDay(
+                day
+              )}, khung ${index + 1})`,
+              variant: "destructive",
+            });
+            hasError = true;
+            return;
+          }
+        });
+      });
+
+      if (hasError) return;
+
+      // Kiểm tra địa điểm nếu là lịch offline
+      if (
+        recurringSessionForm.sessionType === "offline" &&
+        !recurringSessionForm.location
+      ) {
+        toast({
+          title: "Lỗi",
+          description: "Vui lòng nhập địa điểm học đối với hình thức offline",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Sau khi đã validate kỹ, chuẩn bị dữ liệu và gọi API
+      // In ra thông tin trước khi gọi API để debug
+      console.log(
+        "Final form data:",
+        JSON.stringify(recurringSessionForm, null, 2)
+      );
+
+      // Đảm bảo đủ dữ liệu trước khi gọi API
+      const validatedForm = {
+        ...recurringSessionForm,
+        startDate: recurringSessionForm.startDate || new Date(),
+        endDate: recurringSessionForm.endDate || addDays(new Date(), 30),
+      };
+      createRecurringSessionsMutation.mutate(validatedForm);
+    } catch (error) {
+      console.error("Error in handleRecurringSessionSubmit:", error);
+      toast({
+        title: "Lỗi",
+        description: "Đã xảy ra lỗi khi xử lý form",
+        variant: "destructive",
+      });
+    }
   };
 
-  // Handle weekday selection for recurring sessions
-  const handleWeekdayToggle = (day: string) => {
+  // Hàm helper để hiển thị tên ngày tiếng Việt
+  const getVietnameseDay = (day: string) => {
+    const dayMap: Record<string, string> = {
+      monday: "Thứ 2",
+      tuesday: "Thứ 3",
+      wednesday: "Thứ 4",
+      thursday: "Thứ 5",
+      friday: "Thứ 6",
+      saturday: "Thứ 7",
+      sunday: "Chủ nhật",
+    };
+    return dayMap[day] || day;
+  };
+  // Handle day toggle for recurring sessions
+  const handleDayToggle = (day: string, checked: boolean) => {
     setRecurringSessionForm((prev) => {
-      if (prev.weekdays.includes(day)) {
-        return {
-          ...prev,
-          weekdays: prev.weekdays.filter((d) => d !== day),
-        };
+      const newSchedule = { ...prev.schedule };
+
+      if (checked) {
+        // Add day with default time slot
+        newSchedule[day] = [{ startTime: "08:00", endTime: "10:00" }];
       } else {
-        return {
-          ...prev,
-          weekdays: [...prev.weekdays, day],
-        };
+        // Remove day
+        delete newSchedule[day];
       }
+
+      return {
+        ...prev,
+        schedule: newSchedule,
+      };
     });
   };
 
-  // Add a new time slot for recurring sessions
-  const addTimeSlot = () => {
-    setRecurringSessionForm((prev) => ({
-      ...prev,
-      timeSlots: [...prev.timeSlots, { startTime: "08:00", endTime: "10:00" }],
-    }));
+  // Add a time slot for a specific day
+  const addTimeSlotForDay = (day: string) => {
+    setRecurringSessionForm((prev) => {
+      const daySlots = [...(prev.schedule[day] || [])];
+      daySlots.push({ startTime: "08:00", endTime: "10:00" });
+
+      return {
+        ...prev,
+        schedule: {
+          ...prev.schedule,
+          [day]: daySlots,
+        },
+      };
+    });
   };
 
-  // Remove a time slot
-  const removeTimeSlot = (index: number) => {
-    setRecurringSessionForm((prev) => ({
-      ...prev,
-      timeSlots: prev.timeSlots.filter((_, i) => i !== index),
-    }));
+  // Remove a time slot for a specific day
+  const removeTimeSlotForDay = (day: string, index: number) => {
+    setRecurringSessionForm((prev) => {
+      const daySlots = [...(prev.schedule[day] || [])];
+      daySlots.splice(index, 1);
+
+      return {
+        ...prev,
+        schedule: {
+          ...prev.schedule,
+          [day]: daySlots,
+        },
+      };
+    });
   };
 
-  // Update a time slot
-  const updateTimeSlot = (
+  // Update a time slot for a specific day
+  const updateTimeSlotForDay = (
+    day: string,
     index: number,
     field: "startTime" | "endTime",
     value: string
   ) => {
-    setRecurringSessionForm((prev) => ({
-      ...prev,
-      timeSlots: prev.timeSlots.map((slot, i) =>
-        i === index ? { ...slot, [field]: value } : slot
-      ),
-    }));
+    setRecurringSessionForm((prev) => {
+      const daySlots = [...(prev.schedule[day] || [])];
+      daySlots[index] = { ...daySlots[index], [field]: value };
+
+      return {
+        ...prev,
+        schedule: {
+          ...prev.schedule,
+          [day]: daySlots,
+        },
+      };
+    });
   };
 
   // Handle schedule cancellation
@@ -580,6 +939,50 @@ export default function TutorSchedulePage() {
                                         </span>
                                       ) : (
                                         "Huỷ lịch"
+                                      )}
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+
+                            {/* Thêm nút xóa cho lịch đã hủy */}
+                            {schedule.status === "cancelled" && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="destructive" size="sm">
+                                    Xóa lịch
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>
+                                      Xác nhận xóa lịch
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Bạn có chắc chắn muốn xóa lịch này khỏi hệ
+                                      thống? Hành động này không thể khôi phục.
+                                      Sau khi xóa, bạn có thể tạo lịch mới vào
+                                      khoảng thời gian này.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Không</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() =>
+                                        deleteScheduleMutation.mutate(
+                                          schedule.id
+                                        )
+                                      }
+                                      className="bg-destructive hover:bg-destructive/90"
+                                    >
+                                      {deleteScheduleMutation.isPending ? (
+                                        <span className="flex items-center gap-1">
+                                          <span className="h-3 w-3 animate-spin rounded-full border-2 border-background border-t-transparent"></span>
+                                          Đang xóa...
+                                        </span>
+                                      ) : (
+                                        "Xóa lịch"
                                       )}
                                     </AlertDialogAction>
                                   </AlertDialogFooter>
@@ -860,6 +1263,42 @@ export default function TutorSchedulePage() {
                                 </AlertDialogContent>
                               </AlertDialog>
                             )}
+
+                            {/* Thêm nút xóa cho lịch đã hủy */}
+                            {event.type === "cancelled" && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="destructive" size="sm">
+                                    Xóa
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>
+                                      Xác nhận xóa lịch
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Bạn có chắc chắn muốn xóa lịch này khỏi hệ
+                                      thống? Sau khi xóa, bạn có thể tạo lịch
+                                      mới vào khoảng thời gian này.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Không</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() =>
+                                        deleteScheduleMutation.mutate(
+                                          Number(event.id)
+                                        )
+                                      }
+                                      className="bg-destructive hover:bg-destructive/90"
+                                    >
+                                      Xóa lịch
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -896,7 +1335,6 @@ export default function TutorSchedulePage() {
               <TabsTrigger value="single">Lịch trống một buổi</TabsTrigger>
               <TabsTrigger value="recurring">Tạo lịch định kỳ</TabsTrigger>
             </TabsList>
-
             {/* Single session form */}
             <TabsContent value="single" className="space-y-4">
               <div className="grid grid-cols-1 gap-4">
@@ -994,56 +1432,9 @@ export default function TutorSchedulePage() {
                 )}
               </div>
             </TabsContent>
-
-            {/* Recurring sessions form */}
+            {/* Recurring sessions form */}{" "}
             <TabsContent value="recurring" className="space-y-4">
               <div className="grid grid-cols-1 gap-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="courseType" className="text-right">
-                    Khóa học
-                  </Label>
-                  <Select
-                    value={recurringSessionForm.courseType}
-                    onValueChange={(value) =>
-                      setRecurringSessionForm({
-                        ...recurringSessionForm,
-                        courseType: value,
-                      })
-                    }
-                  >
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="basic">Cơ bản</SelectItem>
-                      <SelectItem value="advanced">Nâng cao</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="durationType" className="text-right">
-                    Thời lượng
-                  </Label>
-                  <Select
-                    value={recurringSessionForm.durationType}
-                    onValueChange={(value) =>
-                      setRecurringSessionForm({
-                        ...recurringSessionForm,
-                        durationType: value,
-                      })
-                    }
-                  >
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="short">Ngắn hạn</SelectItem>
-                      <SelectItem value="long">Dài hạn</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label className="text-right">Thời gian</Label>
                   <div className="col-span-3 grid grid-cols-2 gap-2">
@@ -1088,80 +1479,199 @@ export default function TutorSchedulePage() {
                       />
                     </div>
                   </div>
-                </div>
+                </div>{" "}
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="mb-2">
+                    <h3 className="font-medium mb-2">
+                      Khung giờ dạy theo ngày trong tuần
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Chọn ngày và thiết lập khung giờ cho mỗi ngày
+                    </p>
+                  </div>
 
-                <div className="grid grid-cols-4 items-start gap-4">
-                  <Label className="text-right pt-2">Các ngày trong tuần</Label>
-                  <div className="col-span-3 flex flex-wrap gap-2">
-                    {[
-                      "monday",
-                      "tuesday",
-                      "wednesday",
-                      "thursday",
-                      "friday",
-                      "saturday",
-                      "sunday",
-                    ].map((day, index) => {
-                      const days = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
-                      return (
-                        <div key={day} className="flex items-center space-x-2">
+                  {/* Day selection section - arranged in a compact grid */}
+                  <div className="mb-4">
+                    <h4 className="text-sm font-medium mb-3">
+                      Chọn ngày trong tuần
+                    </h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                      {[
+                        { key: "monday", label: "Thứ 2" },
+                        { key: "tuesday", label: "Thứ 3" },
+                        { key: "wednesday", label: "Thứ 4" },
+                        { key: "thursday", label: "Thứ 5" },
+                        { key: "friday", label: "Thứ 6" },
+                        { key: "saturday", label: "Thứ 7" },
+                        { key: "sunday", label: "Chủ nhật" },
+                      ].map((day) => (
+                        <div
+                          key={day.key}
+                          className={`rounded-lg border p-2 flex items-center space-x-2 cursor-pointer hover:bg-accent transition-colors ${
+                            !!recurringSessionForm.schedule[day.key]?.length
+                              ? "border-primary bg-accent/30"
+                              : ""
+                          }`}
+                          onClick={() =>
+                            handleDayToggle(
+                              day.key,
+                              !recurringSessionForm.schedule[day.key]?.length
+                            )
+                          }
+                        >
                           <Checkbox
-                            id={day}
-                            checked={recurringSessionForm.weekdays.includes(
-                              day
-                            )}
-                            onCheckedChange={() => handleWeekdayToggle(day)}
+                            id={day.key}
+                            checked={
+                              !!recurringSessionForm.schedule[day.key]?.length
+                            }
+                            onCheckedChange={(checked) =>
+                              handleDayToggle(day.key, !!checked)
+                            }
                           />
-                          <Label htmlFor={day}>{days[index]}</Label>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-4 items-start gap-4">
-                  <Label className="text-right pt-2">Khung giờ dạy</Label>
-                  <div className="col-span-3 space-y-3">
-                    {recurringSessionForm.timeSlots.map((slot, index) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <Input
-                          type="time"
-                          value={slot.startTime}
-                          onChange={(e) =>
-                            updateTimeSlot(index, "startTime", e.target.value)
-                          }
-                        />
-                        <span>-</span>
-                        <Input
-                          type="time"
-                          value={slot.endTime}
-                          onChange={(e) =>
-                            updateTimeSlot(index, "endTime", e.target.value)
-                          }
-                        />
-                        {recurringSessionForm.timeSlots.length > 1 && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => removeTimeSlot(index)}
-                            className="px-2 h-8"
+                          <Label
+                            htmlFor={day.key}
+                            className="font-medium cursor-pointer w-full"
                           >
-                            ✕
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={addTimeSlot}
-                      className="mt-2"
-                    >
-                      + Thêm khung giờ
-                    </Button>
+                            {day.label}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
 
+                  {/* Time slots section with tabs for selected days */}
+                  {Object.keys(recurringSessionForm.schedule).length > 0 && (
+                    <div className="mt-4 border rounded-md p-3">
+                      <h4 className="text-sm font-medium mb-3">
+                        Thiết lập khung giờ
+                      </h4>
+
+                      {/* Tabs for selected days */}
+                      <Tabs
+                        defaultValue={
+                          Object.keys(recurringSessionForm.schedule)[0]
+                        }
+                        className="w-full"
+                      >
+                        <TabsList className="mb-2 flex flex-wrap h-auto">
+                          {Object.keys(recurringSessionForm.schedule).map(
+                            (dayKey) => {
+                              const dayInfo = [
+                                { key: "monday", label: "Thứ 2" },
+                                { key: "tuesday", label: "Thứ 3" },
+                                { key: "wednesday", label: "Thứ 4" },
+                                { key: "thursday", label: "Thứ 5" },
+                                { key: "friday", label: "Thứ 6" },
+                                { key: "saturday", label: "Thứ 7" },
+                                { key: "sunday", label: "Chủ nhật" },
+                              ].find((d) => d.key === dayKey);
+
+                              return (
+                                <TabsTrigger
+                                  key={dayKey}
+                                  value={dayKey}
+                                  className="text-xs sm:text-sm px-2 py-1 sm:px-3"
+                                >
+                                  {dayInfo?.label || dayKey}
+                                </TabsTrigger>
+                              );
+                            }
+                          )}
+                        </TabsList>
+
+                        {/* Tab content for each day */}
+                        {Object.keys(recurringSessionForm.schedule).map(
+                          (dayKey) => (
+                            <TabsContent
+                              key={dayKey}
+                              value={dayKey}
+                              className="mt-0 pt-3 border-t"
+                            >
+                              <div className="flex justify-between items-center mb-2">
+                                <h5 className="text-sm font-medium">
+                                  Khung giờ cho{" "}
+                                  {
+                                    [
+                                      { key: "monday", label: "Thứ 2" },
+                                      { key: "tuesday", label: "Thứ 3" },
+                                      { key: "wednesday", label: "Thứ 4" },
+                                      { key: "thursday", label: "Thứ 5" },
+                                      { key: "friday", label: "Thứ 6" },
+                                      { key: "saturday", label: "Thứ 7" },
+                                      { key: "sunday", label: "Chủ nhật" },
+                                    ].find((d) => d.key === dayKey)?.label
+                                  }
+                                </h5>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => addTimeSlotForDay(dayKey)}
+                                  className="h-7 px-2 text-xs"
+                                >
+                                  + Thêm giờ
+                                </Button>
+                              </div>
+
+                              <div className="space-y-2">
+                                {recurringSessionForm.schedule[dayKey].map(
+                                  (slot, index) => (
+                                    <div
+                                      key={index}
+                                      className="flex items-center gap-2 flex-wrap sm:flex-nowrap"
+                                    >
+                                      <div className="flex-1 flex items-center gap-1 min-w-[180px]">
+                                        <Input
+                                          type="time"
+                                          value={slot.startTime}
+                                          onChange={(e) =>
+                                            updateTimeSlotForDay(
+                                              dayKey,
+                                              index,
+                                              "startTime",
+                                              e.target.value
+                                            )
+                                          }
+                                          className="flex-1"
+                                        />
+                                        <span className="mx-1">-</span>
+                                        <Input
+                                          type="time"
+                                          value={slot.endTime}
+                                          onChange={(e) =>
+                                            updateTimeSlotForDay(
+                                              dayKey,
+                                              index,
+                                              "endTime",
+                                              e.target.value
+                                            )
+                                          }
+                                          className="flex-1"
+                                        />
+                                      </div>
+                                      {recurringSessionForm.schedule[dayKey]
+                                        .length > 1 && (
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() =>
+                                            removeTimeSlotForDay(dayKey, index)
+                                          }
+                                          className="px-2 h-8 shrink-0"
+                                        >
+                                          ✕
+                                        </Button>
+                                      )}
+                                    </div>
+                                  )
+                                )}
+                              </div>
+                            </TabsContent>
+                          )
+                        )}
+                      </Tabs>
+                    </div>
+                  )}
+                </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label className="text-right">Hình thức học</Label>
                   <RadioGroup
@@ -1184,7 +1694,6 @@ export default function TutorSchedulePage() {
                     </div>
                   </RadioGroup>
                 </div>
-
                 {recurringSessionForm.sessionType === "offline" && (
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="recurringLocation" className="text-right">

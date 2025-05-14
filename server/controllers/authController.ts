@@ -1,19 +1,32 @@
-import { Request, Response } from "express";
+/**
+ * Ví dụ controller đã cải thiện với cấu trúc phản hồi chuẩn hóa
+ * Các controller khác cũng sẽ được cập nhật theo cùng cách thức
+ */
+
+import { Request, Response, NextFunction } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { db } from "@db";
 import * as schema from "@shared/schema";
 import { eq, and, like, or, desc, sql, count } from "drizzle-orm";
 import { ZodError } from "zod";
-import { fromZodError } from "zod-validation-error";
+import { ApiError } from "../middlewares/errorMiddleware";
 
-// Register a new user
-export const register = async (req: Request, res: Response) => {
+/**
+ * @desc    Đăng ký người dùng mới
+ * @route   POST /api/v1/auth/register
+ * @access  Public
+ */
+export const register = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
-    // Validate request body
-    const userData = schema.registerSchema.parse(req.body);
+    // Dữ liệu đã được xác thực bởi validateBody middleware
+    const userData = req.body;
 
-    // Check if email already exists
+    // Kiểm tra email hoặc username đã tồn tại
     const existingUser = await db.query.users.findFirst({
       where: or(
         eq(schema.users.email, userData.email),
@@ -22,18 +35,19 @@ export const register = async (req: Request, res: Response) => {
     });
 
     if (existingUser) {
-      return res.status(400).json({
-        message:
-          existingUser.email === userData.email
-            ? "Email already in use"
-            : "Username already taken",
-      });
+      throw new ApiError(
+        409,
+        "USER_ALREADY_EXISTS",
+        existingUser.email === userData.email
+          ? "Email đã được sử dụng"
+          : "Tên đăng nhập đã tồn tại"
+      );
     }
 
-    // Hash password
+    // Băm mật khẩu
     const hashedPassword = await bcrypt.hash(userData.password, 10);
 
-    // Create user
+    // Tạo người dùng mới
     const [newUser] = await db
       .insert(schema.users)
       .values({
@@ -57,98 +71,136 @@ export const register = async (req: Request, res: Response) => {
         created_at: schema.users.created_at,
       });
 
-    // Generate JWT token
+    // Tạo JWT token
     const token = jwt.sign(
       { id: newUser.id, role: userData.role },
       process.env.JWT_SECRET || "your-secret-key",
       { expiresIn: "7d" }
     );
 
-    // Set cookie
+    // Đặt cookie
     res.cookie("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày
     });
 
-    return res.status(201).json({
-      message: "User registered successfully",
-      user: newUser,
-      token, // Send token to client for storage in localStorage
-    });
+    // Trả về phản hồi với định dạng chuẩn
+    return res.success(
+      {
+        user: newUser,
+        token, // Gửi token cho client để lưu trong localStorage
+      },
+      "Đăng ký tài khoản thành công",
+      201
+    );
   } catch (error) {
-    if (error instanceof ZodError) {
-      const validationError = fromZodError(error);
-      return res.status(400).json({ message: validationError.message });
-    }
-    console.error("Registration error:", error);
-    return res.status(500).json({ message: "Internal server error" });
+    // Chuyển lỗi cho middleware xử lý lỗi toàn cục
+    next(error);
   }
 };
 
-// Login user
-export const login = async (req: Request, res: Response) => {
+/**
+ * @desc    Đăng nhập người dùng
+ * @route   POST /api/v1/auth/login
+ * @access  Public
+ */
+export const login = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
-    // Validate request body
-    const loginData = schema.loginSchema.parse(req.body);
+    // Dữ liệu đã được xác thực bởi validateBody middleware
+    const loginData = req.body;
 
-    // Find user by email
+    // Tìm kiếm người dùng theo email
     const user = await db.query.users.findFirst({
       where: eq(schema.users.email, loginData.email),
     });
 
     if (!user) {
-      return res.status(401).json({ message: "Invalid email or password" });
+      throw new ApiError(
+        401,
+        "INVALID_CREDENTIALS",
+        "Email hoặc mật khẩu không đúng"
+      );
     }
 
-    // Compare passwords
+    // Kiểm tra mật khẩu
     const isPasswordValid = await bcrypt.compare(
       loginData.password,
       user.password
     );
 
     if (!isPasswordValid) {
-      return res.status(401).json({ message: "Invalid email or password" });
+      throw new ApiError(
+        401,
+        "INVALID_CREDENTIALS",
+        "Email hoặc mật khẩu không đúng"
+      );
     }
 
-    // Generate JWT token
+    // Tạo JWT token
     const token = jwt.sign(
       { id: user.id, role: user.role },
       process.env.JWT_SECRET || "your-secret-key",
       { expiresIn: "7d" }
     );
 
-    // Return user data (excluding password) and token
-    const { password, ...userData } = user;
-
-    return res.status(200).json({
-      message: "Login successful",
-      user: userData,
-      token, // Send token to client for storage in localStorage
+    // Đặt cookie
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày
     });
+
+    // Trả về phản hồi với định dạng chuẩn
+    return res.success(
+      {
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          role: user.role,
+          avatar: user.avatar,
+        },
+        token,
+      },
+      "Đăng nhập thành công"
+    );
   } catch (error) {
-    if (error instanceof ZodError) {
-      const validationError = fromZodError(error);
-      return res.status(400).json({ message: validationError.message });
-    }
-    console.error("Login error:", error);
-    return res.status(500).json({ message: "Internal server error" });
+    next(error);
   }
 };
 
-// Logout user
+/**
+ * @desc    Đăng xuất người dùng
+ * @route   POST /api/v1/auth/logout
+ * @access  Private
+ */
 export const logout = (req: Request, res: Response) => {
   res.clearCookie("token");
-  return res.status(200).json({ message: "Logout successful" });
+  return res.success(null, "Đăng xuất thành công");
 };
 
-// Get current authenticated user
-export const getCurrentUser = async (req: Request, res: Response) => {
+/**
+ * @desc    Lấy thông tin người dùng hiện tại
+ * @route   GET /api/v1/auth/me
+ * @access  Private
+ */
+export const getCurrentUser = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const userId = req.user?.id;
 
     if (!userId) {
-      return res.status(401).json({ message: "Unauthorized" });
+      throw new ApiError(401, "UNAUTHORIZED", "Không có quyền truy cập");
     }
 
     const user = await db.query.users.findFirst({
@@ -156,283 +208,163 @@ export const getCurrentUser = async (req: Request, res: Response) => {
     });
 
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      throw new ApiError(404, "USER_NOT_FOUND", "Không tìm thấy người dùng");
     }
 
-    // Return user data (excluding password)
-    const { password, ...userData } = user;
+    // Loại bỏ thông tin nhạy cảm
+    const { password, ...userWithoutPassword } = user;
 
-    return res.status(200).json({
-      user: userData,
-    });
+    return res.success(
+      { user: userWithoutPassword },
+      "Lấy thông tin người dùng thành công"
+    );
   } catch (error) {
-    console.error("Get current user error:", error);
-    return res.status(500).json({ message: "Internal server error" });
+    next(error);
   }
 };
 
-// Update user profile
+/**
+ * @desc    Cập nhật thông tin cá nhân của người dùng
+ * @route   PATCH /api/v1/users/profile
+ * @access  Private
+ */
 export const updateProfile = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.id;
 
     if (!userId) {
-      return res.status(401).json({ message: "Unauthorized" });
+      return res.status(401).json({
+        success: false,
+        message: "Không được phép, vui lòng đăng nhập",
+      });
     }
 
-    // Update only allowed fields (first_name, last_name)
-    const updates = {
-      first_name: req.body.first_name,
-      last_name: req.body.last_name,
-      updated_at: new Date(),
-    };
+    const {
+      first_name,
+      last_name,
+      phone_number,
+      address,
+      date_of_birth,
+      gender,
+      bio,
+    } = req.body;
 
-    const [updatedUser] = await db
-      .update(schema.users)
-      .set(updates)
-      .where(eq(schema.users.id, userId))
-      .returning({
-        id: schema.users.id,
-        username: schema.users.username,
-        email: schema.users.email,
-        first_name: schema.users.first_name,
-        last_name: schema.users.last_name,
-        role: schema.users.role,
-        avatar: schema.users.avatar,
-        created_at: schema.users.created_at,
-        updated_at: schema.users.updated_at,
+    // Chuẩn bị object update, chỉ bao gồm các trường được gửi lên
+    const updateData: Record<string, any> = {};
+
+    if (first_name !== undefined) updateData.first_name = first_name;
+    if (last_name !== undefined) updateData.last_name = last_name;
+    if (phone_number !== undefined) updateData.phone_number = phone_number;
+    if (address !== undefined) updateData.address = address;
+    if (date_of_birth !== undefined) updateData.date_of_birth = date_of_birth;
+    if (gender !== undefined) updateData.gender = gender;
+    if (bio !== undefined) updateData.bio = bio;
+
+    // Nếu không có dữ liệu để cập nhật
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Không có thông tin nào để cập nhật",
       });
+    }
+
+    // Cập nhật thông tin người dùng
+    await db
+      .update(schema.users)
+      .set({
+        ...updateData,
+        updated_at: new Date(),
+      })
+      .where(eq(schema.users.id, userId));
+
+    // Lấy thông tin người dùng sau khi cập nhật
+    const updatedUser = await db.query.users.findFirst({
+      where: eq(schema.users.id, userId),
+      columns: {
+        id: true,
+        username: true,
+        email: true,
+        first_name: true,
+        last_name: true,
+        avatar: true,
+        // Remove fields that don't exist in the schema
+        // phone_number: true,
+        // address: true,
+        // date_of_birth: true,
+        // gender: true,
+        // bio: true,
+        role: true,
+        created_at: true,
+        updated_at: true,
+        password: false, // Không trả về password
+      },
+    });
 
     return res.status(200).json({
-      message: "Profile updated successfully",
-      user: updatedUser,
+      success: true,
+      message: "Cập nhật thông tin cá nhân thành công",
+      data: updatedUser,
     });
   } catch (error) {
-    console.error("Update profile error:", error);
-    return res.status(500).json({ message: "Internal server error" });
+    console.error("Profile update error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi máy chủ khi cập nhật thông tin cá nhân",
+    });
   }
 };
 
-// Update user avatar
+/**
+ * @desc    Cập nhật avatar người dùng
+ * @route   POST /api/v1/users/avatar
+ * @access  Private
+ */
 export const updateAvatar = async (req: Request, res: Response) => {
   try {
-    console.log("✅ updateAvatar controller called");
-
     const userId = req.user?.id;
 
     if (!userId) {
-      console.log("❌ Unauthorized - no user ID in request");
-      return res
-        .status(401)
-        .json({ message: "Unauthorized - please log in and try again" });
-    }
-
-    // Get uploaded avatar URL from Cloudinary (set by the upload middleware)
-    const avatarUrl = req.body.avatarUrl;
-    const avatarPublicId = req.body.avatarPublicId;
-
-    console.log("Avatar data from middleware:", { avatarUrl, avatarPublicId });
-
-    if (!avatarUrl) {
-      console.log("❌ No avatar URL provided in request body");
-      return res.status(400).json({
-        message:
-          "No avatar provided. The upload may have failed in an earlier step.",
+      return res.status(401).json({
+        success: false,
+        message: "Không được phép, vui lòng đăng nhập",
       });
     }
 
-    // Get the user's current avatar to delete it from Cloudinary if it exists
-    const currentUser = await db.query.users.findFirst({
-      where: eq(schema.users.id, userId),
-      columns: { avatar: true },
-    });
+    // Đảm bảo middleware upload đã thêm avatarUrl (Cloudinary) vào req.body
+    const avatarUrl = req.body.avatarUrl;
+    const avatarPublicId = req.body.avatarPublicId;
 
-    console.log("Current user avatar:", currentUser?.avatar);
-
-    // Delete previous avatar from Cloudinary if it exists
-    // and was uploaded to Cloudinary (has a Cloudinary URL)
-    const previousAvatar = currentUser?.avatar;
-    if (previousAvatar && previousAvatar.includes("cloudinary.com")) {
-      try {
-        // Extract public ID from URL
-        // Example URL: https://res.cloudinary.com/homitutor/image/upload/v1234567890/homitutor/avatars/abc123def456
-        const urlParts = previousAvatar.split("/");
-        const publicIdStart =
-          urlParts.findIndex((part) => part === "upload") + 2; // +2 to skip 'upload' and version
-        if (publicIdStart > 1 && publicIdStart < urlParts.length) {
-          const previousPublicId = urlParts.slice(publicIdStart).join("/");
-          console.log(
-            `Attempting to delete previous avatar with public ID: ${previousPublicId}`
-          );
-
-          // Import deleteFromCloudinary from storage.ts
-          const { deleteFromCloudinary } = await import("../storage");
-          const deleteResult = await deleteFromCloudinary(previousPublicId);
-          console.log("Previous avatar deletion result:", deleteResult);
-        }
-      } catch (deleteError) {
-        // Just log, don't prevent update if deletion fails
-        console.error("Error deleting previous avatar:", deleteError);
-      }
+    if (!avatarUrl || !avatarPublicId) {
+      return res.status(500).json({
+        success: false,
+        message: "Xảy ra lỗi khi xử lý avatar trên Cloudinary",
+      });
     }
 
-    console.log("⏳ Updating user avatar in database");
-    // Update user's avatar
-    const [updatedUser] = await db
+    // Cập nhật avatar trong database
+    await db
       .update(schema.users)
       .set({
         avatar: avatarUrl,
         updated_at: new Date(),
       })
-      .where(eq(schema.users.id, userId))
-      .returning({
-        id: schema.users.id,
-        username: schema.users.username,
-        email: schema.users.email,
-        first_name: schema.users.first_name,
-        last_name: schema.users.last_name,
-        role: schema.users.role,
-        avatar: schema.users.avatar,
-      });
-
-    console.log("✅ User avatar updated successfully:", {
-      id: updatedUser.id,
-      avatar: updatedUser.avatar,
-    });
+      .where(eq(schema.users.id, userId));
 
     return res.status(200).json({
-      message: "Avatar updated successfully",
-      user: updatedUser,
-    });
-  } catch (error: any) {
-    console.error("❌ Update avatar error:", {
-      message: error.message || String(error),
-      stack: error.stack,
-    });
-    return res.status(500).json({
-      message: "Failed to update avatar. Please try again.",
-      error: error.message || String(error),
-    });
-  }
-};
-
-// Get all users (admin only)
-export const getUsers = async (req: Request, res: Response) => {
-  try {
-    const search = (req.query.search as string) || "";
-    const role = (req.query.role as string) || "all";
-    const page = parseInt((req.query.page as string) || "1");
-    const pageSize = parseInt((req.query.pageSize as string) || "10");
-    const offset = (page - 1) * pageSize;
-
-    // Build query conditions
-    let conditions = [];
-
-    // Add search condition if provided
-    if (search) {
-      conditions.push(
-        or(
-          like(schema.users.first_name, `%${search}%`),
-          like(schema.users.last_name, `%${search}%`),
-          like(schema.users.email, `%${search}%`),
-          like(schema.users.username, `%${search}%`)
-        )
-      );
-    }
-
-    // Add role condition if not 'all'
-    if (role !== "all") {
-      conditions.push(eq(schema.users.role, role));
-    }
-
-    // Combine conditions
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-
-    // Get users with pagination
-    const users = await db.query.users.findMany({
-      where: whereClause,
-      limit: pageSize,
-      offset,
-      orderBy: desc(schema.users.created_at),
-    });
-
-    // Get total count for pagination
-    const countResult = await db
-      .select({ count: count() })
-      .from(schema.users)
-      .where(whereClause || undefined);
-    const total = countResult[0].count || 0;
-
-    // Return users without passwords
-    const usersWithoutPasswords = users.map((user) => {
-      const { password, ...userData } = user;
-      return userData;
-    });
-
-    return res.status(200).json({
-      users: usersWithoutPasswords,
-      total,
-      totalPages: Math.ceil(total / pageSize),
-      currentPage: page,
-    });
-  } catch (error) {
-    console.error("Get users error:", error);
-    return res.status(500).json({ message: "Internal server error" });
-  }
-};
-
-// Get admin dashboard stats
-export const getAdminStats = async (req: Request, res: Response) => {
-  try {
-    // Count total users
-    const totalUsersResult = await db
-      .select({ count: count() })
-      .from(schema.users);
-    const totalUsers = totalUsersResult[0].count || 0;
-
-    // Count verified tutors
-    const verifiedTutorsResult = await db
-      .select({ count: count() })
-      .from(schema.tutorProfiles)
-      .where(eq(schema.tutorProfiles.is_verified, true));
-    const verifiedTutors = verifiedTutorsResult[0].count || 0;
-
-    // Count pending verifications
-    const pendingVerificationsResult = await db
-      .select({ count: count() })
-      .from(schema.tutorProfiles)
-      .where(eq(schema.tutorProfiles.is_verified, false));
-    const pendingVerifications = pendingVerificationsResult[0].count || 0;
-
-    // Count users by role
-    const studentCount = await db
-      .select({ count: count() })
-      .from(schema.users)
-      .where(eq(schema.users.role, "student"));
-    const tutorCount = await db
-      .select({ count: count() })
-      .from(schema.users)
-      .where(eq(schema.users.role, "tutor"));
-    const adminCount = await db
-      .select({ count: count() })
-      .from(schema.users)
-      .where(eq(schema.users.role, "admin"));
-
-    // Return stats
-    return res.status(200).json({
-      totalUsers,
-      verifiedTutors,
-      pendingVerifications,
-      usersByRole: {
-        students: studentCount[0].count || 0,
-        tutors: tutorCount[0].count || 0,
-        admins: adminCount[0].count || 0,
+      success: true,
+      message: "Cập nhật avatar thành công",
+      data: {
+        user: {
+          avatar: avatarUrl,
+          avatar_public_id: avatarPublicId,
+        },
       },
     });
   } catch (error) {
-    console.error("Get admin stats error:", error);
-    return res.status(500).json({ message: "Internal server error" });
+    console.error("Avatar update error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi máy chủ khi cập nhật avatar",
+    });
   }
 };
-
-// No need for custom count function - using drizzle-orm's count

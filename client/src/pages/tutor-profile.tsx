@@ -39,20 +39,45 @@ export default function TutorProfile() {
 
   // Get tutor's courses
   interface TutorCourse {
-    id: string;
+    id: string | number;
     title: string;
-    description: string;
-    subject?: { name: string };
-    level?: { name: string };
-    teaching_mode: string; // Đổi từ teachingMode sang teaching_mode để phù hợp với server
-    hourly_rate: number | string; // Đổi từ hourlyRate sang hourly_rate để phù hợp với server
+    description?: string;
+    subject?: {
+      id: string | number;
+      name: string;
+      description?: string;
+      icon?: string;
+    };
+    level?: {
+      id: string | number;
+      name: string;
+    };
+    teaching_mode: string;
+    hourly_rate: number | string;
+    status?: string;
+    created_at?: string;
+    updated_at?: string;
+    student_count?: number;
+    average_rating?: number;
+    review_count?: number;
   }
 
-  const { data: tutorCourses, isLoading: coursesLoading } = useQuery<
-    TutorCourse[]
-  >({
-    queryKey: [`/api/v1/tutors/${id}/courses`],
-  });
+  interface CoursesResponse {
+    success?: boolean;
+    count: number;
+    total_pages: number;
+    current_page: number;
+    courses: TutorCourse[];
+  }
+
+  const { data: coursesResponse, isLoading: coursesLoading } =
+    useQuery<CoursesResponse>({
+      queryKey: [`/api/v1/tutors/${id}/courses`],
+      enabled: !!id,
+    });
+
+  // Extract courses from response
+  const tutorCourses = coursesResponse?.courses || [];
 
   // Define type for reviews data
   interface Review {
@@ -131,31 +156,25 @@ export default function TutorProfile() {
     }).format(numericPrice);
   };
 
-  // Get minimum hourly rate from tutor courses
-  const getMinHourlyRate = () => {
-    if (!tutorCourses || tutorCourses.length === 0) return null;
+  // Helper function to safely get the minimum hourly rate from courses
+  const getMinHourlyRate = (
+    courses: TutorCourse[] | undefined
+  ): number | null => {
+    if (!courses || !Array.isArray(courses) || courses.length === 0)
+      return null;
 
-    // Chuyển đổi tất cả hourly_rate thành số để so sánh
-    const numericRates = tutorCourses.map((course) => {
-      const rate =
-        typeof course.hourly_rate === "string"
-          ? parseFloat(course.hourly_rate)
-          : course.hourly_rate;
+    const validRates = courses
+      .filter((course) => course && course.hourly_rate !== undefined)
+      .map((course) => {
+        const rate =
+          typeof course.hourly_rate === "string"
+            ? parseFloat(course.hourly_rate)
+            : course.hourly_rate;
+        return isNaN(rate) ? Infinity : rate;
+      })
+      .filter((rate) => rate !== Infinity);
 
-      return isNaN(rate) ? Infinity : rate; // Bỏ qua giá trị không phải số
-    });
-
-    // Lọc bỏ các giá trị Infinity và lấy giá trị nhỏ nhất
-    const validRates = numericRates.filter((rate) => rate !== Infinity);
     return validRates.length > 0 ? Math.min(...validRates) : null;
-  };
-
-  // Get unique teaching modes from tutor courses
-  const getTeachingModes = () => {
-    if (!tutorCourses || tutorCourses.length === 0) return [];
-    return Array.from(
-      new Set(tutorCourses.map((course) => course.teaching_mode))
-    );
   };
 
   // Add tutor to favorites
@@ -338,24 +357,37 @@ export default function TutorProfile() {
 
                     {/* Hiển thị các teaching modes từ courses */}
                     <div className="mt-2 flex flex-wrap gap-2">
-                      {getTeachingModes().map((mode, index) => (
-                        <Badge
-                          key={`header-mode-${index}-${mode}`}
-                          className="bg-primary-light/20 text-primary-dark hover:bg-primary-light/30"
-                        >
-                          {mode === "online"
-                            ? "Online"
-                            : mode === "offline"
-                            ? "Tại nhà"
-                            : "Online & Tại nhà"}
+                      {tutorCourses && tutorCourses.length > 0 ? (
+                        Array.from(
+                          new Set(
+                            tutorCourses.map(
+                              (course) => course?.teaching_mode || "online"
+                            )
+                          )
+                        ).map((mode, index) => (
+                          <Badge
+                            key={`header-mode-${index}-${mode}`}
+                            className="bg-primary-light/20 text-primary-dark hover:bg-primary-light/30"
+                          >
+                            {mode === "online"
+                              ? "Online"
+                              : mode === "offline"
+                              ? "Tại nhà"
+                              : "Online & Tại nhà"}
+                          </Badge>
+                        ))
+                      ) : (
+                        <Badge className="bg-primary-light/20 text-primary-dark hover:bg-primary-light/30">
+                          Chưa có thông tin
                         </Badge>
-                      ))}
+                      )}
                     </div>
 
                     {/* Hiển thị giá tối thiểu từ courses */}
-                    {getMinHourlyRate() && (
+                    {tutorCourses && tutorCourses.length > 0 && (
                       <div className="mt-2 text-xl font-semibold">
-                        Học phí từ {formatPrice(getMinHourlyRate() as number)}
+                        Học phí từ{" "}
+                        {formatPrice(getMinHourlyRate(tutorCourses) || 0)}
                         <span className="text-sm text-muted-foreground">
                           /giờ
                         </span>
@@ -378,12 +410,12 @@ export default function TutorProfile() {
             {/* Tabs Section */}
             <Tabs defaultValue="about" className="mb-8">
               <TabsList className="grid grid-cols-3 w-full">
-                <TabsTrigger value="about">About</TabsTrigger>
+                <TabsTrigger value="about">Thông tin</TabsTrigger>
                 <TabsTrigger value="courses">
-                  Khóa học ({tutorCourses?.length || 0})
+                  Khóa học ({coursesResponse?.count || 0})
                 </TabsTrigger>
                 <TabsTrigger value="reviews">
-                  Reviews ({tutor.total_reviews || 0})
+                  Đánh giá ({tutor.total_reviews || 0})
                 </TabsTrigger>
               </TabsList>
 
@@ -401,7 +433,9 @@ export default function TutorProfile() {
               <TabsContent value="courses" className="pt-4">
                 <Card>
                   <CardContent className="p-6">
-                    {tutorCourses && tutorCourses.length > 0 ? (
+                    {!coursesLoading &&
+                    tutorCourses &&
+                    tutorCourses.length > 0 ? (
                       <div className="grid gap-6">
                         {tutorCourses.map((course) => (
                           <div
@@ -409,10 +443,10 @@ export default function TutorProfile() {
                             className="border rounded-lg p-4 hover:border-primary transition-colors"
                           >
                             <h3 className="text-lg font-medium mb-2">
-                              {course.title}
+                              {course.title || "Untitled Course"}
                             </h3>
-                            <p className="text-muted-foreground mb-4">
-                              {course.description}
+                            <p className="text-muted-foreground mb-4 whitespace-pre-line">
+                              {course.description || "No description available"}
                             </p>
 
                             <div className="flex flex-wrap gap-2 mb-4">
@@ -441,18 +475,38 @@ export default function TutorProfile() {
                                 {course.teaching_mode === "online"
                                   ? "Online"
                                   : course.teaching_mode === "offline"
-                                  ? "In-person"
-                                  : "Online & In-person"}
+                                  ? "Tại nhà"
+                                  : "Online & Tại nhà"}
                               </Badge>
                             </div>
 
                             <div className="flex justify-between items-center">
-                              <span className="font-medium text-secondary">
-                                {formatPrice(course.hourly_rate)}
-                                <span className="text-sm text-muted-foreground">
-                                  /hour
+                              <div>
+                                <span className="font-medium text-secondary">
+                                  {formatPrice(course.hourly_rate || 0)}
+                                  <span className="text-sm text-muted-foreground">
+                                    /giờ
+                                  </span>
                                 </span>
-                              </span>
+                                {course.student_count !== undefined &&
+                                  course.student_count > 0 && (
+                                    <div className="text-sm text-muted-foreground mt-1">
+                                      <Users className="h-3 w-3 inline mr-1" />
+                                      {course.student_count} học viên
+                                    </div>
+                                  )}
+                                {course.average_rating !== undefined &&
+                                  course.average_rating > 0 && (
+                                    <div className="text-sm text-warning mt-1">
+                                      <Star
+                                        className="h-3 w-3 inline mr-1"
+                                        fill="currentColor"
+                                      />
+                                      {course.average_rating.toFixed(1)} (
+                                      {course.review_count} đánh giá)
+                                    </div>
+                                  )}
+                              </div>
 
                               <Button
                                 onClick={() =>
@@ -468,10 +522,16 @@ export default function TutorProfile() {
                       </div>
                     ) : (
                       <div className="text-center py-8">
-                        <Book className="h-12 w-12 mx-auto text-muted-foreground" />
-                        <p className="mt-4 text-muted-foreground">
-                          This tutor has not published any courses yet.
-                        </p>
+                        {coursesLoading ? (
+                          <Loader2 className="h-12 w-12 mx-auto text-primary animate-spin" />
+                        ) : (
+                          <>
+                            <Book className="h-12 w-12 mx-auto text-muted-foreground" />
+                            <p className="mt-4 text-muted-foreground">
+                              Gia sư này chưa công bố khóa học nào.
+                            </p>
+                          </>
+                        )}
                       </div>
                     )}
                   </CardContent>

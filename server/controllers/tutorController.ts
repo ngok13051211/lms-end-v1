@@ -432,12 +432,12 @@ export const getTutors = async (req: Request, res: Response) => {
             phone: true,
           },
         },
-        subjects: {
+        tutorSubjects: {
           with: {
             subject: true,
           },
         },
-        levels: {
+        tutorEducationLevels: {
           with: {
             level: true,
           },
@@ -464,8 +464,8 @@ export const getTutors = async (req: Request, res: Response) => {
       return {
         ...tutor,
         total_reviews,
-        subjects: tutor.subjects.map((ts) => ts.subject),
-        levels: tutor.levels.map((tl) => tl.level),
+        subjects: tutor.tutorSubjects.map((ts) => ts.subject),
+        levels: tutor.tutorEducationLevels.map((tl) => tl.level),
       };
     });
 
@@ -499,7 +499,7 @@ export const getFeaturedTutors = async (req: Request, res: Response) => {
             avatar: true,
           },
         },
-        subjects: {
+        tutorSubjects: {
           with: {
             subject: true,
           },
@@ -530,7 +530,7 @@ export const getFeaturedTutors = async (req: Request, res: Response) => {
         name: `${tutor.user.first_name} ${tutor.user.last_name}`,
         avatar: tutor.user.avatar,
       },
-      subjects: tutor.subjects.map((ts) => ts.subject),
+      subjects: tutor.tutorSubjects.map((ts) => ts.subject),
       courses: tutor.courses, // Thêm courses vào response
     }));
 
@@ -550,96 +550,105 @@ export const getTutorById = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Invalid tutor ID" });
     }
 
-    // Get tutor with details
-    const tutor = await db.query.tutorProfiles.findFirst({
-      where: eq(schema.tutorProfiles.id, tutorId),
-      with: {
-        user: {
-          columns: {
-            id: true,
-            first_name: true,
-            last_name: true,
-            email: true,
-            avatar: true,
-            phone: true,
-          },
-        },
-        subjects: {
-          with: {
-            subject: true,
-          },
-        },
-        levels: {
-          with: {
-            level: true,
-          },
-        },
-        courses: {
-          where: eq(schema.courses.status, "active"),
-          columns: {
-            id: true,
-            title: true,
-            teaching_mode: true,
-            hourly_rate: true,
-          },
-        },
-        reviews: {
-          with: {
-            student: {
-              columns: {
-                id: true,
-                first_name: true,
-                last_name: true,
-                avatar: true,
-              },
+    try {
+      // Get tutor with details
+      const tutor = await db.query.tutorProfiles.findFirst({
+        where: eq(schema.tutorProfiles.id, tutorId),
+        with: {
+          user: {
+            columns: {
+              id: true,
+              first_name: true,
+              last_name: true,
+              email: true,
+              avatar: true,
+              phone: true,
             },
           },
-          orderBy: desc(schema.reviews.created_at),
-          limit: 5,
+          tutorSubjects: {
+            with: {
+              subject: true,
+            },
+          },
+          tutorEducationLevels: {
+            with: {
+              level: true,
+            },
+          },
+          courses: {
+            where: eq(schema.courses.status, "active"),
+            columns: {
+              id: true,
+              title: true,
+              teaching_mode: true,
+              hourly_rate: true,
+            },
+          },
+          reviews: {
+            with: {
+              student: {
+                columns: {
+                  id: true,
+                  first_name: true,
+                  last_name: true,
+                  avatar: true,
+                },
+              },
+            },
+            orderBy: desc(schema.reviews.created_at),
+            limit: 5,
+          },
         },
-      },
-    });
+      });
 
-    if (!tutor) {
-      return res.status(404).json({ message: "Tutor not found" });
+      if (!tutor) {
+        return res.status(404).json({ message: "Tutor not found" });
+      }
+
+      // Format response data (đơn giản hóa)
+      const formattedTutor = {
+        id: tutor.id,
+        user_id: tutor.user_id,
+        bio: tutor.bio,
+        certifications: tutor.certifications,
+        is_verified: tutor.is_verified,
+        is_featured: tutor.is_featured,
+        rating: tutor.rating,
+        created_at: tutor.created_at,
+        user: {
+          id: tutor.user.id,
+          name: `${tutor.user.first_name} ${tutor.user.last_name}`,
+          first_name: tutor.user.first_name,
+          last_name: tutor.user.last_name,
+          email: tutor.user.email,
+          avatar: tutor.user.avatar,
+          phone: tutor.user.phone,
+        },
+        subjects: tutor.tutorSubjects.map((ts) => ts.subject),
+        courses: tutor.courses,
+        levels: tutor.tutorEducationLevels.map((tl) => tl.level),
+        reviews: tutor.reviews.map((review) => ({
+          id: review.id,
+          rating: review.rating,
+          comment: review.comment,
+          created_at: review.created_at,
+          student: {
+            id: review.student.id,
+            name: `${review.student.first_name} ${review.student.last_name}`,
+            avatar: review.student.avatar,
+          },
+        })),
+      };
+
+      return res.status(200).json(formattedTutor);
+    } catch (queryError) {
+      console.error("Database query error in getTutorById:", queryError);
+      return res.status(500).json({
+        message: "Database query error",
+        error:
+          queryError instanceof Error ? queryError.message : String(queryError),
+      });
     }
-
-    // Format response data (đơn giản hóa)
-    const formattedTutor = {
-      id: tutor.id,
-      user_id: tutor.user_id,
-      bio: tutor.bio,
-      certifications: tutor.certifications,
-      is_verified: tutor.is_verified,
-      is_featured: tutor.is_featured,
-      rating: tutor.rating,
-      created_at: tutor.created_at,
-      user: {
-        id: tutor.user.id,
-        name: `${tutor.user.first_name} ${tutor.user.last_name}`,
-        first_name: tutor.user.first_name,
-        last_name: tutor.user.last_name,
-        email: tutor.user.email,
-        avatar: tutor.user.avatar,
-        phone: tutor.user.phone,
-      },
-      subjects: tutor.subjects.map((ts) => ts.subject),
-      courses: tutor.courses, // Bao gồm courses trong response
-      levels: tutor.levels.map((tl) => tl.level),
-      reviews: tutor.reviews.map((review) => ({
-        id: review.id,
-        rating: review.rating,
-        comment: review.comment,
-        created_at: review.created_at,
-        student: {
-          id: review.student.id,
-          name: `${review.student.first_name} ${review.student.last_name}`,
-          avatar: review.student.avatar,
-        },
-      })),
-    };
-
-    return res.status(200).json(formattedTutor);
   } catch (error) {
     console.error("Get tutor by ID error:", error);
     return res.status(500).json({ message: "Internal server error" });
@@ -701,7 +710,7 @@ export const getSimilarTutors = async (req: Request, res: Response) => {
             avatar: true,
           },
         },
-        subjects: {
+        tutorSubjects: {
           with: {
             subject: true,
           },
@@ -729,7 +738,7 @@ export const getSimilarTutors = async (req: Request, res: Response) => {
         name: `${tutor.user.first_name} ${tutor.user.last_name}`,
         avatar: tutor.user.avatar,
       },
-      subjects: tutor.subjects.map((ts) => ts.subject),
+      subjects: tutor.tutorSubjects.map((ts) => ts.subject),
       courses: tutor.courses, // Thêm courses vào response
     }));
 
@@ -752,52 +761,86 @@ export const getTutorReviews = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Invalid tutor ID" });
     }
 
-    // Count total reviews
-    const countResult = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(schema.reviews)
-      .where(eq(schema.reviews.tutor_id, tutorId));
+    try {
+      // Kiểm tra xem gia sư có tồn tại không
+      const tutorExists = await db.query.tutorProfiles.findFirst({
+        where: eq(schema.tutorProfiles.id, tutorId),
+        columns: {
+          id: true,
+        },
+      });
 
-    const total = Number(countResult[0]?.count || 0);
-    const totalPages = Math.ceil(total / limit);
+      if (!tutorExists) {
+        return res.status(404).json({ message: "Tutor not found" });
+      }
 
-    // Get paginated reviews
-    const reviews = await db.query.reviews.findMany({
-      where: eq(schema.reviews.tutor_id, tutorId),
-      with: {
-        student: {
-          columns: {
-            id: true,
-            first_name: true,
-            last_name: true,
-            avatar: true,
+      // Count total reviews
+      const countResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(schema.reviews)
+        .where(eq(schema.reviews.tutor_id, tutorId));
+
+      const total = Number(countResult[0]?.count || 0);
+      const totalPages = Math.ceil(total / limit);
+
+      // Get paginated reviews
+      const reviews = await db.query.reviews.findMany({
+        where: eq(schema.reviews.tutor_id, tutorId),
+        with: {
+          student: {
+            columns: {
+              id: true,
+              first_name: true,
+              last_name: true,
+              avatar: true,
+            },
+          },
+          // Optionally include course if it exists
+          course: {
+            columns: {
+              id: true,
+              title: true,
+            },
           },
         },
-      },
-      orderBy: desc(schema.reviews.created_at),
-      limit,
-      offset,
-    });
+        orderBy: desc(schema.reviews.created_at),
+        limit,
+        offset,
+      });
 
-    // Format reviews
-    const formattedReviews = reviews.map((review) => ({
-      id: review.id,
-      rating: review.rating,
-      comment: review.comment,
-      created_at: review.created_at,
-      student: {
-        id: review.student.id,
-        name: `${review.student.first_name} ${review.student.last_name}`,
-        avatar: review.student.avatar,
-      },
-    }));
+      // Format reviews
+      const formattedReviews = reviews.map((review) => ({
+        id: review.id,
+        rating: review.rating,
+        comment: review.comment,
+        created_at: review.created_at,
+        course: review.course
+          ? {
+              id: review.course.id,
+              title: review.course.title,
+            }
+          : null,
+        student: {
+          id: review.student.id,
+          name: `${review.student.first_name} ${review.student.last_name}`,
+          avatar: review.student.avatar,
+        },
+      }));
 
-    return res.status(200).json({
-      reviews: formattedReviews,
-      total,
-      total_pages: totalPages,
-      current_page: page,
-    });
+      return res.status(200).json({
+        reviews: formattedReviews,
+        total,
+        total_pages: totalPages,
+        current_page: page,
+      });
+    } catch (queryError) {
+      console.error("Database query error in getTutorReviews:", queryError);
+      return res.status(500).json({
+        message: "Database query error",
+        error:
+          queryError instanceof Error ? queryError.message : String(queryError),
+      });
+    }
   } catch (error) {
     console.error("Get tutor reviews error:", error);
     return res.status(500).json({ message: "Internal server error" });
@@ -955,8 +998,8 @@ export const updateTutorProfile = async (req: Request, res: Response) => {
     const existingProfile = await db.query.tutorProfiles.findFirst({
       where: eq(schema.tutorProfiles.user_id, userId),
       with: {
-        subjects: true,
-        levels: true,
+        tutorSubjects: true,
+        tutorEducationLevels: true,
       },
     });
 
@@ -1103,12 +1146,12 @@ export const getOwnTutorProfile = async (req: Request, res: Response) => {
     const tutorProfile = await db.query.tutorProfiles.findFirst({
       where: eq(schema.tutorProfiles.user_id, userId),
       with: {
-        subjects: {
+        tutorSubjects: {
           with: {
             subject: true,
           },
         },
-        levels: {
+        tutorEducationLevels: {
           with: {
             level: true,
           },
@@ -1124,8 +1167,8 @@ export const getOwnTutorProfile = async (req: Request, res: Response) => {
     // Đơn giản hóa response
     const formattedProfile = {
       ...tutorProfile,
-      subjects: tutorProfile.subjects.map((ts) => ts.subject),
-      levels: tutorProfile.levels.map((tl) => tl.level),
+      subjects: tutorProfile.tutorSubjects.map((ts) => ts.subject),
+      levels: tutorProfile.tutorEducationLevels.map((tl) => tl.level),
     };
 
     console.log(
@@ -1224,6 +1267,342 @@ export const getTutorStats = async (req: Request, res: Response) => {
   }
 };
 
+// export const getOwnCourses = async (req: Request, res: Response) => {
+//   try {
+//     const tutorId = req.user?.id;
+
+//     if (!tutorId) {
+//       return res.status(401).json({
+//         success: false,
+//         message: "Không được phép, vui lòng đăng nhập",
+//       });
+//     }
+
+//     // Kiểm tra xem người dùng có phải là gia sư không
+//     const tutorProfile = await db.query.tutorProfiles.findFirst({
+//       where: eq(schema.tutorProfiles.user_id, tutorId),
+//     });
+
+//     if (!tutorProfile) {
+//       return res.status(403).json({
+//         success: false,
+//         message: "Bạn không phải là gia sư, không thể truy cập tài nguyên này",
+//       });
+//     }
+
+//     // Tham số phân trang
+//     const page = parseInt(req.query.page as string) || 1;
+//     const limit = parseInt(req.query.limit as string) || 10;
+//     const offset = (page - 1) * limit;
+
+//     // Lọc theo trạng thái nếu có
+//     const status = req.query.status as string;
+
+//     // Xây dựng điều kiện lọc
+//     let conditions = [eq(schema.courses.tutor_id, tutorProfile.id)];
+
+//     if (status && ["draft", "published", "archived"].includes(status)) {
+//       conditions.push(eq(schema.courses.status, status));
+//     }
+
+//     // Lấy khóa học
+//     const courses = await db.query.courses.findMany({
+//       where: and(...conditions),
+//       with: {
+//         subject: true,
+//         course_levels: {
+//           with: {
+//             level: true,
+//           },
+//         },
+//       },
+//       orderBy: [desc(schema.courses.updated_at)],
+//       limit,
+//       offset,
+//     });
+
+//     // Đếm tổng số khóa học
+//     const [{ count }] = await db
+//       .select({
+//         count: sql<number>`count(*)`,
+//       })
+//       .from(schema.courses)
+//       .where(and(...conditions));
+
+//     // Thêm thông tin về số lượng học sinh và đánh giá cho mỗi khóa học
+//     const coursesWithStats = await Promise.all(
+//       courses.map(async (course) => {
+//         // Đếm số học sinh đã đăng ký khóa học
+//         const [{ studentCount }] = await db
+//           .select({
+//             studentCount: sql<number>`count(DISTINCT ${schema.bookings.student_id})`,
+//           })
+//           .from(schema.bookings)
+//           .where(eq(schema.bookings.course_id, course.id));
+
+//         // Lấy điểm đánh giá trung bình
+//         const [{ averageRating, reviewCount }] = await db
+//           .select({
+//             averageRating: sql<number>`AVG(${schema.reviews.rating})`,
+//             reviewCount: sql<number>`count(*)`,
+//           })
+//           .from(schema.reviews)
+//           .where(eq(schema.reviews.course_id, course.id));
+
+//         return {
+//           ...course,
+//           student_count: Number(studentCount || 0),
+//           average_rating: Number(averageRating || 0),
+//           review_count: Number(reviewCount || 0),
+//         };
+//       })
+//     );
+
+//     return res.status(200).json({
+//       success: true,
+//       count: Number(count),
+//       total_pages: Math.ceil(Number(count) / limit),
+//       current_page: page,
+//       courses: coursesWithStats,
+//     });
+//   } catch (error) {
+//     console.error("Get own courses error:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Lỗi máy chủ khi lấy danh sách khóa học",
+//     });
+//   }
+// };
+/**
+ * @desc    Lấy danh sách khóa học của gia sư đang đăng nhập
+ * @route   GET /api/v1/tutors/courses
+ * @access  Private (Tutor only)
+ */
+export const getOwnCourses = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Không được phép, vui lòng đăng nhập",
+      });
+    }
+
+    // Kiểm tra xem người dùng có phải là gia sư không
+    const tutorProfile = await db.query.tutorProfiles.findFirst({
+      where: eq(schema.tutorProfiles.user_id, userId),
+    });
+
+    if (!tutorProfile) {
+      return res.status(403).json({
+        success: false,
+        message: "Bạn không phải là gia sư, không thể truy cập tài nguyên này",
+      });
+    }
+
+    console.log("Found tutor profile:", tutorProfile.id);
+
+    // Tham số phân trang
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const offset = (page - 1) * limit;
+
+    // Lọc theo trạng thái nếu có
+    const status = req.query.status as string;
+
+    // Xây dựng điều kiện lọc
+    let conditions = [eq(schema.courses.tutor_id, tutorProfile.id)];
+
+    if (status && ["active", "pending", "expired"].includes(status)) {
+      conditions.push(eq(schema.courses.status, status));
+    }
+
+    try {
+      // Count total courses matching criteria
+      const countResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(schema.courses)
+        .where(and(...conditions));
+
+      const count = Number(countResult[0]?.count || 0);
+
+      console.log("Fetching courses for tutor ID:", tutorProfile.id);
+      console.log("Found", count, "courses matching criteria");
+
+      // Lấy khóa học với level thay vì course_levels
+      const courses = await db.query.courses.findMany({
+        where: and(...conditions),
+        with: {
+          subject: true,
+          level: true, // Sửa lại ở đây: thay course_levels bằng level
+        },
+        orderBy: [desc(schema.courses.updated_at)],
+        limit,
+        offset,
+      });
+
+      // Thêm thông tin đánh giá đơn giản hơn
+      const coursesWithStats = await Promise.all(
+        courses.map(async (course) => {
+          try {
+            // Lấy số đánh giá và điểm trung bình
+            const reviewStats = await db
+              .select({
+                average_rating: sql<number>`COALESCE(AVG(${schema.reviews.rating}), 0)`,
+                review_count: sql<number>`COUNT(${schema.reviews.id})`,
+              })
+              .from(schema.reviews)
+              .where(eq(schema.reviews.course_id, course.id));
+
+            return {
+              ...course,
+              average_rating: Number(reviewStats[0]?.average_rating || 0),
+              review_count: Number(reviewStats[0]?.review_count || 0),
+            };
+          } catch (err) {
+            console.error("Error calculating stats for course", course.id, err);
+            return {
+              ...course,
+              average_rating: 0,
+              review_count: 0,
+            };
+          }
+        })
+      );
+
+      return res.status(200).json({
+        success: true,
+        count: Number(count),
+        total_pages: Math.ceil(Number(count) / limit),
+        current_page: page,
+        courses: coursesWithStats,
+      });
+    } catch (queryError) {
+      console.error("Database query error:", queryError);
+      return res.status(500).json({
+        success: false,
+        message: "Lỗi truy vấn cơ sở dữ liệu khi lấy danh sách khóa học",
+        error:
+          queryError instanceof Error ? queryError.message : String(queryError),
+      });
+    }
+  } catch (error) {
+    console.error("Get tutor courses error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi máy chủ khi lấy danh sách khóa học",
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+};
+
+/**
+ * @desc    Lấy danh sách khóa học của một gia sư theo ID
+ * @route   GET /api/v1/tutors/:id/courses
+ * @access  Public
+ */
+export const getTutorCourses = async (req: Request, res: Response) => {
+  try {
+    const tutorId = parseInt(req.params.id);
+
+    if (isNaN(tutorId)) {
+      return res.status(400).json({
+        message: "ID không hợp lệ, phải là số nguyên",
+      });
+    }
+
+    // Kiểm tra xem gia sư có tồn tại và đã được xác minh chưa
+    const tutorProfile = await db.query.tutorProfiles.findFirst({
+      where: eq(schema.tutorProfiles.id, tutorId),
+    });
+
+    if (!tutorProfile) {
+      return res.status(404).json({
+        message: "Không tìm thấy gia sư",
+      });
+    }
+
+    // Tham số phân trang
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const offset = (page - 1) * limit;
+
+    // Chỉ lấy các khóa học đang hoạt động (active)
+    const conditions = [
+      eq(schema.courses.tutor_id, tutorId),
+      eq(schema.courses.status, "active"),
+    ];
+
+    // Đếm tổng số khóa học
+    const [{ count }] = await db
+      .select({
+        count: sql<number>`count(*)`,
+      })
+      .from(schema.courses)
+      .where(and(...conditions));
+
+    // Lấy khóa học với thông tin môn học và mức độ
+    const courses = await db.query.courses.findMany({
+      where: and(...conditions),
+      with: {
+        subject: true,
+        course_levels: {
+          with: {
+            level: true,
+          },
+        },
+      },
+      orderBy: [desc(schema.courses.created_at)],
+      limit,
+      offset,
+    });
+
+    // Thêm thông tin về số lượng học sinh và đánh giá cho mỗi khóa học
+    const coursesWithStats = await Promise.all(
+      courses.map(async (course) => {
+        // Đếm số học sinh đã đăng ký khóa học
+        const [{ studentCount }] = await db
+          .select({
+            studentCount: sql<number>`count(DISTINCT ${schema.bookings.student_id})`,
+          })
+          .from(schema.bookings)
+          .where(eq(schema.bookings.course_id, course.id));
+
+        // Lấy điểm đánh giá trung bình
+        const [{ averageRating, reviewCount }] = await db
+          .select({
+            averageRating: sql<number>`AVG(${schema.reviews.rating})`,
+            reviewCount: sql<number>`count(*)`,
+          })
+          .from(schema.reviews)
+          .where(eq(schema.reviews.course_id, course.id));
+
+        return {
+          ...course,
+          student_count: Number(studentCount || 0),
+          average_rating: Number(averageRating || 0),
+          review_count: Number(reviewCount || 0),
+        };
+      })
+    );
+
+    return res.status(200).json({
+      success: true,
+      count: Number(count),
+      total_pages: Math.ceil(Number(count) / limit),
+      current_page: page,
+      courses: coursesWithStats,
+    });
+  } catch (error) {
+    console.error("Get tutor courses error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi máy chủ khi lấy danh sách khóa học",
+    });
+  }
+};
+
 // Get favorite tutors
 export const getFavoriteTutors = async (req: Request, res: Response) => {
   try {
@@ -1240,7 +1619,7 @@ export const getFavoriteTutors = async (req: Request, res: Response) => {
         tutor: {
           with: {
             user: true,
-            subjects: {
+            tutorSubjects: {
               with: {
                 subject: true,
               },
@@ -1267,7 +1646,7 @@ export const getFavoriteTutors = async (req: Request, res: Response) => {
           last_name: tutor.user.last_name,
           avatar: tutor.user.avatar,
         },
-        subjects: tutor.subjects.map((s) => ({
+        subjects: tutor.tutorSubjects.map((s) => ({
           id: s.subject.id,
           name: s.subject.name,
         })),
@@ -1331,7 +1710,7 @@ export const addFavoriteTutor = async (req: Request, res: Response) => {
       where: eq(schema.tutorProfiles.id, tutorId),
       with: {
         user: true,
-        subjects: {
+        tutorSubjects: {
           with: {
             subject: true,
           },
@@ -1358,7 +1737,7 @@ export const addFavoriteTutor = async (req: Request, res: Response) => {
         last_name: tutorWithDetails.user.last_name,
         avatar: tutorWithDetails.user.avatar,
       },
-      subjects: tutorWithDetails.subjects.map((s) => ({
+      subjects: tutorWithDetails.tutorSubjects.map((s) => ({
         id: s.subject.id,
         name: s.subject.name,
       })),
@@ -1490,6 +1869,7 @@ export const createReview = async (req: Request, res: Response) => {
       student_id: userId,
       rating: req.body.rating,
       comment: req.body.comment,
+      course_id: req.body.course_id || undefined, // Make course_id optional
       created_at: new Date(),
     });
 
@@ -1552,12 +1932,12 @@ export const getTutorVerifications = async (req: Request, res: Response) => {
             phone: true,
           },
         },
-        subjects: {
+        tutorSubjects: {
           with: {
             subject: true,
           },
         },
-        levels: {
+        tutorEducationLevels: {
           with: {
             level: true,
           },
@@ -1578,8 +1958,8 @@ export const getTutorVerifications = async (req: Request, res: Response) => {
         avatar: tutor.user.avatar,
         phone: tutor.user.phone,
       },
-      subjects: tutor.subjects.map((ts) => ts.subject),
-      levels: tutor.levels.map((tl) => tl.level),
+      subjects: tutor.tutorSubjects.map((ts) => ts.subject),
+      levels: tutor.tutorEducationLevels.map((tl) => tl.level),
     }));
 
     return res.status(200).json(formattedTutors);

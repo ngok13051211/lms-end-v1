@@ -1,0 +1,100 @@
+import { Router } from "express";
+import * as tutorController from "../controllers/tutorController";
+import { authMiddleware, roleMiddleware } from "../middlewares/authMiddleware";
+import uploadService from "../services/uploadService";
+import {
+  validateBody,
+  validateParams,
+} from "../middlewares/validationMiddleware";
+import * as schema from "@shared/schema";
+import { uploadLimiter } from "../middlewares/rateLimitMiddleware";
+
+const router = Router();
+
+// Lấy danh sách gia sư
+router.get("/", tutorController.getTutors);
+
+// Lấy danh sách gia sư nổi bật
+router.get("/featured", tutorController.getFeaturedTutors);
+
+// Lấy các gia sư tương tự
+router.get(
+  "/similar/:id",
+  validateParams(schema.idSchema),
+  tutorController.getSimilarTutors
+);
+
+// Tạo hồ sơ gia sư
+router.post(
+  "/profile",
+  authMiddleware,
+  roleMiddleware(["tutor"]),
+  validateBody(schema.tutorProfileSchema),
+  tutorController.createTutorProfile
+);
+
+// Cập nhật hồ sơ gia sư
+router.patch(
+  "/profile",
+  authMiddleware,
+  roleMiddleware(["tutor"]),
+  validateBody(schema.tutorProfileSchema),
+  tutorController.updateTutorProfile
+);
+
+// Lấy hồ sơ gia sư của chính mình
+router.get(
+  "/profile",
+  authMiddleware,
+  roleMiddleware(["tutor"]),
+  tutorController.getOwnTutorProfile
+);
+
+// Tải lên chứng chỉ
+router.post(
+  "/certifications",
+  authMiddleware,
+  roleMiddleware(["tutor"]),
+  uploadLimiter,
+  uploadService.uploadDocuments,
+  tutorController.uploadCertifications
+);
+
+// Lấy thống kê gia sư
+router.get(
+  "/stats",
+  authMiddleware,
+  roleMiddleware(["tutor"]),
+  tutorController.getTutorStats
+);
+
+// Lấy khóa học của gia sư đang đăng nhập
+router.get(
+  "/courses",
+  authMiddleware,
+  roleMiddleware(["tutor"]),
+  tutorController.getOwnCourses
+);
+
+// Lấy đánh giá của gia sư
+router.get(
+  "/:id/reviews",
+  validateParams(schema.idSchema),
+  tutorController.getTutorReviews
+);
+
+// Lấy khóa học của gia sư theo ID
+router.get(
+  "/:id/courses",
+  validateParams(schema.idSchema),
+  tutorController.getTutorCourses
+);
+
+// Lấy thông tin gia sư theo ID
+router.get(
+  "/:id",
+  validateParams(schema.idSchema),
+  tutorController.getTutorById
+);
+
+export default router;

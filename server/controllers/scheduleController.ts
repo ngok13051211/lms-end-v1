@@ -17,9 +17,46 @@ import {
   setMinutes,
 } from "date-fns";
 
-// Validation schema for creating a schedule
-export const createScheduleSchema = z.object({
-  date: z.string().optional(), // Required for single schedule, optional for recurring
+// Define valid days of week
+const validDaysOfWeek = [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+];
+
+// Define schema for time slot
+const timeSlotSchema = z.object({
+  startTime: z
+    .string()
+    .regex(
+      /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/,
+      "Invalid time format. Use HH:MM"
+    ),
+  endTime: z
+    .string()
+    .regex(
+      /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/,
+      "Invalid time format. Use HH:MM"
+    ),
+});
+
+// Define schema for repeat schedule with strict day name validation
+const repeatScheduleSchema = z.record(
+  z.string().refine((key) => validDaysOfWeek.includes(key), {
+    message:
+      "Invalid day name. Must be one of: monday, tuesday, wednesday, thursday, friday, saturday, sunday",
+  }),
+  z.array(timeSlotSchema)
+);
+
+// Sửa phần định nghĩa schema (khoảng dòng 56-90)
+const singleScheduleSchema = z.object({
+  is_recurring: z.literal(false),
+  date: z.string(),
   start_time: z
     .string()
     .regex(
@@ -35,12 +72,66 @@ export const createScheduleSchema = z.object({
   mode: z.enum(["online", "offline"]),
   location: z.string().optional(),
   course_id: z.number().optional(),
-  is_recurring: z.boolean().default(false),
-  // Recurring schedule fields
-  start_date: z.string().optional(),
-  end_date: z.string().optional(),
-  repeat_days: z.array(z.string()).optional(), // Array of day names: ["monday", "wednesday", "friday"]
 });
+
+// Define base recurring schema without refinement
+const recurringSchemaBase = z.object({
+  is_recurring: z.literal(true),
+  start_date: z.string(),
+  end_date: z.string(),
+  mode: z.enum(["online", "offline"]),
+  location: z.string().optional(),
+  course_id: z.number().optional(),
+  repeat_schedule: repeatScheduleSchema.optional(),
+  repeat_days: z.array(z.string()).optional().default([]),
+  start_time: z
+    .string()
+    .regex(
+      /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/,
+      "Invalid time format. Use HH:MM"
+    )
+    .optional(),
+  end_time: z
+    .string()
+    .regex(
+      /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/,
+      "Invalid time format. Use HH:MM"
+    )
+    .optional(),
+
+  // Xóa bỏ các trường date, start_time, end_time vì chúng không cần thiết cho recurring
+  // date: z.string().optional(),
+});
+
+// Combined schema with discriminated union based on is_recurring flag
+export const createScheduleSchema = z
+  .discriminatedUnion("is_recurring", [
+    singleScheduleSchema,
+    recurringSchemaBase,
+  ])
+  .refine(
+    (data) => {
+      if (!data.is_recurring) return true;
+
+      // Đảm bảo có phương thức lặp lại hợp lệ cho recurring schema
+      return (
+        (data.repeat_schedule &&
+          Object.keys(data.repeat_schedule).length > 0) ||
+        (data.repeat_days &&
+          data.repeat_days.length > 0 &&
+          data.start_time &&
+          data.end_time)
+      );
+    },
+    {
+      message:
+        "Cần cung cấp thông tin lặp lại: repeat_schedule hoặc (repeat_days + start_time + end_time)",
+      path: ["repeat_schedule"],
+    }
+  );
+
+// For type inference
+const recurringScheduleSchema = recurringSchemaBase;
 
 // Type for the validated request body
 type CreateScheduleRequest = z.infer<typeof createScheduleSchema>;
@@ -51,6 +142,8 @@ type CreateScheduleRequest = z.infer<typeof createScheduleSchema>;
  */
 export const createSchedule = async (req: Request, res: Response) => {
   try {
+    // Log request body để debug
+    console.log("Received request body:", JSON.stringify(req.body, null, 2));
     // Get tutor ID from authenticated user
     const userId = req.user?.id;
 
@@ -76,6 +169,14 @@ export const createSchedule = async (req: Request, res: Response) => {
     // Validate request body
     const validationResult = createScheduleSchema.safeParse(req.body);
 
+    // Log kết quả validation
+    console.log(
+      "Validation result:",
+      validationResult.success
+        ? "Success"
+        : JSON.stringify(validationResult.error.errors, null, 2)
+    );
+
     if (!validationResult.success) {
       return res.status(400).json({
         success: false,
@@ -83,9 +184,7 @@ export const createSchedule = async (req: Request, res: Response) => {
       });
     }
 
-    const scheduleData = validationResult.data;
-
-    // Check if course exists if course_id is provided
+    const scheduleData = validationResult.data; // Check if course exists if course_id is provided
     if (scheduleData.course_id) {
       const course = await db.query.courses.findFirst({
         where: and(
@@ -104,13 +203,8 @@ export const createSchedule = async (req: Request, res: Response) => {
 
     // Handle single schedule or recurring schedule
     if (!scheduleData.is_recurring) {
-      // Single schedule
-      if (!scheduleData.date) {
-        return res.status(400).json({
-          success: false,
-          message: "Date is required for single schedules.",
-        });
-      }
+      // SINGLE SCHEDULE
+      // Validation already ensures we have date, start_time and end_time because of Zod schema
 
       // Check for time conflicts
       const hasConflict = await checkTimeConflict(
@@ -131,7 +225,7 @@ export const createSchedule = async (req: Request, res: Response) => {
       await db.insert(teachingSchedules).values({
         tutor_id: tutorProfile.id,
         course_id: scheduleData.course_id,
-        date: scheduleData.date, // Use the string date directly instead of creating a Date object
+        date: scheduleData.date,
         start_time: scheduleData.start_time,
         end_time: scheduleData.end_time,
         mode: scheduleData.mode,
@@ -147,18 +241,9 @@ export const createSchedule = async (req: Request, res: Response) => {
         message: "Schedule created successfully.",
       });
     } else {
-      // Recurring schedule
-      if (
-        !scheduleData.start_date ||
-        !scheduleData.end_date ||
-        !scheduleData.repeat_days
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Start date, end date, and repeat days are required for recurring schedules.",
-        });
-      }
+      // RECURRING SCHEDULE
+      // Validation already ensures we have start_date and end_date from Zod schema
+      // Validation already ensures we have either repeat_days+start_time+end_time OR repeat_schedule
 
       const startDate = parseISO(scheduleData.start_date);
       const endDate = parseISO(scheduleData.end_date);
@@ -177,45 +262,110 @@ export const createSchedule = async (req: Request, res: Response) => {
         saturday: 6,
       };
 
-      // Filter days that match the repeat pattern
-      const scheduleDays = allDays.filter((day) => {
-        const dayName = Object.keys(dayMap).find(
-          (name) => dayMap[name] === day.getDay()
-        );
-        return dayName && scheduleData.repeat_days?.includes(dayName);
-      });
-
       // Check for conflicts and prepare schedules
       const scheduleRecords = [];
-      let conflictCount = 0;
+      let conflictCount = 0; // NEW METHOD: Using repeat_schedule with per-day time slots
+      if (scheduleData.repeat_schedule) {
+        const selectedDays = Object.keys(scheduleData.repeat_schedule);
 
-      for (const day of scheduleDays) {
-        const formattedDate = format(day, "yyyy-MM-dd");
+        // For each day in the date range
+        for (const day of allDays) {
+          const dayOfWeek = day.getDay();
 
-        // Check for time conflicts
-        const hasConflict = await checkTimeConflict(
-          tutorProfile.id,
-          formattedDate,
-          scheduleData.start_time,
-          scheduleData.end_time
-        );
+          // Find the corresponding day name
+          const dayName = Object.keys(dayMap).find(
+            (name) => dayMap[name] === dayOfWeek
+          );
 
-        if (hasConflict) {
-          conflictCount++;
-          continue; // Skip this day if there's a conflict
+          // Skip if this day is not selected
+          if (!dayName || !selectedDays.includes(dayName)) {
+            continue;
+          }
+
+          // Get all time slots for this day
+          const timeSlots = scheduleData.repeat_schedule[dayName];
+          const formattedDate = format(day, "yyyy-MM-dd");
+
+          // Create a schedule for each time slot
+          for (const slot of timeSlots) {
+            // Check for time conflicts
+            const hasConflict = await checkTimeConflict(
+              tutorProfile.id,
+              formattedDate,
+              slot.startTime,
+              slot.endTime
+            );
+
+            if (hasConflict) {
+              conflictCount++;
+              continue; // Skip this time slot if there's a conflict
+            }
+
+            scheduleRecords.push({
+              tutor_id: tutorProfile.id,
+              course_id: scheduleData.course_id,
+              date: formattedDate,
+              start_time: slot.startTime,
+              end_time: slot.endTime,
+              mode: scheduleData.mode,
+              location:
+                scheduleData.mode === "offline" ? scheduleData.location : null,
+              is_recurring: true,
+              status: "available",
+            });
+          }
         }
+      }
+      // OLD METHOD: Using repeat_days with common time slots (for backward compatibility)
+      else if (
+        scheduleData.repeat_days?.length > 0 &&
+        scheduleData.start_time &&
+        scheduleData.end_time
+      ) {
+        // Filter days that match the repeat pattern
+        const scheduleDays = allDays.filter((day) => {
+          const dayName = Object.keys(dayMap).find(
+            (name) => dayMap[name] === day.getDay()
+          );
+          return dayName && scheduleData.repeat_days?.includes(dayName);
+        });
 
-        scheduleRecords.push({
-          tutor_id: tutorProfile.id,
-          course_id: scheduleData.course_id,
-          date: formattedDate, // Using the formatted date string instead of Date object
-          start_time: scheduleData.start_time,
-          end_time: scheduleData.end_time,
-          mode: scheduleData.mode,
-          location:
-            scheduleData.mode === "offline" ? scheduleData.location : null,
-          is_recurring: true,
-          status: "available",
+        // Create schedules for filtered days
+        for (const day of scheduleDays) {
+          const formattedDate = format(day, "yyyy-MM-dd");
+
+          // Check for time conflicts
+          const hasConflict = await checkTimeConflict(
+            tutorProfile.id,
+            formattedDate,
+            scheduleData.start_time,
+            scheduleData.end_time
+          );
+
+          if (hasConflict) {
+            conflictCount++;
+            continue; // Skip this day if there's a conflict
+          }
+
+          scheduleRecords.push({
+            tutor_id: tutorProfile.id,
+            course_id: scheduleData.course_id,
+            date: formattedDate,
+            start_time: scheduleData.start_time,
+            end_time: scheduleData.end_time,
+            mode: scheduleData.mode,
+            location:
+              scheduleData.mode === "offline" ? scheduleData.location : null,
+            is_recurring: true,
+            status: "available",
+          });
+        }
+      } else {
+        // This shouldn't happen due to Zod validation, but keeping as a fallback
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid recurring schedule configuration. Please provide either repeat_schedule or both repeat_days and start_time/end_time.",
         });
       }
 
@@ -355,6 +505,162 @@ export const getTutorSchedules = async (req: Request, res: Response) => {
       success: false,
       message: "Failed to fetch schedules.",
       error: error.message,
+    });
+  }
+};
+
+export const cancelSchedule = async (req: Request, res: Response) => {
+  try {
+    const scheduleId = Number(req.params.id);
+    const userId = req.user?.id; // ID của user từ auth middleware
+
+    if (isNaN(scheduleId) || !userId) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "INVALID_INPUT",
+          message: "ID lịch không hợp lệ hoặc người dùng chưa đăng nhập",
+        },
+      });
+    }
+
+    // Find tutor profile first
+    const tutorProfile = await db.query.tutorProfiles.findFirst({
+      where: eq(tutorProfiles.user_id, userId),
+    });
+
+    if (!tutorProfile) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: "NOT_FOUND",
+          message: "Tutor profile not found",
+        },
+      });
+    }
+
+    // Kiểm tra lịch tồn tại và thuộc về tutor hiện tại
+    const schedule = await db.query.teachingSchedules.findFirst({
+      where: and(
+        eq(teachingSchedules.id, scheduleId),
+        eq(teachingSchedules.tutor_id, tutorProfile.id)
+      ),
+    });
+
+    if (!schedule) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: "NOT_FOUND",
+          message: "Không tìm thấy lịch hoặc bạn không có quyền hủy lịch này",
+        },
+      });
+    }
+
+    // Kiểm tra nếu lịch đã được đặt (booked) thì không cho phép hủy
+    if (schedule.status === "booked") {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "INVALID_OPERATION",
+          message: "Không thể hủy lịch đã được đặt",
+        },
+      });
+    }
+
+    // Cập nhật trạng thái của lịch thành "cancelled"
+    await db
+      .update(teachingSchedules)
+      .set({
+        status: "cancelled",
+        updated_at: new Date(),
+      })
+      .where(eq(teachingSchedules.id, scheduleId));
+
+    return res.status(200).json({
+      success: true,
+      data: { message: "Lịch đã được hủy thành công" },
+    });
+  } catch (error) {
+    console.error("Error cancelling schedule:", error);
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: "SERVER_ERROR",
+        message: "Đã xảy ra lỗi khi hủy lịch",
+      },
+    });
+  }
+};
+
+// API function delete schedule
+export const deleteSchedule = async (req: Request, res: Response) => {
+  try {
+    const scheduleId = Number(req.params.id);
+    const userId = req.user?.id;
+
+    if (isNaN(scheduleId) || !userId) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "INVALID_INPUT",
+          message: "ID lịch không hợp lệ hoặc người dùng chưa đăng nhập",
+        },
+      });
+    }
+
+    // Find tutor profile first
+    const tutorProfile = await db.query.tutorProfiles.findFirst({
+      where: eq(tutorProfiles.user_id, userId),
+    });
+
+    if (!tutorProfile) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: "NOT_FOUND",
+          message: "Tutor profile not found",
+        },
+      });
+    }
+
+    // Kiểm tra lịch tồn tại và thuộc về tutor hiện tại
+    const schedule = await db.query.teachingSchedules.findFirst({
+      where: and(
+        eq(teachingSchedules.id, scheduleId),
+        eq(teachingSchedules.tutor_id, tutorProfile.id),
+        eq(teachingSchedules.status, "cancelled") // Chỉ xóa được lịch đã hủy
+      ),
+    });
+
+    if (!schedule) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: "NOT_FOUND",
+          message:
+            "Không tìm thấy lịch đã hủy hoặc bạn không có quyền xóa lịch này",
+        },
+      });
+    }
+
+    // Xóa lịch khỏi cơ sở dữ liệu
+    await db
+      .delete(teachingSchedules)
+      .where(eq(teachingSchedules.id, scheduleId));
+
+    return res.status(200).json({
+      success: true,
+      data: { message: "Lịch đã được xóa thành công" },
+    });
+  } catch (error) {
+    console.error("Error deleting schedule:", error);
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: "SERVER_ERROR",
+        message: "Đã xảy ra lỗi khi xóa lịch",
+      },
     });
   }
 };
