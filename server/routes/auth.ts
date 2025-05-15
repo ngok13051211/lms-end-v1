@@ -4,8 +4,15 @@ import { validateBody } from "../middlewares/validationMiddleware";
 import * as schema from "@shared/schema";
 import { authLimiter } from "../middlewares/rateLimitMiddleware";
 import { authMiddleware } from "../middlewares/authMiddleware";
+import { z } from "zod";
 
 const router = Router();
+
+// Schema for OTP verification
+const verifyOtpSchema = z.object({
+  email: z.string().email("Địa chỉ email không hợp lệ"),
+  otp: z.string().length(6, "Mã OTP phải gồm 6 chữ số"),
+});
 
 /**
  * @swagger
@@ -43,6 +50,20 @@ router.post(
  *     tags: [Auth]
  */
 router.post("/logout", authController.logout);
+
+/**
+ * @swagger
+ * /auth/verify-otp:
+ *   post:
+ *     summary: Xác minh mã OTP và cập nhật trạng thái xác thực người dùng
+ *     tags: [Auth]
+ */
+router.post(
+  "/verify-otp",
+  authLimiter,
+  validateBody(verifyOtpSchema),
+  authController.verifyOtp
+);
 
 /**
  * @swagger

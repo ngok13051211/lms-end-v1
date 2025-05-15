@@ -6,6 +6,7 @@ import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import Login from "@/pages/login";
 import Register from "@/pages/register";
+import VerifyEmail from "@/pages/verify-email";
 import TutorProfile from "@/pages/tutor-profile";
 import TutorListing from "@/pages/tutor-listing";
 import SubjectDetail from "@/pages/subject-detail";
@@ -58,6 +59,7 @@ function Router() {
       <Route path="/" component={withMainLayout(Home)} />
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
+      <Route path="/verify-email/:email" component={VerifyEmail} />
       <Route path="/tutors" component={withMainLayout(TutorListing)} />
       <Route path="/tutors/:id" component={withMainLayout(TutorProfile)} />
       <Route path="/subjects" component={withMainLayout(Subjects)} />

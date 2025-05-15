@@ -18,6 +18,7 @@ import scheduleRoutes from "./routes/schedules";
 import subjectRoutes from "./routes/subjects";
 import adminRoutes from "./routes/admin";
 import docsRoutes from "./routes/docs";
+import verificationRoutes from "./routes/verification";
 
 // Import controllers
 import * as tutorController from "./controllers/tutorController";
@@ -97,6 +98,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use(`${apiPrefix}/schedules`, scheduleRoutes);
   app.use(`${apiPrefix}/subjects`, subjectRoutes);
   app.use(`${apiPrefix}/admin`, adminRoutes);
+  app.use(`${apiPrefix}/verify`, verificationRoutes); // Route xác thực email
   app.use(`${apiPrefix}`, docsRoutes); // Route tài liệu API
 
   return httpServer;

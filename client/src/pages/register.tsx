@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -16,6 +16,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import MainLayout from "@/components/layout/MainLayout";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
 
 const registerSchema = z.object({
   firstName: z.string().min(2, "First name is required"),
@@ -35,8 +36,9 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 export default function Register() {
   const [, navigate] = useLocation();
   const dispatch = useDispatch();
-  const { isLoading, error } = useSelector((state: RootState) => state.auth);
+  const { isLoading, error, registrationEmail } = useSelector((state: RootState) => state.auth);
   const [showPassword, setShowPassword] = useState(false);
+  const { toast } = useToast();
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -51,6 +53,18 @@ export default function Register() {
     },
   });
 
+  // Check if we have a pending registration that needs verification
+  useEffect(() => {
+    if (registrationEmail) {
+      const encodedEmail = encodeURIComponent(registrationEmail);
+      toast({
+        title: "Registration successful",
+        description: "Please verify your email to activate your account.",
+      });
+      navigate(`/verify-email/${encodedEmail}`);
+    }
+  }, [registrationEmail, navigate, toast]);
+
   const onSubmit = async (values: RegisterFormValues) => {
     const userData = {
       firstName: values.firstName,
@@ -60,14 +74,38 @@ export default function Register() {
       password: values.password,
       role: values.role,
     };
-    
-    const result = await dispatch(registerUser(userData) as any);
-    if (result.meta.requestStatus === "fulfilled") {
-      if (values.role === "tutor") {
-        navigate("/dashboard/tutor");
-      } else {
-        navigate("/");
+
+    try {
+      const result = await dispatch(registerUser(userData) as any);
+      if (result.meta.requestStatus === "fulfilled") {
+        // The redirect will happen in the useEffect when registrationEmail is set
+        toast({
+          title: "Đăng ký thành công",
+          description: "Vui lòng kiểm tra email của bạn để lấy mã xác nhận.",
+        });
+      } else if (result.meta.requestStatus === "rejected") {
+        // Xử lý khi đăng ký thất bại do lỗi từ server
+        const errorMessage = result.payload;
+        if (errorMessage && errorMessage.includes("Email đã được sử dụng")) {
+          toast({
+            variant: "destructive",
+            title: "Đăng ký thất bại",
+            description: "Email này đã tồn tại trong hệ thống, vui lòng sử dụng email khác hoặc đăng nhập.",
+          });
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Đăng ký thất bại",
+            description: errorMessage || "Có lỗi xảy ra trong quá trình đăng ký.",
+          });
+        }
       }
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Lỗi đăng ký",
+        description: error.message || "Có lỗi xảy ra trong quá trình đăng ký.",
+      });
     }
   };
 
@@ -86,12 +124,6 @@ export default function Register() {
           </CardHeader>
 
           <CardContent>
-            {error && (
-              <Alert variant="destructive" className="mb-4">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -160,12 +192,12 @@ export default function Register() {
                       <FormLabel>Password</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <Input 
-                            placeholder="Your password" 
+                          <Input
+                            placeholder="Your password"
                             type={showPassword ? "text" : "password"}
-                            {...field} 
+                            {...field}
                           />
-                          <button 
+                          <button
                             type="button"
                             className="absolute right-3 top-2.5 text-gray-500"
                             onClick={() => setShowPassword(!showPassword)}
@@ -186,10 +218,10 @@ export default function Register() {
                     <FormItem>
                       <FormLabel>Confirm Password</FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="Confirm your password" 
+                        <Input
+                          placeholder="Confirm your password"
                           type={showPassword ? "text" : "password"}
-                          {...field} 
+                          {...field}
                         />
                       </FormControl>
                       <FormMessage />
@@ -224,8 +256,8 @@ export default function Register() {
                   )}
                 />
 
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   className="w-full bg-primary hover:bg-primary-dark"
                   disabled={isLoading}
                 >

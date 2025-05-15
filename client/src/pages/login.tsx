@@ -28,6 +28,7 @@ import { Loader2 } from "lucide-react";
 import { Link } from "wouter";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import MainLayout from "@/components/layout/MainLayout";
+import OtpVerificationModal from "@/components/auth/OtpVerificationModal";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -41,6 +42,8 @@ export default function Login() {
   const dispatch = useDispatch();
   const { isLoading, error } = useSelector((state: RootState) => state.auth);
   const [showPassword, setShowPassword] = useState(false);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -70,14 +73,32 @@ export default function Login() {
         } else {
           navigate("/");
         }
+      } else if (result.payload && result.payload.includes("unverified")) {
+        // Handle unverified account - show verification modal
+        setUnverifiedEmail(values.email);
+        setShowVerificationModal(true);
       }
     } catch (error) {
       console.error("Login error:", error);
     }
   };
 
+  // Handle successful verification
+  const handleVerificationSuccess = () => {
+    // After successful verification, try to log in again
+    form.handleSubmit(onSubmit)();
+  };
+
   return (
     <MainLayout>
+      {showVerificationModal && unverifiedEmail && (
+        <OtpVerificationModal
+          isOpen={showVerificationModal}
+          onClose={() => setShowVerificationModal(false)}
+          email={unverifiedEmail}
+          onSuccess={handleVerificationSuccess}
+        />
+      )}
       <div className="flex items-center justify-center min-h-[calc(100vh-12rem)] px-4 py-12">
         <Card className="w-full max-w-md">
           <CardHeader className="space-y-1">

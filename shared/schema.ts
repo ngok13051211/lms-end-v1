@@ -18,7 +18,7 @@ import { relations } from "drizzle-orm";
 // User Model
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
-  username: text("username").notNull().unique(),
+  username: text("username").notNull(),
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
   first_name: text("first_name").notNull(),
@@ -26,8 +26,19 @@ export const users = pgTable("users", {
   role: text("role").notNull().default("student"), // "student", "tutor", "admin"
   avatar: text("avatar"),
   phone: text("phone"),
+  is_verified: boolean("is_verified").default(false).notNull(),
   created_at: timestamp("created_at").defaultNow().notNull(),
   updated_at: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Email OTP Model for email verification
+export const emailOtps = pgTable("email_otps", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull(),
+  otp: text("otp").notNull(), // Hashed OTP
+  expires_at: timestamp("expires_at").notNull(),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  used: boolean("used").default(false),
 });
 
 // Tutor Profile Model
@@ -841,3 +852,7 @@ export type NewSessionNote = typeof sessionNotes.$inferInsert;
 // Types for teaching schedules
 export type TeachingSchedule = typeof teachingSchedules.$inferSelect;
 export type NewTeachingSchedule = typeof teachingSchedules.$inferInsert;
+
+// Add types for email OTPs
+export type EmailOtp = typeof emailOtps.$inferSelect;
+export type NewEmailOtp = typeof emailOtps.$inferInsert;

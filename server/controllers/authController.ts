@@ -4,13 +4,21 @@
  */
 
 import { Request, Response, NextFunction } from "express";
-import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
+import * as bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";  // Sửa cách import JWT
 import { db } from "@db";
 import * as schema from "@shared/schema";
 import { eq, and, like, or, desc, sql, count } from "drizzle-orm";
 import { ZodError } from "zod";
 import { ApiError } from "../middlewares/errorMiddleware";
+import otpService from "../services/otpService";
+import { z } from "zod";
+
+// Schema for OTP verification
+const verifyOtpSchema = z.object({
+  email: z.string().email("Địa chỉ email không hợp lệ"),
+  otp: z.string().length(6, "Mã OTP phải gồm 6 chữ số"),
+});
 
 /**
  * @desc    Đăng ký người dùng mới
@@ -26,28 +34,23 @@ export const register = async (
     // Dữ liệu đã được xác thực bởi validateBody middleware
     const userData = req.body;
 
-    // Kiểm tra email hoặc username đã tồn tại
+    // Chỉ kiểm tra email đã tồn tại
     const existingUser = await db.query.users.findFirst({
-      where: or(
-        eq(schema.users.email, userData.email),
-        eq(schema.users.username, userData.username)
-      ),
+      where: eq(schema.users.email, userData.email),
     });
 
     if (existingUser) {
       throw new ApiError(
         409,
         "USER_ALREADY_EXISTS",
-        existingUser.email === userData.email
-          ? "Email đã được sử dụng"
-          : "Tên đăng nhập đã tồn tại"
+        "Email đã được sử dụng"
       );
     }
 
     // Băm mật khẩu
     const hashedPassword = await bcrypt.hash(userData.password, 10);
 
-    // Tạo người dùng mới
+    // Tạo người dùng mới với is_verified=false
     const [newUser] = await db
       .insert(schema.users)
       .values({
@@ -57,6 +60,7 @@ export const register = async (
         first_name: userData.first_name,
         last_name: userData.last_name,
         role: userData.role,
+        is_verified: false, // User starts as unverified
         created_at: new Date(),
         updated_at: new Date(),
       })
@@ -71,29 +75,28 @@ export const register = async (
         created_at: schema.users.created_at,
       });
 
-    // Tạo JWT token
-    const token = jwt.sign(
-      { id: newUser.id, role: userData.role },
-      process.env.JWT_SECRET || "your-secret-key",
-      { expiresIn: "7d" }
-    );
+    try {
+      // Gửi OTP đến email của người dùng
+      await otpService.generateAndSendOtp(userData.email);
 
-    // Đặt cookie
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày
-    });
+      // Trả về phản hồi thành công mà không tự động đăng nhập
+      return res.success(
+        { success: true },
+        "OTP đã được gửi đến email của bạn",
+        201
+      );
+    } catch (emailError) {
+      // Xử lý lỗi gửi email
+      console.error("Error sending OTP email:", emailError);
 
-    // Trả về phản hồi với định dạng chuẩn
-    return res.success(
-      {
-        user: newUser,
-        token, // Gửi token cho client để lưu trong localStorage
-      },
-      "Đăng ký tài khoản thành công",
-      201
-    );
+      // Vẫn trả về thành công vì tài khoản đã được tạo
+      // nhưng thông báo lỗi gửi email
+      return res.success(
+        { success: true },
+        "Tài khoản đã được tạo nhưng không thể gửi OTP. Vui lòng sử dụng chức năng gửi lại OTP.",
+        201
+      );
+    }
   } catch (error) {
     // Chuyển lỗi cho middleware xử lý lỗi toàn cục
     next(error);
@@ -113,7 +116,6 @@ export const login = async (
   try {
     // Dữ liệu đã được xác thực bởi validateBody middleware
     const loginData = req.body;
-
     // Tìm kiếm người dùng theo email
     const user = await db.query.users.findFirst({
       where: eq(schema.users.email, loginData.email),
@@ -132,6 +134,7 @@ export const login = async (
       loginData.password,
       user.password
     );
+    console.log("isPasswordValid=============", isPasswordValid);
 
     if (!isPasswordValid) {
       throw new ApiError(
@@ -141,12 +144,39 @@ export const login = async (
       );
     }
 
+    // Kiểm tra tài khoản đã được xác thực chưa
+    if (!user.is_verified) {
+      let otpMessage = "Tài khoản chưa được xác thực.";
+
+      // Gửi lại OTP cho tài khoản chưa xác thực
+      try {
+        await otpService.generateAndSendOtp(user.email);
+        otpMessage += " Một OTP mới đã được gửi đến email của bạn.";
+      } catch (emailError) {
+        console.error("Error sending OTP email:", emailError);
+
+        // Kiểm tra nếu là lỗi giới hạn tốc độ
+        if (emailError instanceof Error && emailError.message.includes("đã được gửi gần đây")) {
+          otpMessage += " " + emailError.message;
+        } else {
+          otpMessage += " Không thể gửi OTP, vui lòng sử dụng nút gửi lại OTP.";
+        }
+      }
+
+      throw new ApiError(
+        403,
+        "ACCOUNT_NOT_VERIFIED",
+        otpMessage
+      );
+    }
+
     // Tạo JWT token
     const token = jwt.sign(
       { id: user.id, role: user.role },
       process.env.JWT_SECRET || "your-secret-key",
       { expiresIn: "7d" }
     );
+    console.log("token=============", token);
 
     // Đặt cookie
     res.cookie("token", token, {
@@ -166,6 +196,7 @@ export const login = async (
           last_name: user.last_name,
           role: user.role,
           avatar: user.avatar,
+          is_verified: user.is_verified
         },
         token,
       },
@@ -214,9 +245,15 @@ export const getCurrentUser = async (
     // Loại bỏ thông tin nhạy cảm
     const { password, ...userWithoutPassword } = user;
 
+    // Thông báo nếu tài khoản chưa xác thực
+    let message = "Lấy thông tin người dùng thành công";
+    if (!user.is_verified) {
+      message = "Tài khoản chưa được xác thực email";
+    }
+
     return res.success(
       { user: userWithoutPassword },
-      "Lấy thông tin người dùng thành công"
+      message
     );
   } catch (error) {
     next(error);
@@ -365,6 +402,35 @@ export const updateAvatar = async (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       message: "Lỗi máy chủ khi cập nhật avatar",
+    });
+  }
+};
+
+/**
+ * @desc    Xác minh OTP và cập nhật trạng thái xác thực của người dùng
+ * @route   POST /api/v1/auth/verify-otp
+ * @access  Public
+ * @deprecated Sử dụng /verify/verify-otp thay thế
+ */
+export const verifyOtp = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    console.log("⚠️ DEPRECATED: /auth/verify-otp được gọi. Chuyển tiếp đến /verify/verify-otp");
+
+    // Import controller từ verificationController để sử dụng lại logic
+    const { verifyOtp: verifyOtpFromVerificationController } = require("../controllers/verificationController");
+
+    // Sử dụng controller từ verificationController
+    return verifyOtpFromVerificationController(req, res, next);
+
+  } catch (error) {
+    console.error("Error in deprecated auth/verify-otp route:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Không thể xác thực mã OTP, vui lòng thử lại sau",
     });
   }
 };
