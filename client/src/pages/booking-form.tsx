@@ -59,10 +59,16 @@ const mockTutor = {
   id: "t1",
   name: "Nguyễn Văn A",
   avatar: "https://i.pravatar.cc/150?img=1",
+  email: "nguyenvana@example.com",
+  location: "Hà Nội, Việt Nam",
+  verified: true,
+  birthdate: "1990-01-15",
   rating: 4.9,
   totalReviews: 143,
   experience: "5 năm",
   education: "Thạc sĩ Toán học, Đại học Quốc gia Hà Nội",
+  bio: "Tôi là giáo viên toán với hơn 5 năm kinh nghiệm giảng dạy. Tôi đam mê giúp học sinh hiểu những khái niệm phức tạp và đạt kết quả tốt trong các kỳ thi quan trọng.",
+  subjects: ["Toán", "Lý", "Hóa"],
 };
 
 const mockCourse = {
@@ -75,6 +81,7 @@ const mockCourse = {
   duration: "90 phút/buổi",
   price: 250000, // VND per session
   deliveryMode: "both", // "online", "offline" hoặc "both"
+  tags: ["Luyện thi", "THPT Quốc gia", "Toán học"],
 };
 
 // Mock available time slots - to be replaced with React Query later
@@ -141,6 +148,8 @@ type BookingInfo = {
 
 // Form schema
 const bookingFormSchema = z.object({
+  tutorId: z.string(),
+  courseId: z.string(),
   bookings: z
     .array(
       z.object({
@@ -154,7 +163,12 @@ const bookingFormSchema = z.object({
     required_error: "Vui lòng chọn hình thức học",
   }),
   location: z.string().optional(),
-  message: z.string().optional(),
+  note: z
+    .string()
+    .optional()
+    .refine((val) => !val || val.length <= 300, {
+      message: "Lời nhắn không được vượt quá 300 ký tự",
+    }),
 });
 
 type BookingFormValues = z.infer<typeof bookingFormSchema>;
@@ -190,6 +204,8 @@ export default function BookingForm() {
   const form = useForm<BookingFormValues>({
     resolver: zodResolver(bookingFormSchema),
     defaultValues: {
+      tutorId: tutorId || "",
+      courseId: courseId || "",
       bookings: [],
       mode:
         course.deliveryMode === "online"
@@ -197,7 +213,7 @@ export default function BookingForm() {
           : course.deliveryMode === "offline"
           ? "offline"
           : undefined,
-      message: "",
+      note: "",
     },
   });
 
@@ -389,9 +405,19 @@ export default function BookingForm() {
     console.log("Form data:", data);
     console.log("Selected bookings:", data.bookings);
 
+    // Format the data to match the expected structure
+    const bookingData = {
+      tutorId: data.tutorId,
+      courseId: data.courseId,
+      mode: data.mode,
+      location: data.location,
+      note: data.note,
+      bookings: data.bookings,
+    };
+
     try {
       // Here you would submit data to your API
-      // const response = await api.post("/bookings", data);
+      // const response = await api.post("/bookings", bookingData);
 
       // Show success toast
       toast({
@@ -414,12 +440,34 @@ export default function BookingForm() {
   };
 
   return (
-    <MainLayout>
-      <div className="container mx-auto py-8 px-4 md:px-6">
+    <>
+      <div className="container mx-auto pt-4 pb-8 px-4 md:px-6">
+        <nav className="flex items-center space-x-1 text-sm mb-6">
+          <a
+            href="/"
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Trang chủ
+          </a>
+          <span className="text-muted-foreground">/</span>
+          <a
+            href="/tutors"
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Gia sư
+          </a>
+          <span className="text-muted-foreground">/</span>
+          <span className="font-medium">Đặt lịch học</span>
+        </nav>
         <h1 className="text-3xl font-bold mb-2">Đặt lịch học</h1>
-        <p className="text-muted-foreground mb-8">
-          Đặt lịch học với gia sư và khóa học của bạn chọn
-        </p>
+        <div className="flex flex-wrap items-center gap-x-2 mb-8">
+          <p className="text-muted-foreground">
+            Đặt lịch học với gia sư{" "}
+            <span className="text-foreground font-medium">{tutor.name}</span>
+            cho khóa học{" "}
+            <span className="text-foreground font-medium">{course.name}</span>
+          </p>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main booking form */}
@@ -581,17 +629,24 @@ export default function BookingForm() {
                                             isSelected ? "default" : "outline"
                                           }
                                           className={cn(
-                                            "flex items-center justify-center gap-1.5 text-xs py-5",
+                                            "flex items-center justify-center gap-1.5 text-xs py-5 transition-all",
                                             isSelected
-                                              ? "bg-primary text-primary-foreground"
-                                              : "hover:bg-primary/10"
+                                              ? "bg-primary text-primary-foreground shadow-sm"
+                                              : "hover:bg-primary/10 hover:border-primary/50"
                                           )}
                                           onClick={() =>
                                             handleTimeSlotSelect(date, slot)
                                           }
                                         >
-                                          <Clock className="w-3 h-3 mr-1" />
-                                          <span className="whitespace-nowrap">
+                                          <Clock
+                                            className={cn(
+                                              "w-3 h-3 mr-1",
+                                              isSelected
+                                                ? "text-current"
+                                                : "text-muted-foreground"
+                                            )}
+                                          />
+                                          <span className="whitespace-nowrap font-medium">
                                             {slot.startTime} - {slot.endTime}
                                           </span>
                                         </Button>
@@ -609,26 +664,54 @@ export default function BookingForm() {
                           })}
                         </div>
                         <div>
-                          <p
-                            className={cn(
-                              "text-sm",
-                              selectedSessions.length !== selectedDates.length
-                                ? "text-destructive"
-                                : "text-muted-foreground"
-                            )}
-                          >
-                            {selectedSessions.length === selectedDates.length
-                              ? `Đã chọn ${selectedSessions.reduce(
-                                  (total, session) =>
-                                    total + session.timeSlots.length,
-                                  0
-                                )} khung giờ học cho ${
-                                  selectedDates.length
-                                } ngày`
-                              : `Vui lòng chọn khung giờ học cho tất cả các ngày (còn thiếu ${
-                                  selectedDates.length - selectedSessions.length
-                                } ngày)`}
-                          </p>
+                          {selectedSessions.length !== selectedDates.length ? (
+                            <div className="flex items-center p-2 bg-destructive/10 text-destructive rounded-md text-sm">
+                              <svg
+                                width="15"
+                                height="15"
+                                viewBox="0 0 15 15"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="w-4 h-4 mr-2"
+                              >
+                                <path
+                                  d="M7.49991 0.877045C3.84222 0.877045 0.877075 3.84219 0.877075 7.49988C0.877075 11.1575 3.84222 14.1227 7.49991 14.1227C11.1576 14.1227 14.1227 11.1575 14.1227 7.49988C14.1227 3.84219 11.1576 0.877045 7.49991 0.877045ZM1.82708 7.49988C1.82708 4.36686 4.36689 1.82704 7.49991 1.82704C10.6329 1.82704 13.1727 4.36686 13.1727 7.49988C13.1727 10.6329 10.6329 13.1727 7.49991 13.1727C4.36689 13.1727 1.82708 10.6329 1.82708 7.49988ZM8.24992 10.5C8.24992 10.9142 7.91413 11.25 7.49992 11.25C7.08571 11.25 6.74992 10.9142 6.74992 10.5C6.74992 10.0858 7.08571 9.75 7.49992 9.75C7.91413 9.75 8.24992 10.0858 8.24992 10.5ZM6.85358 4.89862C6.85358 4.47442 7.18936 4.13864 7.61356 4.13864C8.03776 4.13864 8.37354 4.47442 8.37354 4.89862V7.49988C8.37354 7.92408 8.03776 8.25986 7.61356 8.25986C7.18936 8.25986 6.85358 7.92408 6.85358 7.49988V4.89862Z"
+                                  fill="currentColor"
+                                  fillRule="evenodd"
+                                  clipRule="evenodd"
+                                ></path>
+                              </svg>
+                              Vui lòng chọn khung giờ học cho tất cả các ngày
+                              (còn thiếu{" "}
+                              {selectedDates.length - selectedSessions.length}{" "}
+                              ngày)
+                            </div>
+                          ) : (
+                            <p className="text-sm text-muted-foreground flex items-center">
+                              <svg
+                                width="15"
+                                height="15"
+                                viewBox="0 0 15 15"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="w-4 h-4 mr-2 text-green-600"
+                              >
+                                <path
+                                  d="M11.4669 3.72684C11.7558 3.91574 11.8369 4.30308 11.648 4.59198L7.39799 11.092C7.29783 11.2452 7.13556 11.3467 6.95402 11.3699C6.77247 11.3931 6.58989 11.3355 6.45446 11.2124L3.70446 8.71241C3.44905 8.48022 3.43023 8.08494 3.66242 7.82953C3.89461 7.57412 4.28989 7.55529 4.5453 7.78749L6.75292 9.79441L10.6018 3.90792C10.7907 3.61902 11.178 3.53795 11.4669 3.72684Z"
+                                  fill="currentColor"
+                                  fillRule="evenodd"
+                                  clipRule="evenodd"
+                                ></path>
+                              </svg>
+                              Đã chọn{" "}
+                              {selectedSessions.reduce(
+                                (total, session) =>
+                                  total + session.timeSlots.length,
+                                0
+                              )}{" "}
+                              khung giờ học cho {selectedDates.length} ngày
+                            </p>
+                          )}
                         </div>
                       </div>
                     )}
@@ -733,22 +816,29 @@ export default function BookingForm() {
                       />
                     )}
 
-                    {/* Optional message */}
+                    {/* Optional note */}
                     <FormField
                       control={form.control}
-                      name="message"
+                      name="note"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Lời nhắn (không bắt buộc)</FormLabel>
                           <FormControl>
-                            <Textarea
-                              placeholder="Nhập lời nhắn cho gia sư (nhu cầu học tập, mong muốn...)"
-                              className="resize-none min-h-[100px]"
-                              {...field}
-                            />
+                            <div className="relative">
+                              <Textarea
+                                placeholder="Nhập lời nhắn cho gia sư (nhu cầu học tập, mong muốn...)"
+                                className="resize-none min-h-[100px]"
+                                maxLength={300}
+                                {...field}
+                              />
+                              <div className="absolute bottom-2 right-2 text-xs text-muted-foreground">
+                                {field.value?.length || 0}/300
+                              </div>
+                            </div>
                           </FormControl>
                           <FormDescription>
                             Gia sư sẽ nhận được thông tin này trước buổi học
+                            (tối đa 300 ký tự)
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -798,6 +888,15 @@ export default function BookingForm() {
                       <Badge variant="outline" className="bg-primary/5">
                         {course.educationLevel}
                       </Badge>
+                      {course.tags?.map((tag, index) => (
+                        <Badge
+                          key={index}
+                          variant="outline"
+                          className="bg-secondary/20"
+                        >
+                          {tag}
+                        </Badge>
+                      ))}
                     </div>
                     <p className="text-sm text-muted-foreground">
                       {course.description}
@@ -874,12 +973,67 @@ export default function BookingForm() {
                     </p>
                   </div>
                 </div>
-                <p className="text-sm">{tutor.education}</p>
+                <div className="space-y-2">
+                  <p className="text-sm">
+                    <span className="font-medium">Email:</span> {tutor.email}
+                  </p>
+                  <p className="text-sm">
+                    <span className="font-medium">Địa điểm:</span>{" "}
+                    {tutor.location}
+                  </p>
+                  <p className="text-sm">
+                    <span className="font-medium">Ngày sinh:</span>{" "}
+                    {format(new Date(tutor.birthdate), "dd/MM/yyyy")}
+                  </p>
+                  <p className="text-sm flex items-center gap-2">
+                    <span className="font-medium">Xác minh:</span>{" "}
+                    {tutor.verified ? (
+                      <span className="inline-flex items-center bg-green-50 text-green-700 text-xs px-2 py-0.5 rounded-full">
+                        <svg
+                          className="w-3 h-3 mr-1"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                            clipRule="evenodd"
+                          ></path>
+                        </svg>
+                        Đã xác minh
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center bg-yellow-50 text-yellow-700 text-xs px-2 py-0.5 rounded-full">
+                        Chưa xác minh
+                      </span>
+                    )}
+                  </p>
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">Giới thiệu:</p>
+                    <div className="text-sm bg-muted/40 p-3 rounded-md">
+                      {tutor.bio}
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">Môn học:</p>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {tutor.subjects.map((subject, index) => (
+                        <Badge
+                          key={index}
+                          variant="secondary"
+                          className="text-xs"
+                        >
+                          {subject}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>
         </div>
       </div>
-    </MainLayout>
+    </>
   );
 }
