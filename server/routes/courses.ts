@@ -25,6 +25,13 @@ router.get(
   courseController.getOwnCourses
 );
 
+// Get a specific course by ID (public endpoint)
+router.get(
+  "/:id",
+  validateParams(schema.idSchema),
+  courseController.getCourseById
+);
+
 // Cập nhật khóa học
 router.patch(
   "/:id",
