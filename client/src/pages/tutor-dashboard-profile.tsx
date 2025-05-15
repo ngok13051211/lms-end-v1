@@ -97,7 +97,7 @@ export type AvailabilityItem = {
 
 // Form schema for tutor profile
 const tutorProfileSchema = z.object({
-  bio: z.string().min(50, "Giới thiệu phải có ít nhất 50 ký tự"),
+  bio: z.string().optional(),
 
   // Ngày sinh
   date_of_birth: z.string().optional(),
@@ -349,7 +349,7 @@ export default function TutorDashboardProfile() {
     mutationFn: async (data: z.infer<typeof tutorProfileSchema>) => {
       // Gửi tất cả dữ liệu từ form
       const profileData = {
-        bio: data.bio,
+        bio: data.bio || "", // Đảm bảo bio luôn có giá trị (trống nếu không nhập)
         date_of_birth: data.date_of_birth,
         address: data.address,
       };
@@ -386,8 +386,10 @@ export default function TutorDashboardProfile() {
   // Subject update mutation
   const updateSubjectsMutation = useMutation({
     mutationFn: async (subjectIds: string[]) => {
+      // Đảm bảo cập nhật subjects không làm mất dữ liệu bio hiện tại
       const res = await apiRequest("PATCH", `/api/v1/tutors/profile`, {
         subject_ids: subjectIds,
+        // Không gửi bio để đảm bảo giữ nguyên giá trị hiện tại trên máy chủ
       });
       return res.json();
     },
@@ -398,6 +400,8 @@ export default function TutorDashboardProfile() {
         variant: "default",
       });
       queryClient.invalidateQueries({ queryKey: [`/api/v1/tutors/profile`] });
+      // Đóng hộp thoại sau khi cập nhật thành công
+      setSubjectsDialogOpen(false);
     },
     onError: (error) => {
       toast({
@@ -1577,7 +1581,9 @@ export default function TutorDashboardProfile() {
                           {...field}
                         />
                       </FormControl>
-                      <FormDescription>Tối thiểu 50 ký tự</FormDescription>
+                      <FormDescription>
+                        Tùy chọn, bạn có thể để trống trường này
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

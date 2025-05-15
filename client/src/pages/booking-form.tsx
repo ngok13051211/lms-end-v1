@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { useRoute } from "wouter";
-import { useQueryClient } from "@tanstack/react-query";
+import { useRoute, useLocation } from "wouter";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { vi } from "date-fns/locale";
 import {
   CalendarIcon,
@@ -12,6 +12,8 @@ import {
   MapPin,
   MessageSquare,
   MonitorSmartphone,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -54,83 +56,62 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 
-// Mock data - to be replaced with React Query later
-const mockTutor = {
-  id: "t1",
-  name: "Nguyễn Văn A",
-  avatar: "https://i.pravatar.cc/150?img=1",
-  email: "nguyenvana@example.com",
-  location: "Hà Nội, Việt Nam",
-  verified: true,
-  birthdate: "1990-01-15",
-  rating: 4.9,
-  totalReviews: 143,
-  experience: "5 năm",
-  education: "Thạc sĩ Toán học, Đại học Quốc gia Hà Nội",
-  bio: "Tôi là giáo viên toán với hơn 5 năm kinh nghiệm giảng dạy. Tôi đam mê giúp học sinh hiểu những khái niệm phức tạp và đạt kết quả tốt trong các kỳ thi quan trọng.",
-  subjects: ["Toán", "Lý", "Hóa"],
-};
+// API types
+interface Tutor {
+  id: string;
+  fullName: string;
+  avatar: string;
+  email: string;
+  address: string;
+  verified: boolean;
+  birthdate: string;
+  rating: number;
+  totalReviews: number;
+  experience: string;
+  education: string;
+  bio: string;
+  subjects: (Subject | string)[];
+}
 
-const mockCourse = {
-  id: "c1",
-  name: "Luyện thi THPT Quốc gia môn Toán",
-  subject: "Toán",
-  educationLevel: "THPT",
-  description:
-    "Khóa học cung cấp kiến thức, kỹ năng và phương pháp giải nhanh trong kỳ thi THPT Quốc gia.",
-  duration: "90 phút/buổi",
-  price: 250000, // VND per session
-  deliveryMode: "both", // "online", "offline" hoặc "both"
-  tags: ["Luyện thi", "THPT Quốc gia", "Toán học"],
-};
+interface Subject {
+  id: number;
+  name: string;
+  description?: string;
+  icon?: string;
+}
 
-// Mock available time slots - to be replaced with React Query later
-const mockTimeSlots = [
-  {
-    date: new Date(2025, 4, 15),
-    slots: [
-      { startTime: "08:00", endTime: "10:00" },
-      { startTime: "10:30", endTime: "12:00" },
-      { startTime: "15:00", endTime: "17:00" },
-    ],
-  },
-  {
-    date: new Date(2025, 4, 16),
-    slots: [
-      { startTime: "09:00", endTime: "10:30" },
-      { startTime: "14:00", endTime: "16:00" },
-    ],
-  },
-  {
-    date: new Date(2025, 4, 17),
-    slots: [
-      { startTime: "08:00", endTime: "09:30" },
-      { startTime: "13:00", endTime: "14:30" },
-      { startTime: "15:00", endTime: "16:30" },
-      { startTime: "17:00", endTime: "18:30" },
-    ],
-  },
-  {
-    date: new Date(2025, 4, 19),
-    slots: [
-      { startTime: "10:00", endTime: "12:00" },
-      { startTime: "15:00", endTime: "17:00" },
-    ],
-  },
-  {
-    date: new Date(2025, 4, 20),
-    slots: [
-      { startTime: "09:00", endTime: "11:00" },
-      { startTime: "11:30", endTime: "13:30" },
-      { startTime: "14:00", endTime: "16:00" },
-    ],
-  },
-];
+interface EducationLevel {
+  id: number;
+  name: string;
+  level?: string;
+}
+
+interface Course {
+  id: string;
+  title: string;
+  subject: Subject | string;
+  educationLevel: EducationLevel | string;
+  description: string;
+  duration: string;
+  pricePerSession: number;
+  deliveryModes: "online" | "offline" | "both";
+  tags: string[];
+}
+
+interface ScheduleTimeSlot {
+  startTime: string; // Format HH:mm (example: "08:00")
+  endTime: string; // Format HH:mm (example: "10:00")
+}
+
+interface ScheduleDay {
+  date: string; // Format: "2025-05-16"
+  timeSlots: ScheduleTimeSlot[];
+}
 
 // Định nghĩa kiểu dữ liệu cho khung giờ
 type TimeSlot = {
-  startTime: string;
-  endTime: string;
+  startTime: string; // Format HH:mm (example: "08:00")
+  endTime: string; // Format HH:mm (example: "10:00")
 };
 
 // Custom type để lưu trữ thông tin về các buổi học đã chọn
@@ -141,37 +122,118 @@ type SelectedSessionInfo = {
 
 // Định nghĩa kiểu booking để trả về API
 type BookingInfo = {
-  date: string; // "2025-05-16"
-  startTime: string; // "08:00"
-  endTime: string; // "10:00"
+  date: string; // Format YYYY-MM-DD (example: "2025-05-16")
+  startTime: string; // Format HH:mm (example: "08:00")
+  endTime: string; // Format HH:mm (example: "10:00")
 };
 
 // Form schema
-const bookingFormSchema = z.object({
-  tutorId: z.string(),
-  courseId: z.string(),
-  bookings: z
-    .array(
-      z.object({
-        date: z.string(),
-        startTime: z.string(),
-        endTime: z.string(),
-      })
-    )
-    .min(1, { message: "Vui lòng chọn ít nhất một buổi học" }),
-  mode: z.enum(["online", "offline"], {
-    required_error: "Vui lòng chọn hình thức học",
-  }),
-  location: z.string().optional(),
-  note: z
-    .string()
-    .optional()
-    .refine((val) => !val || val.length <= 300, {
-      message: "Lời nhắn không được vượt quá 300 ký tự",
+const bookingFormSchema = z
+  .object({
+    tutorId: z.string({
+      required_error: "Vui lòng chọn gia sư",
     }),
-});
+    courseId: z.string({
+      required_error: "Vui lòng chọn khóa học",
+    }),
+    bookings: z
+      .array(
+        z
+          .object({
+            date: z
+              .string({
+                required_error: "Vui lòng chọn ngày học",
+              })
+              .regex(
+                /^\d{4}-\d{2}-\d{2}$/,
+                "Định dạng ngày phải là YYYY-MM-DD"
+              ),
+            startTime: z
+              .string({
+                required_error: "Vui lòng chọn giờ bắt đầu",
+              })
+              .regex(
+                /^([01]\d|2[0-3]):([0-5]\d)$/,
+                "Định dạng giờ phải là HH:mm"
+              ),
+            endTime: z
+              .string({
+                required_error: "Vui lòng chọn giờ kết thúc",
+              })
+              .regex(
+                /^([01]\d|2[0-3]):([0-5]\d)$/,
+                "Định dạng giờ phải là HH:mm"
+              ),
+          })
+          .refine(
+            (data) => {
+              // Convert time strings to comparable values
+              const [startHour, startMinute] = data.startTime
+                .split(":")
+                .map(Number);
+              const [endHour, endMinute] = data.endTime.split(":").map(Number);
+
+              // Compare times to ensure end time is after start time
+              if (endHour > startHour) return true;
+              if (endHour === startHour) return endMinute > startMinute;
+              return false;
+            },
+            {
+              message: "Thời gian kết thúc phải sau thời gian bắt đầu",
+              path: ["endTime"],
+            }
+          )
+      )
+      .min(1, { message: "Vui lòng chọn ít nhất một buổi học" }),
+    mode: z.enum(["online", "offline"], {
+      required_error: "Vui lòng chọn hình thức học",
+    }),
+    location: z.string().optional(),
+    note: z
+      .string()
+      .max(300, "Lời nhắn không được vượt quá 300 ký tự")
+      .optional(),
+  })
+  .refine(
+    (data) => {
+      // Validate that if mode is offline, location is provided
+      if (data.mode === "offline") {
+        return !!data.location && data.location.trim() !== "";
+      }
+      return true;
+    },
+    {
+      message: "Vui lòng nhập địa điểm học khi chọn hình thức học trực tiếp",
+      path: ["location"],
+    }
+  );
 
 type BookingFormValues = z.infer<typeof bookingFormSchema>;
+
+// API functions to fetch data from backend
+const fetchTutor = async (tutorId: string): Promise<Tutor> => {
+  const response = await fetch(`/api/v1/tutors/${tutorId}`);
+  if (!response.ok) {
+    throw new Error(`Error fetching tutor data: ${response.statusText}`);
+  }
+  return response.json();
+};
+
+const fetchCourse = async (courseId: string): Promise<Course> => {
+  const response = await fetch(`/api/v1/courses/${courseId}`);
+  if (!response.ok) {
+    throw new Error(`Error fetching course data: ${response.statusText}`);
+  }
+  return response.json();
+};
+
+const fetchTutorSchedule = async (tutorId: string): Promise<ScheduleDay[]> => {
+  const response = await fetch(`/api/v1/schedules/${tutorId}`);
+  if (!response.ok) {
+    throw new Error(`Error fetching schedule data: ${response.statusText}`);
+  }
+  return response.json();
+};
 
 export default function BookingForm() {
   const [, params] = useRoute("/book/:tutorId");
@@ -191,43 +253,85 @@ export default function BookingForm() {
   const courseId = new URLSearchParams(window.location.search).get("course");
   const { toast } = useToast();
 
-  // React Query hooks would go here later
-  // const { data: tutor } = useTutor(tutorId);
-  // const { data: course } = useCourse(courseId);
-  // const { data: availability } = useTutorAvailability(tutorId);
+  // React Query hooks with proper error handling and loading states
+  const {
+    data: tutor,
+    isLoading: tutorLoading,
+    error: tutorError,
+  } = useQuery<Tutor, Error>({
+    queryKey: ["tutor", tutorId],
+    queryFn: () =>
+      tutorId ? fetchTutor(tutorId) : Promise.reject("No tutor ID provided"),
+    enabled: !!tutorId,
+  });
 
-  // For now, using mock data
-  const tutor = mockTutor;
-  const course = mockCourse;
+  const {
+    data: course,
+    isLoading: courseLoading,
+    error: courseError,
+  } = useQuery<Course, Error>({
+    queryKey: ["course", courseId],
+    queryFn: () =>
+      courseId
+        ? fetchCourse(courseId)
+        : Promise.reject("No course ID provided"),
+    enabled: !!courseId,
+  });
 
-  // Setup form
+  const {
+    data: availability,
+    isLoading: scheduleLoading,
+    error: scheduleError,
+  } = useQuery<ScheduleDay[], Error>({
+    queryKey: ["schedule", tutorId],
+    queryFn: () =>
+      tutorId
+        ? fetchTutorSchedule(tutorId)
+        : Promise.reject("No tutor ID provided"),
+    enabled: !!tutorId,
+  });
+
+  // Setup form with default values
   const form = useForm<BookingFormValues>({
     resolver: zodResolver(bookingFormSchema),
     defaultValues: {
       tutorId: tutorId || "",
       courseId: courseId || "",
       bookings: [],
-      mode:
-        course.deliveryMode === "online"
-          ? "online"
-          : course.deliveryMode === "offline"
-          ? "offline"
-          : undefined,
+      mode: undefined, // Will be updated when course data is available
       note: "",
     },
   });
 
-  const watchMode = form.watch("mode");
+  useEffect(() => {
+    if (course?.deliveryModes) {
+      const mode =
+        course.deliveryModes === "online"
+          ? "online"
+          : course.deliveryModes === "offline"
+          ? "offline"
+          : null;
 
+      if (mode) {
+        form.setValue("mode", mode);
+      }
+    }
+  }, [course, form]);
+
+  const watchMode = form.watch("mode");
   // Khởi tạo availableTimeSlots khi component mount
   useEffect(() => {
-    const slotsMap: Record<string, TimeSlot[]> = {};
-    mockTimeSlots.forEach((item) => {
-      const dateKey = format(item.date, "yyyy-MM-dd");
-      slotsMap[dateKey] = item.slots;
-    });
-    setAvailableTimeSlotsMap(slotsMap);
-  }, []);
+    if (availability && Array.isArray(availability)) {
+      const slotsMap: Record<string, TimeSlot[]> = {};
+      availability.forEach((item) => {
+        if (item && item.date) {
+          const dateKey = format(parseISO(item.date), "yyyy-MM-dd");
+          slotsMap[dateKey] = item.timeSlots || [];
+        }
+      });
+      setAvailableTimeSlotsMap(slotsMap);
+    }
+  }, [availability]);
 
   // Chuyển đổi selectedSessions sang định dạng bookings cho form
   useEffect(() => {
@@ -244,6 +348,9 @@ export default function BookingForm() {
       shouldValidate: true,
     });
   }, [selectedSessions, form]);
+  // Add indicator for schedule data status
+  const hasAvailabilityData =
+    availability && Array.isArray(availability) && availability.length > 0;
 
   // Handle date selection in calendar
   const handleDateSelect = (date: Date | undefined) => {
@@ -386,22 +493,11 @@ export default function BookingForm() {
       prev.filter((date) => format(date, "yyyy-MM-dd") !== dateStr)
     );
   };
-
-  // Form submission with custom validation
+  // Form submission handling
   const onSubmit = async (data: BookingFormValues) => {
-    // Custom validation for location when mode is offline
-    if (
-      data.mode === "offline" &&
-      (!data.location || data.location.trim() === "")
-    ) {
-      form.setError("location", {
-        type: "manual",
-        message: "Vui lòng nhập địa điểm học khi chọn hình thức học trực tiếp",
-      });
-      return;
-    }
+    // Form is already validated through the Zod schema, so we can proceed directly
 
-    // If all validations pass, proceed with form submission
+    // If all validations passed, proceed with form submission
     console.log("Form data:", data);
     console.log("Selected bookings:", data.bookings);
 
@@ -414,10 +510,24 @@ export default function BookingForm() {
       note: data.note,
       bookings: data.bookings,
     };
-
     try {
-      // Here you would submit data to your API
-      // const response = await api.post("/bookings", bookingData);
+      // Set loading state
+      form.formState.isSubmitting = true;
+
+      // Import apiRequest from queryClient
+      const { apiRequest } = await import("@/lib/queryClient");
+
+      // Submit data to API using the utility function for consistent error handling
+      const response = await apiRequest(
+        "POST",
+        "/api/v1/bookings",
+        bookingData
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Có lỗi xảy ra khi đặt lịch");
+      }
 
       // Show success toast
       toast({
@@ -426,16 +536,21 @@ export default function BookingForm() {
           "Yêu cầu của bạn đã được gửi tới gia sư. Vui lòng chờ xác nhận.",
       });
 
-      // Redirect to dashboard or other page
-      // navigate("/student-dashboard");
-    } catch (error) {
+      // Redirect to student dashboard after short delay
+      setTimeout(() => {
+        window.location.href = "/student-dashboard";
+      }, 2000);
+    } catch (error: any) {
       // Show error toast
       toast({
         title: "Đặt lịch thất bại",
-        description: "Có lỗi xảy ra khi đặt lịch. Vui lòng thử lại sau.",
+        description:
+          error.message || "Có lỗi xảy ra khi đặt lịch. Vui lòng thử lại sau.",
         variant: "destructive",
       });
       console.error("Booking error:", error);
+    } finally {
+      form.formState.isSubmitting = false;
     }
   };
 
@@ -461,12 +576,28 @@ export default function BookingForm() {
         </nav>
         <h1 className="text-3xl font-bold mb-2">Đặt lịch học</h1>
         <div className="flex flex-wrap items-center gap-x-2 mb-8">
-          <p className="text-muted-foreground">
-            Đặt lịch học với gia sư{" "}
-            <span className="text-foreground font-medium">{tutor.name}</span>
-            cho khóa học{" "}
-            <span className="text-foreground font-medium">{course.name}</span>
-          </p>
+          {tutorLoading || courseLoading ? (
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <p className="text-muted-foreground">Đang tải thông tin...</p>
+            </div>
+          ) : tutorError || courseError ? (
+            <div className="flex items-center gap-2 text-destructive">
+              <AlertCircle className="h-4 w-4" />
+              <p>Không thể tải thông tin. Vui lòng thử lại sau.</p>
+            </div>
+          ) : (
+            <p className="text-muted-foreground">
+              Đặt lịch học với gia sư{" "}
+              <span className="text-foreground font-medium">
+                {tutor?.fullName}
+              </span>
+              cho khóa học{" "}
+              <span className="text-foreground font-medium">
+                {course?.title}
+              </span>
+            </p>
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -485,13 +616,19 @@ export default function BookingForm() {
                     onSubmit={form.handleSubmit(onSubmit)}
                     className="space-y-6"
                   >
+                    {" "}
                     {/* Date selection */}
                     <FormField
                       control={form.control}
                       name="bookings"
                       render={() => (
                         <FormItem className="flex flex-col">
-                          <FormLabel>Chọn ngày học</FormLabel>
+                          <FormLabel className="flex items-center gap-2">
+                            Chọn ngày học
+                            {scheduleLoading && (
+                              <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                            )}
+                          </FormLabel>
                           <Popover>
                             <PopoverTrigger asChild>
                               <FormControl>
@@ -502,6 +639,7 @@ export default function BookingForm() {
                                     selectedDates.length === 0 &&
                                       "text-muted-foreground"
                                   )}
+                                  disabled={scheduleLoading || !!scheduleError}
                                 >
                                   {selectedDates.length > 0 ? (
                                     <span>
@@ -557,16 +695,29 @@ export default function BookingForm() {
                                 fromDate={new Date()}
                               />
                             </PopoverContent>
-                          </Popover>
+                          </Popover>{" "}
                           <FormDescription>
-                            Chọn một hoặc nhiều ngày có lịch trống (hiển thị màu
-                            xanh nhạt)
+                            {scheduleError ? (
+                              <div className="text-destructive flex items-center gap-1">
+                                <AlertCircle className="h-3 w-3" />
+                                <span>Không thể tải lịch dạy</span>
+                              </div>
+                            ) : !hasAvailabilityData && !scheduleLoading ? (
+                              <div className="text-amber-600 flex items-center gap-1">
+                                <AlertCircle className="h-3 w-3" />
+                                <span>Gia sư chưa cập nhật lịch dạy</span>
+                              </div>
+                            ) : (
+                              <span>
+                                Chọn một hoặc nhiều ngày có lịch trống (hiển thị
+                                màu xanh nhạt)
+                              </span>
+                            )}
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-
                     {/* Selected sessions display */}
                     {selectedDates.length > 0 && (
                       <div className="space-y-4">
@@ -715,7 +866,6 @@ export default function BookingForm() {
                         </div>
                       </div>
                     )}
-
                     {selectedDates.length === 0 && (
                       <div className="rounded-md bg-muted/50 border border-border/50 p-4 text-center">
                         <p className="text-sm text-muted-foreground">
@@ -723,9 +873,8 @@ export default function BookingForm() {
                         </p>
                       </div>
                     )}
-
                     {/* Learning mode */}
-                    {course.deliveryMode && (
+                    {course?.deliveryModes && (
                       <FormField
                         control={form.control}
                         name="mode"
@@ -738,8 +887,8 @@ export default function BookingForm() {
                                 value={field.value}
                                 className="flex flex-col sm:flex-row gap-3"
                               >
-                                {(course.deliveryMode === "online" ||
-                                  course.deliveryMode === "both") && (
+                                {(course.deliveryModes === "online" ||
+                                  course.deliveryModes === "both") && (
                                   <div className="flex items-center space-x-2 border rounded-md p-3 cursor-pointer hover:bg-secondary/50 transition-colors">
                                     <RadioGroupItem
                                       value="online"
@@ -759,8 +908,8 @@ export default function BookingForm() {
                                     </div>
                                   </div>
                                 )}
-                                {(course.deliveryMode === "offline" ||
-                                  course.deliveryMode === "both") && (
+                                {(course.deliveryModes === "offline" ||
+                                  course.deliveryModes === "both") && (
                                   <div className="flex items-center space-x-2 border rounded-md p-3 cursor-pointer hover:bg-secondary/50 transition-colors">
                                     <RadioGroupItem
                                       value="offline"
@@ -787,7 +936,6 @@ export default function BookingForm() {
                         )}
                       />
                     )}
-
                     {/* Location input for offline mode */}
                     {watchMode === "offline" && (
                       <FormField
@@ -815,7 +963,6 @@ export default function BookingForm() {
                         )}
                       />
                     )}
-
                     {/* Optional note */}
                     <FormField
                       control={form.control}
@@ -862,7 +1009,14 @@ export default function BookingForm() {
                     !form.formState.isValid || form.formState.isSubmitting
                   }
                 >
-                  Xác nhận đặt lịch
+                  {form.formState.isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Đang xử lý...
+                    </>
+                  ) : (
+                    "Xác nhận đặt lịch"
+                  )}
                 </Button>
               </CardFooter>
             </Card>
@@ -876,67 +1030,88 @@ export default function BookingForm() {
                 <CardTitle className="text-lg">Thông tin khóa học</CardTitle>
               </CardHeader>
               <CardContent className="pb-6">
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="font-medium text-base md:text-lg mb-1">
-                      {course.name}
-                    </h3>
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      <Badge variant="outline" className="bg-primary/5">
-                        {course.subject}
-                      </Badge>
-                      <Badge variant="outline" className="bg-primary/5">
-                        {course.educationLevel}
-                      </Badge>
-                      {course.tags?.map((tag, index) => (
-                        <Badge
-                          key={index}
-                          variant="outline"
-                          className="bg-secondary/20"
-                        >
-                          {tag}
+                {courseLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary/70" />
+                  </div>
+                ) : courseError ? (
+                  <div className="flex flex-col items-center justify-center py-8 gap-2 text-destructive">
+                    <AlertCircle className="h-8 w-8" />
+                    <p>Không thể tải thông tin khóa học</p>
+                  </div>
+                ) : course ? (
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="font-medium text-base md:text-lg mb-1">
+                        {course.title}
+                      </h3>{" "}
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        <Badge variant="outline" className="bg-primary/5">
+                          {typeof course.subject === "object" &&
+                          course.subject !== null
+                            ? course.subject.name
+                            : course.subject}
+                        </Badge>{" "}
+                        <Badge variant="outline" className="bg-primary/5">
+                          {typeof course.educationLevel === "object" &&
+                          course.educationLevel !== null
+                            ? course.educationLevel.name
+                            : course.educationLevel}
                         </Badge>
-                      ))}
+                        {course.tags?.map((tag, index) => (
+                          <Badge
+                            key={index}
+                            variant="outline"
+                            className="bg-secondary/20"
+                          >
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {course.description}
+                      </p>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      {course.description}
-                    </p>
+                    <Separator />
+                    <div className="grid gap-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm">Thời lượng:</span>
+                        <span className="font-medium">{course.duration}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm">Học phí:</span>
+                        <span className="font-medium">
+                          {new Intl.NumberFormat("vi-VN", {
+                            style: "currency",
+                            currency: "VND",
+                          }).format(course.pricePerSession)}
+                          /buổi
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm">Hình thức:</span>
+                        <span className="flex items-center gap-2">
+                          {(course.deliveryModes === "online" ||
+                            course.deliveryModes === "both") && (
+                            <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+                              Online
+                            </span>
+                          )}
+                          {(course.deliveryModes === "offline" ||
+                            course.deliveryModes === "both") && (
+                            <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full">
+                              Offline
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <Separator />
-                  <div className="grid gap-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Thời lượng:</span>
-                      <span className="font-medium">{course.duration}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Học phí:</span>
-                      <span className="font-medium">
-                        {new Intl.NumberFormat("vi-VN", {
-                          style: "currency",
-                          currency: "VND",
-                        }).format(course.price)}
-                        /buổi
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Hình thức:</span>
-                      <span className="flex items-center gap-2">
-                        {(course.deliveryMode === "online" ||
-                          course.deliveryMode === "both") && (
-                          <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
-                            Online
-                          </span>
-                        )}
-                        {(course.deliveryMode === "offline" ||
-                          course.deliveryMode === "both") && (
-                          <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full">
-                            Offline
-                          </span>
-                        )}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+                ) : (
+                  <p className="text-muted-foreground text-center py-4">
+                    Không có dữ liệu khóa học
+                  </p>
+                )}
               </CardContent>
             </Card>
 
@@ -946,89 +1121,114 @@ export default function BookingForm() {
                 <CardTitle className="text-lg">Thông tin gia sư</CardTitle>
               </CardHeader>
               <CardContent className="pb-6">
-                <div className="flex items-start gap-3 mb-4">
-                  <Avatar className="h-16 w-16">
-                    <AvatarImage src={tutor.avatar} alt={tutor.name} />
-                    <AvatarFallback>
-                      {tutor.name.split(" ").pop()?.charAt(0) ||
-                        tutor.name.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <h3 className="font-medium text-base">{tutor.name}</h3>
-                    <div className="flex items-center gap-1 my-1">
-                      <span className="text-sm font-medium text-amber-500">
-                        {tutor.rating}
-                      </span>
-                      <span className="text-amber-500 flex">
-                        {"★".repeat(Math.round(tutor.rating))}
-                        {"☆".repeat(5 - Math.round(tutor.rating))}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        ({tutor.totalReviews} đánh giá)
-                      </span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {tutor.experience} kinh nghiệm giảng dạy
-                    </p>
+                {tutorLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary/70" />
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <p className="text-sm">
-                    <span className="font-medium">Email:</span> {tutor.email}
-                  </p>
-                  <p className="text-sm">
-                    <span className="font-medium">Địa điểm:</span>{" "}
-                    {tutor.location}
-                  </p>
-                  <p className="text-sm">
-                    <span className="font-medium">Ngày sinh:</span>{" "}
-                    {format(new Date(tutor.birthdate), "dd/MM/yyyy")}
-                  </p>
-                  <p className="text-sm flex items-center gap-2">
-                    <span className="font-medium">Xác minh:</span>{" "}
-                    {tutor.verified ? (
-                      <span className="inline-flex items-center bg-green-50 text-green-700 text-xs px-2 py-0.5 rounded-full">
-                        <svg
-                          className="w-3 h-3 mr-1"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                            clipRule="evenodd"
-                          ></path>
-                        </svg>
-                        Đã xác minh
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center bg-yellow-50 text-yellow-700 text-xs px-2 py-0.5 rounded-full">
-                        Chưa xác minh
-                      </span>
-                    )}
-                  </p>
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium">Giới thiệu:</p>
-                    <div className="text-sm bg-muted/40 p-3 rounded-md">
-                      {tutor.bio}
-                    </div>
+                ) : tutorError ? (
+                  <div className="flex flex-col items-center justify-center py-8 gap-2 text-destructive">
+                    <AlertCircle className="h-8 w-8" />
+                    <p>Không thể tải thông tin gia sư</p>
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium">Môn học:</p>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {tutor.subjects.map((subject, index) => (
-                        <Badge
-                          key={index}
-                          variant="secondary"
-                          className="text-xs"
-                        >
-                          {subject}
-                        </Badge>
-                      ))}
+                ) : tutor ? (
+                  <>
+                    <div className="flex items-start gap-3 mb-4">
+                      <Avatar className="h-16 w-16">
+                        <AvatarImage src={tutor.avatar} alt={tutor.fullName} />
+                        <AvatarFallback>
+                          {tutor.fullName
+                            ? tutor.fullName.split(" ").pop()?.charAt(0) ||
+                              tutor.fullName.charAt(0)
+                            : "?"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <h3 className="font-medium text-base">
+                          {tutor.fullName}
+                        </h3>
+                        <div className="flex items-center gap-1 my-1">
+                          <span className="text-sm font-medium text-amber-500">
+                            {tutor.rating}
+                          </span>
+                          <span className="text-amber-500 flex">
+                            {"★".repeat(Math.round(tutor.rating || 0))}
+                            {"☆".repeat(5 - Math.round(tutor.rating || 0))}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            ({tutor.totalReviews} đánh giá)
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {tutor.experience} kinh nghiệm giảng dạy
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                </div>
+                    <div className="space-y-2">
+                      <p className="text-sm">
+                        <span className="font-medium">Email:</span>{" "}
+                        {tutor.email}
+                      </p>
+                      <p className="text-sm">
+                        <span className="font-medium">Địa điểm:</span>{" "}
+                        {tutor.address}
+                      </p>
+                      <p className="text-sm">
+                        <span className="font-medium">Ngày sinh:</span>{" "}
+                        {tutor.birthdate &&
+                          format(new Date(tutor.birthdate), "dd/MM/yyyy")}
+                      </p>
+                      <p className="text-sm flex items-center gap-2">
+                        <span className="font-medium">Xác minh:</span>{" "}
+                        {tutor.verified ? (
+                          <span className="inline-flex items-center bg-green-50 text-green-700 text-xs px-2 py-0.5 rounded-full">
+                            <svg
+                              className="w-3 h-3 mr-1"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                clipRule="evenodd"
+                              ></path>
+                            </svg>
+                            Đã xác minh
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center bg-yellow-50 text-yellow-700 text-xs px-2 py-0.5 rounded-full">
+                            Chưa xác minh
+                          </span>
+                        )}
+                      </p>
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">Giới thiệu:</p>
+                        <div className="text-sm bg-muted/40 p-3 rounded-md">
+                          {tutor.bio}
+                        </div>
+                      </div>{" "}
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">Môn học:</p>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {tutor.subjects.map((subject, index) => (
+                            <Badge
+                              key={index}
+                              variant="secondary"
+                              className="text-xs"
+                            >
+                              {typeof subject === "object" && subject !== null
+                                ? subject.name
+                                : subject}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-muted-foreground text-center py-4">
+                    Không có dữ liệu gia sư
+                  </p>
+                )}
               </CardContent>
             </Card>
           </div>

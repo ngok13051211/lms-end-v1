@@ -1056,7 +1056,8 @@ export const updateTutorProfile = async (req: Request, res: Response) => {
 
     // Đơn giản hóa cấu trúc dữ liệu - cập nhật thêm các trường mới
     const updateData = {
-      bio: req.body.bio !== undefined ? req.body.bio : existingProfile.bio,
+      bio:
+        req.body.bio !== undefined ? req.body.bio : existingProfile.bio || "", // Cho phép bio là chuỗi rỗng
       date_of_birth:
         req.body.date_of_birth !== undefined
           ? req.body.date_of_birth

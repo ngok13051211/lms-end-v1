@@ -31,7 +31,7 @@ const register = async (userData: any): Promise<User> => {
   // Store token in localStorage when registering
   if (data.token) {
     localStorage.setItem("token", data.token);
-    console.log("Token saved after registration:", data.token);
+    // console.log("Token saved after registration:", data.token);
   }
 
   return data.user;
@@ -56,7 +56,7 @@ const login = async (userData: {
   }
 
   const data = await response.json();
-  console.log("Login response (raw):", data);
+  // console.log("Login response (raw):", data);
 
   // Xử lý cấu trúc phản hồi từ server
   let user, token;
@@ -82,7 +82,7 @@ const login = async (userData: {
   // Lưu token
   if (token) {
     localStorage.setItem("token", token);
-    console.log("Token saved:", token);
+    // console.log("Token saved:", token);
   } else {
     console.warn("No token received in login response");
   }

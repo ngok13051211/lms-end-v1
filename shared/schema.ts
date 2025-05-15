@@ -36,7 +36,7 @@ export const tutorProfiles = pgTable("tutor_profiles", {
   user_id: integer("user_id")
     .notNull()
     .references(() => users.id),
-  bio: text("bio").notNull(),
+  bio: text("bio"),
   // Ngày sinh
   date_of_birth: text("date_of_birth"),
   // Địa chỉ
@@ -604,7 +604,7 @@ export const tutorProfileSelectSchema = createSelectSchema(tutorProfiles);
 
 // Schema cho tạo/cập nhật hồ sơ gia sư
 export const tutorProfileSchema = z.object({
-  bio: z.string().min(50, "Giới thiệu phải có ít nhất 50 ký tự"),
+  bio: z.string().optional(),
   date_of_birth: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Định dạng ngày sinh phải là YYYY-MM-DD")
