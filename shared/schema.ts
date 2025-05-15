@@ -216,8 +216,8 @@ export const subjectEducationLevels = pgTable("subject_education_levels", {
   created_at: timestamp("created_at").defaultNow().notNull(),
 });
 
-// Bảng đặt lịch (bookings)
-export const bookings = pgTable("bookings", {
+// Bảng yêu cầu đặt lịch (booking_requests)
+export const bookingRequests = pgTable("booking_requests", {
   id: serial("id").primaryKey(),
   student_id: integer("student_id")
     .notNull()
@@ -227,12 +227,12 @@ export const bookings = pgTable("bookings", {
     .references(() => tutorProfiles.id),
   course_id: integer("course_id").references(() => courses.id),
 
-  // Thông tin lịch học
+  // Thông tin chung về yêu cầu đặt lịch
   title: text("title").notNull(),
   description: text("description"),
-  start_time: timestamp("start_time").notNull(),
-  end_time: timestamp("end_time").notNull(),
+  mode: text("mode").notNull(), // "online", "offline"
   location: text("location"), // Địa điểm nếu dạy trực tiếp
+  note: text("note"), // Ghi chú từ học sinh
   meeting_url: text("meeting_url"), // URL nếu dạy trực tuyến
 
   // Thông tin thanh toán
@@ -240,8 +240,29 @@ export const bookings = pgTable("bookings", {
   total_hours: decimal("total_hours", { precision: 5, scale: 2 }).notNull(),
   total_amount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
 
-  // Trạng thái đặt lịch
+  // Trạng thái yêu cầu
   status: text("status").notNull().default("pending"), // pending, confirmed, completed, cancelled, rejected
+  rejection_reason: text("rejection_reason"),
+
+  // Timestamps
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Bảng buổi học (booking_sessions)
+export const bookingSessions = pgTable("booking_sessions", {
+  id: serial("id").primaryKey(),
+  request_id: integer("request_id")
+    .notNull()
+    .references(() => bookingRequests.id),
+
+  // Thông tin lịch học
+  date: date("date").notNull(), // Ngày học (YYYY-MM-DD)
+  start_time: time("start_time").notNull(), // Thời gian bắt đầu (HH:MM)
+  end_time: time("end_time").notNull(), // Thời gian kết thúc (HH:MM)
+
+  // Trạng thái buổi học
+  status: text("status").notNull().default("pending"), // pending, confirmed, completed, cancelled
 
   // Timestamps
   created_at: timestamp("created_at").defaultNow().notNull(),
@@ -251,9 +272,9 @@ export const bookings = pgTable("bookings", {
 // Bảng thanh toán (payments)
 export const payments = pgTable("payments", {
   id: serial("id").primaryKey(),
-  booking_id: integer("booking_id")
+  request_id: integer("request_id")
     .notNull()
-    .references(() => bookings.id),
+    .references(() => bookingRequests.id),
   transaction_id: text("transaction_id"), // ID giao dịch từ VNPay
 
   // Thông tin thanh toán
@@ -284,9 +305,9 @@ export const payments = pgTable("payments", {
 // Bảng ghi chú và đánh giá buổi học (session_notes)
 export const sessionNotes = pgTable("session_notes", {
   id: serial("id").primaryKey(),
-  booking_id: integer("booking_id")
+  session_id: integer("session_id")
     .notNull()
-    .references(() => bookings.id),
+    .references(() => bookingSessions.id),
 
   // Ghi chú của gia sư
   tutor_notes: text("tutor_notes"),
@@ -499,42 +520,56 @@ export const reviewsRelations = relations(reviews, ({ one }) => ({
   }),
 }));
 
-export const bookingsRelations = relations(bookings, ({ one }) => ({
-  student: one(users, {
-    fields: [bookings.student_id],
-    references: [users.id],
-  }),
-  tutor: one(tutorProfiles, {
-    fields: [bookings.tutor_id],
-    references: [tutorProfiles.id],
-  }),
-  course: one(courses, {
-    fields: [bookings.course_id],
-    references: [courses.id],
-  }),
-  payment: one(payments, {
-    fields: [bookings.id],
-    references: [payments.booking_id],
-  }),
-  sessionNote: one(sessionNotes, {
-    fields: [bookings.id],
-    references: [sessionNotes.booking_id],
-  }),
-}));
+export const bookingRequestsRelations = relations(
+  bookingRequests,
+  ({ one, many }) => ({
+    student: one(users, {
+      fields: [bookingRequests.student_id],
+      references: [users.id],
+    }),
+    tutor: one(tutorProfiles, {
+      fields: [bookingRequests.tutor_id],
+      references: [tutorProfiles.id],
+    }),
+    course: one(courses, {
+      fields: [bookingRequests.course_id],
+      references: [courses.id],
+    }),
+    payment: one(payments, {
+      fields: [bookingRequests.id],
+      references: [payments.request_id],
+    }),
+    sessions: many(bookingSessions),
+  })
+);
+
+export const bookingSessionsRelations = relations(
+  bookingSessions,
+  ({ one, many }) => ({
+    request: one(bookingRequests, {
+      fields: [bookingSessions.request_id],
+      references: [bookingRequests.id],
+    }),
+    sessionNote: one(sessionNotes, {
+      fields: [bookingSessions.id],
+      references: [sessionNotes.session_id],
+    }),
+  })
+);
 
 export const paymentsRelations = relations(payments, ({ one }) => ({
-  booking: one(bookings, {
-    fields: [payments.booking_id],
-    references: [bookings.id],
+  request: one(bookingRequests, {
+    fields: [payments.request_id],
+    references: [bookingRequests.id],
   }),
   payer: one(users, { fields: [payments.payer_id], references: [users.id] }),
   payee: one(users, { fields: [payments.payee_id], references: [users.id] }),
 }));
 
 export const sessionNotesRelations = relations(sessionNotes, ({ one }) => ({
-  booking: one(bookings, {
-    fields: [sessionNotes.booking_id],
-    references: [bookings.id],
+  session: one(bookingSessions, {
+    fields: [sessionNotes.session_id],
+    references: [bookingSessions.id],
   }),
 }));
 
@@ -637,28 +672,43 @@ export const subjectEducationLevelSelectSchema = createSelectSchema(
   subjectEducationLevels
 );
 
-export const bookingInsertSchema = createInsertSchema(bookings);
-// Bổ sung validation riêng
-export const bookingValidationSchema = z.object({
+export const bookingRequestInsertSchema = createInsertSchema(bookingRequests);
+export const bookingSessionInsertSchema = createInsertSchema(bookingSessions);
+
+// Bổ sung validation riêng cho booking request
+export const bookingRequestValidationSchema = z.object({
   title: z.string().min(3, "Tiêu đề phải có ít nhất 3 ký tự"),
-  date: z.string(), // Thêm trường date để xử lý đúng múi giờ
-  start_time: z.string(), // Điều chỉnh để chỉ nhận string format "HH:MM"
-  end_time: z.string(), // Điều chỉnh để chỉ nhận string format "HH:MM"
   student_id: z.number(),
   tutor_id: z.number(),
   course_id: z.number().optional(),
   description: z.string().optional(),
+  mode: z.enum(["online", "offline"]),
   location: z.string().optional(),
   meeting_url: z.string().optional(),
   hourly_rate: z.number().or(z.string().transform((val) => parseFloat(val))),
+  date: z.string(),
+  start_time: z.string(),
+  end_time: z.string(),
   total_hours: z.number().optional(), // Trở thành optional vì sẽ tính toán trên server
   total_amount: z.number().optional(), // Trở thành optional vì sẽ tính toán trên server
   status: z.string().default("pending"),
 });
-export const bookingSelectSchema = createSelectSchema(bookings);
 
-// Schema cho cập nhật trạng thái booking
-export const bookingStatusSchema = z.object({
+// Schema cho booking session
+export const bookingSessionValidationSchema = z.object({
+  request_id: z.number(),
+  title: z.string().min(3, "Tiêu đề phải có ít nhất 3 ký tự"),
+  date: z.string(), // Hỗ trợ nhập ngày và chuyển đổi sang timestamp
+  start_time: z.string(), // Định dạng "HH:MM"
+  end_time: z.string(), // Định dạng "HH:MM"
+  status: z.string().default("pending"),
+});
+
+export const bookingRequestSelectSchema = createSelectSchema(bookingRequests);
+export const bookingSessionSelectSchema = createSelectSchema(bookingSessions);
+
+// Schema cho cập nhật trạng thái booking request
+export const bookingRequestStatusSchema = z.object({
   status: z.enum(
     ["pending", "confirmed", "completed", "cancelled", "rejected"],
     {
@@ -666,6 +716,14 @@ export const bookingStatusSchema = z.object({
     }
   ),
   reason: z.string().optional(), // Lý do nếu từ chối hoặc hủy
+});
+
+// Schema cho cập nhật trạng thái booking session
+export const bookingSessionStatusSchema = z.object({
+  status: z.enum(["pending", "confirmed", "completed", "cancelled"], {
+    errorMap: () => ({ message: "Trạng thái không hợp lệ" }),
+  }),
+  reason: z.string().optional(), // Lý do nếu hủy buổi học
 });
 
 export const paymentInsertSchema = createInsertSchema(payments);
@@ -729,25 +787,86 @@ export const idSchema = z.object({
   id: z.string().regex(/^\d+$/, "ID phải là một số").transform(Number),
 });
 
-// Schema cho bookings với thông tin đầy đủ (khác với bookingValidationSchema)
-export const bookingSchema = z.object({
-  title: z.string().min(3, "Tiêu đề phải có ít nhất 3 ký tự"),
-  description: z.string().optional(),
-  date: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "Định dạng ngày phải là YYYY-MM-DD"),
-  start_time: z
-    .string()
-    .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Định dạng giờ phải là HH:MM"),
-  end_time: z
-    .string()
-    .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Định dạng giờ phải là HH:MM"),
-  tutor_id: z.number(),
-  course_id: z.number().optional(),
-  location: z.string().optional(),
-  meeting_url: z.string().optional(),
-  hourly_rate: z.number().or(z.string().transform((val) => parseFloat(val))),
-});
+// Schema cho đặt lịch học (booking form)
+export const bookingSchema = z
+  .object({
+    courseId: z.string({
+      required_error: "Vui lòng chọn khóa học",
+    }),
+    tutorId: z.string({
+      required_error: "Vui lòng chọn gia sư",
+    }),
+    mode: z.enum(["online", "offline"], {
+      required_error: "Vui lòng chọn hình thức học",
+    }),
+    location: z.string().optional(),
+    note: z
+      .string()
+      .max(300, "Lời nhắn không được vượt quá 300 ký tự")
+      .optional(),
+    bookings: z
+      .array(
+        z
+          .object({
+            date: z
+              .string({
+                required_error: "Vui lòng chọn ngày học",
+              })
+              .regex(
+                /^\d{4}-\d{2}-\d{2}$/,
+                "Định dạng ngày phải là YYYY-MM-DD"
+              ),
+            startTime: z
+              .string({
+                required_error: "Vui lòng chọn giờ bắt đầu",
+              })
+              .regex(
+                /^([01]\d|2[0-3]):([0-5]\d)$/,
+                "Định dạng giờ phải là HH:mm"
+              ),
+            endTime: z
+              .string({
+                required_error: "Vui lòng chọn giờ kết thúc",
+              })
+              .regex(
+                /^([01]\d|2[0-3]):([0-5]\d)$/,
+                "Định dạng giờ phải là HH:mm"
+              ),
+          })
+          .refine(
+            (data) => {
+              // Convert time strings to comparable values
+              const [startHour, startMinute] = data.startTime
+                .split(":")
+                .map(Number);
+              const [endHour, endMinute] = data.endTime.split(":").map(Number);
+
+              // Compare times to ensure end time is after start time
+              if (endHour > startHour) return true;
+              if (endHour === startHour) return endMinute > startMinute;
+              return false;
+            },
+            {
+              message: "Thời gian kết thúc phải sau thời gian bắt đầu",
+              path: ["endTime"],
+            }
+          )
+      )
+      .min(1, { message: "Vui lòng chọn ít nhất một buổi học" }),
+  })
+  .refine(
+    (data) => {
+      // Validate that if mode is offline, location is provided
+      if (data.mode === "offline") {
+        return !!data.location && data.location.trim() !== "";
+      }
+      return true;
+    },
+    {
+      message: "Vui lòng nhập địa điểm học khi chọn hình thức học trực tiếp",
+      path: ["location"], // Path of the field where the error should be shown
+    }
+  );
 
 // Schema cho lịch một buổi (không định kỳ)
 const singleScheduleSchema = z.object({
@@ -793,6 +912,10 @@ export const schema = {
   subjects,
   educationLevels,
   courses,
+  courseLevels,
+  reviews,
+  bookingRequests,
+  bookingSessions,
 };
 
 export type User = typeof users.$inferSelect;
@@ -829,8 +952,11 @@ export type SubjectEducationLevel = typeof subjectEducationLevels.$inferSelect;
 export type NewSubjectEducationLevel =
   typeof subjectEducationLevels.$inferInsert;
 
-export type Booking = typeof bookings.$inferSelect;
-export type NewBooking = typeof bookings.$inferInsert;
+export type BookingRequest = typeof bookingRequests.$inferSelect;
+export type NewBookingRequest = typeof bookingRequests.$inferInsert;
+
+export type BookingSession = typeof bookingSessions.$inferSelect;
+export type NewBookingSession = typeof bookingSessions.$inferInsert;
 
 export type Payment = typeof payments.$inferSelect;
 export type NewPayment = typeof payments.$inferInsert;

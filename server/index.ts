@@ -114,7 +114,7 @@ app.use((req, res, next) => {
   server.listen(
     {
       port,
-      host: "192.168.1.45",
+      host: "localhost",
       // reusePort: true,
     },
     () => {

@@ -158,6 +158,11 @@ function Router() {
         <PrivateRoute role="admin" component={AdminDashboard} />
       </Route>
 
+      {/* Booking form route */}
+      <Route path="/book/:tutorId">
+        <PrivateRoute role="student" component={BookingForm} />
+      </Route>
+
       <Route component={NotFound} />
     </Switch>
   );

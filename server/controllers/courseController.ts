@@ -2,7 +2,9 @@ import { Request, Response, NextFunction } from "express";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { db } from "@db";
-import { schema } from "@shared/schema";
+// import { schema } from "@shared/schema";
+
+import * as schema from "@shared/schema";
 import { courseSchema } from "@shared/schema";
 import { and, desc, eq, sql } from "drizzle-orm";
 
@@ -110,11 +112,66 @@ export const getTutorCourses = async (req: Request, res: Response) => {
         eq(schema.courses.tutor_id, tutorId),
         eq(schema.courses.status, "active")
       ),
-      with: { subject: true, level: true },
+      with: {
+        subject: true,
+        level: true,
+        course_levels: {
+          with: {
+            level: true,
+          },
+        },
+      },
       orderBy: desc(schema.courses.created_at),
     });
 
-    return res.status(200).json(courses);
+    // Thêm số lượng học sinh và đánh giá cho mỗi khóa học
+    const coursesWithStats = await Promise.all(
+      courses.map(async (course) => {
+        // Đếm số học sinh đã đăng ký khóa học (sử dụng bookingRequests)
+        const [{ studentCount }] = await db
+          .select({
+            studentCount: sql<number>`count(DISTINCT ${schema.bookingRequests.student_id})`,
+          })
+          .from(schema.bookingRequests)
+          .where(eq(schema.bookingRequests.course_id, course.id));
+
+        // Lấy điểm đánh giá trung bình
+        const [{ averageRating, reviewCount }] = await db
+          .select({
+            averageRating: sql<number>`AVG(${schema.reviews.rating})`,
+            reviewCount: sql<number>`count(*)`,
+          })
+          .from(schema.reviews)
+          .where(eq(schema.reviews.course_id, course.id));
+
+        // Đảm bảo nếu không có level trực tiếp nhưng có course_levels,
+        // chúng ta sẽ sử dụng level đầu tiên từ course_levels
+        let courseWithProcessedLevel = { ...course };
+
+        if (
+          !courseWithProcessedLevel.level &&
+          course.course_levels &&
+          course.course_levels.length > 0
+        ) {
+          courseWithProcessedLevel.level = course.course_levels[0].level;
+        }
+
+        return {
+          ...courseWithProcessedLevel,
+          student_count: Number(studentCount || 0),
+          average_rating: Number(averageRating || 0),
+          review_count: Number(reviewCount || 0),
+        };
+      })
+    );
+
+    return res.status(200).json({
+      success: true,
+      count: courses.length,
+      total_pages: 1,
+      current_page: 1,
+      courses: coursesWithStats,
+    });
   } catch (error) {
     console.error("Get tutor courses error:", error);
     return res.status(500).json({ message: "Internal server error" });

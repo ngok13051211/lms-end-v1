@@ -52,6 +52,12 @@ export default function TutorProfile() {
       id: string | number;
       name: string;
     };
+    course_levels?: Array<{
+      id: number;
+      level: {
+        name: string;
+      };
+    }>;
     teaching_mode: string;
     hourly_rate: number | string;
     status?: string;
@@ -459,14 +465,25 @@ export default function TutorProfile() {
                                 </Badge>
                               )}
 
-                              {course.level && (
+                              {course.level ? (
                                 <Badge
                                   key={`level-${course.id}`}
                                   className="bg-primary-light/20 text-primary-dark hover:bg-primary-light/30"
                                 >
                                   {course.level.name}
                                 </Badge>
-                              )}
+                              ) : course.course_levels &&
+                                course.course_levels.length > 0 ? (
+                                // Hiển thị cấp độ từ course_levels nếu có
+                                course.course_levels.map((cl: any) => (
+                                  <Badge
+                                    key={`level-${cl.id}`}
+                                    className="bg-primary-light/20 text-primary-dark hover:bg-primary-light/30"
+                                  >
+                                    {cl.level.name}
+                                  </Badge>
+                                ))
+                              ) : null}
 
                               <Badge
                                 key={`mode-${course.id}`}
