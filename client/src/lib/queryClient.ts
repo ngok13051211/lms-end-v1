@@ -28,7 +28,7 @@ export async function apiRequest(
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  // console.log(`API Request: ${method} ${url}`);
+  console.log(`API Request: ${method} ${url}`);
   if (data) console.log("Request data:", JSON.stringify(data, null, 2));
 
   const res = await fetch(url, {
@@ -38,7 +38,7 @@ export async function apiRequest(
     credentials: "include",
   });
 
-  // console.log(`API Response: ${res.status} ${res.statusText}`);
+  console.log(`API Response: ${res.status} ${res.statusText}`);
 
   // Xử lý đặc biệt cho code 401 (Unauthorized)
   if (res.status === 401) {
@@ -115,7 +115,7 @@ export const getQueryFn: <T>(options: {
       }
     }
 
-    // console.log(`Query Request: GET ${url}`);
+    console.log(`Query Request: GET ${url}`);
 
     try {
       const res = await fetch(url, {
@@ -123,7 +123,7 @@ export const getQueryFn: <T>(options: {
         headers,
       });
 
-      // console.log(`Query Response: ${res.status} ${res.statusText}`);
+      console.log(`Query Response: ${res.status} ${res.statusText}`);
 
       if (unauthorizedBehavior === "returnNull" && res.status === 401) {
         return null;

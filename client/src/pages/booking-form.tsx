@@ -1,986 +1,1239 @@
-import { useState, useEffect } from "react";
-import { useLocation, useParams } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useRoute, useLocation } from "wouter";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useSelector } from "react-redux";
-import { RootState } from "@/store";
-import { CalendarIcon, Loader2, InfoIcon } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { format, parseISO } from "date-fns";
+import { vi } from "date-fns/locale";
+import {
+  CalendarIcon,
+  Clock,
+  MapPin,
+  MessageSquare,
+  MonitorSmartphone,
+  Loader2,
+  AlertCircle,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+import MainLayout from "@/components/layout/MainLayout";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { format } from "date-fns";
-import { vi } from "date-fns/locale";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { Separator } from "@/components/ui/separator";
 
-// Schema xác thực cho form đặt lịch
-const bookingFormSchema = z.object({
-  title: z.string().min(5, "Tiêu đề cần ít nhất 5 ký tự"),
-  description: z.string().min(10, "Mô tả cần ít nhất 10 ký tự"),
-  teaching_mode: z.enum(["online", "offline", "both"], {
-    required_error: "Vui lòng chọn hình thức dạy",
-  }),
-  date: z.date({
-    required_error: "Vui lòng chọn ngày học",
-  }),
-  start_time: z.string().min(1, "Vui lòng chọn giờ bắt đầu"),
-  end_time: z.string().min(1, "Giờ kết thúc là bắt buộc"),
-  location: z.string().optional(),
-  online_meeting_url: z.string().optional(),
-  notes: z.string().optional(),
-});
+// API types
+interface Tutor {
+  id: string;
+  fullName: string;
+  avatar: string;
+  email: string;
+  address: string;
+  verified: boolean;
+  birthdate: string;
+  rating: number;
+  totalReviews: number;
+  experience: string;
+  education: string;
+  bio: string;
+  subjects: (Subject | string)[];
+}
+
+interface Subject {
+  id: number;
+  name: string;
+  description?: string;
+  icon?: string;
+}
+
+interface EducationLevel {
+  id: number;
+  name: string;
+  level?: string;
+}
+
+interface Course {
+  id: string;
+  title: string;
+  subject: Subject | string;
+  educationLevel: EducationLevel | string;
+  description: string;
+  duration: string;
+  pricePerSession: number;
+  deliveryModes: "online" | "offline" | "both";
+  tags: string[];
+}
+
+interface ScheduleTimeSlot {
+  startTime: string; // Format HH:mm (example: "08:00")
+  endTime: string; // Format HH:mm (example: "10:00")
+}
+
+interface ScheduleDay {
+  date: string; // Format: "2025-05-16"
+  timeSlots: ScheduleTimeSlot[];
+}
+
+// Định nghĩa kiểu dữ liệu cho khung giờ
+type TimeSlot = {
+  startTime: string; // Format HH:mm (example: "08:00")
+  endTime: string; // Format HH:mm (example: "10:00")
+};
+
+// Custom type để lưu trữ thông tin về các buổi học đã chọn
+type SelectedSessionInfo = {
+  date: Date;
+  timeSlots: TimeSlot[];
+};
+
+// Định nghĩa kiểu booking để trả về API
+type BookingInfo = {
+  date: string; // Format YYYY-MM-DD (example: "2025-05-16")
+  startTime: string; // Format HH:mm (example: "08:00")
+  endTime: string; // Format HH:mm (example: "10:00")
+};
+
+// Form schema
+const bookingFormSchema = z
+  .object({
+    tutorId: z.string({
+      required_error: "Vui lòng chọn gia sư",
+    }),
+    courseId: z.string({
+      required_error: "Vui lòng chọn khóa học",
+    }),
+    bookings: z
+      .array(
+        z
+          .object({
+            date: z
+              .string({
+                required_error: "Vui lòng chọn ngày học",
+              })
+              .regex(
+                /^\d{4}-\d{2}-\d{2}$/,
+                "Định dạng ngày phải là YYYY-MM-DD"
+              ),
+            startTime: z
+              .string({
+                required_error: "Vui lòng chọn giờ bắt đầu",
+              })
+              .regex(
+                /^([01]\d|2[0-3]):([0-5]\d)$/,
+                "Định dạng giờ phải là HH:mm"
+              ),
+            endTime: z
+              .string({
+                required_error: "Vui lòng chọn giờ kết thúc",
+              })
+              .regex(
+                /^([01]\d|2[0-3]):([0-5]\d)$/,
+                "Định dạng giờ phải là HH:mm"
+              ),
+          })
+          .refine(
+            (data) => {
+              // Convert time strings to comparable values
+              const [startHour, startMinute] = data.startTime
+                .split(":")
+                .map(Number);
+              const [endHour, endMinute] = data.endTime.split(":").map(Number);
+
+              // Compare times to ensure end time is after start time
+              if (endHour > startHour) return true;
+              if (endHour === startHour) return endMinute > startMinute;
+              return false;
+            },
+            {
+              message: "Thời gian kết thúc phải sau thời gian bắt đầu",
+              path: ["endTime"],
+            }
+          )
+      )
+      .min(1, { message: "Vui lòng chọn ít nhất một buổi học" }),
+    mode: z.enum(["online", "offline"], {
+      required_error: "Vui lòng chọn hình thức học",
+    }),
+    location: z.string().optional(),
+    note: z
+      .string()
+      .max(300, "Lời nhắn không được vượt quá 300 ký tự")
+      .optional(),
+  })
+  .refine(
+    (data) => {
+      // Validate that if mode is offline, location is provided
+      if (data.mode === "offline") {
+        return !!data.location && data.location.trim() !== "";
+      }
+      return true;
+    },
+    {
+      message: "Vui lòng nhập địa điểm học khi chọn hình thức học trực tiếp",
+      path: ["location"],
+    }
+  );
 
 type BookingFormValues = z.infer<typeof bookingFormSchema>;
 
-// Định nghĩa kiểu dữ liệu cho khoảng thời gian
-interface TimeSlot {
-  startTime: string;
-  endTime: string;
-}
+// API functions to fetch data from backend
+const fetchTutor = async (tutorId: string): Promise<Tutor> => {
+  const response = await fetch(`/api/v1/tutors/${tutorId}`);
+  if (!response.ok) {
+    throw new Error(`Error fetching tutor data: ${response.statusText}`);
+  }
+  return response.json();
+};
 
-interface AvailabilityItem {
-  type: "specific";
-  date: string;
-  startTime: string;
-  endTime: string;
-}
+const fetchCourse = async (courseId: string): Promise<Course> => {
+  const response = await fetch(`/api/v1/courses/${courseId}`);
+  if (!response.ok) {
+    throw new Error(`Error fetching course data: ${response.statusText}`);
+  }
+  return response.json();
+};
+
+const fetchTutorSchedule = async (tutorId: string): Promise<ScheduleDay[]> => {
+  const response = await fetch(`/api/v1/schedules/${tutorId}`);
+  if (!response.ok) {
+    throw new Error(`Error fetching schedule data: ${response.statusText}`);
+  }
+  return response.json();
+};
 
 export default function BookingForm() {
-  const [location, navigate] = useLocation();
-  const { tutorId, courseId } = useParams<{ tutorId?: string; courseId?: string }>();
-  const { toast } = useToast();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [availableDates, setAvailableDates] = useState<Date[]>([]);
-  const [availableTimeSlots, setAvailableTimeSlots] = useState<Record<string, TimeSlot[]>>({});
-  const { user } = useSelector((state: RootState) => state.auth);
+  const [, params] = useRoute("/book/:tutorId");
+  const queryClient = useQueryClient();
+  const [selectedDates, setSelectedDates] = useState<Date[]>([]);
+  const [selectedSessions, setSelectedSessions] = useState<
+    SelectedSessionInfo[]
+  >([]);
+  const [currentViewingDate, setCurrentViewingDate] = useState<
+    Date | undefined
+  >(undefined);
+  const [availableTimeSlotsMap, setAvailableTimeSlotsMap] = useState<
+    Record<string, TimeSlot[]>
+  >({});
 
-  // Fetch thông tin gia sư
-  const tutorIdNum = parseInt(tutorId || "0");
+  const tutorId = params?.tutorId;
+  const courseId = new URLSearchParams(window.location.search).get("course");
+  const { toast } = useToast();
+
+  // React Query hooks with proper error handling and loading states
   const {
-    data: tutorData,
+    data: tutor,
     isLoading: tutorLoading,
     error: tutorError,
-  } = useQuery({
-    queryKey: ["/api/v1/tutors", tutorIdNum],
-    queryFn: async () => {
-      const res = await apiRequest("GET", `/api/v1/tutors/${tutorIdNum}`);
-      return res.json();
-    },
-    enabled: !!tutorIdNum && tutorIdNum > 0,
+  } = useQuery<Tutor, Error>({
+    queryKey: ["tutor", tutorId],
+    queryFn: () =>
+      tutorId ? fetchTutor(tutorId) : Promise.reject("No tutor ID provided"),
+    enabled: !!tutorId,
   });
 
-  // Fetch thông tin khóa học nếu có
-  const courseIdNum = courseId ? parseInt(courseId) : null;
   const {
-    data: courseData,
+    data: course,
     isLoading: courseLoading,
     error: courseError,
-  } = useQuery({
-    queryKey: ["/api/v1/courses", courseIdNum],
-    queryFn: async () => {
-      const res = await apiRequest("GET", `/api/v1/courses/${courseIdNum}`);
-      return res.json();
-    },
-    enabled: !!courseIdNum && courseIdNum > 0,
+  } = useQuery<Course, Error>({
+    queryKey: ["course", courseId],
+    queryFn: () =>
+      courseId
+        ? fetchCourse(courseId)
+        : Promise.reject("No course ID provided"),
+    enabled: !!courseId,
   });
 
-  // Khởi tạo form
+  const {
+    data: availability,
+    isLoading: scheduleLoading,
+    error: scheduleError,
+  } = useQuery<ScheduleDay[], Error>({
+    queryKey: ["schedule", tutorId],
+    queryFn: () =>
+      tutorId
+        ? fetchTutorSchedule(tutorId)
+        : Promise.reject("No tutor ID provided"),
+    enabled: !!tutorId,
+  });
+
+  // Setup form with default values
   const form = useForm<BookingFormValues>({
     resolver: zodResolver(bookingFormSchema),
     defaultValues: {
-      title: "",
-      description: "",
-      teaching_mode: "online",
-      start_time: "",
-      end_time: "",
-      location: "",
-      online_meeting_url: "",
-      notes: "",
+      tutorId: tutorId || "",
+      courseId: courseId || "",
+      bookings: [],
+      mode: undefined, // Will be updated when course data is available
+      note: "",
     },
   });
 
-  // Xử lý khi submit form
-  const onSubmit = async (values: BookingFormValues) => {
-    try {
-      setIsSubmitting(true);
+  useEffect(() => {
+    if (course?.deliveryModes) {
+      const mode =
+        course.deliveryModes === "online"
+          ? "online"
+          : course.deliveryModes === "offline"
+          ? "offline"
+          : null;
 
-      // Lấy thành phần date từ đối tượng Date và tạo chuỗi ngày chuẩn
-      const date = values.date as Date;
-      const year = date.getFullYear();
-      const month = date.getMonth() + 1; // getMonth() trả về 0-11
-      const day = date.getDate();
-      
-      // Tạo chuỗi ngày chuẩn yyyy-MM-dd
-      const datePart = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-      console.log("Ngày gốc:", date);
-      console.log("Ngày đã xử lý:", datePart);
-      
-      // Đảm bảo giờ có đúng định dạng HH:MM
-      let startTimeStr = values.start_time;
-      if (startTimeStr.length === 4) {
-        startTimeStr = "0" + startTimeStr;
+      if (mode) {
+        form.setValue("mode", mode);
       }
-      
-      let endTimeStr = values.end_time;
-      if (endTimeStr.length === 4) {
-        endTimeStr = "0" + endTimeStr;
+    }
+  }, [course, form]);
+
+  const watchMode = form.watch("mode");
+  // Khởi tạo availableTimeSlots khi component mount
+  useEffect(() => {
+    if (availability && Array.isArray(availability)) {
+      const slotsMap: Record<string, TimeSlot[]> = {};
+      availability.forEach((item) => {
+        if (item && item.date) {
+          const dateKey = format(parseISO(item.date), "yyyy-MM-dd");
+          slotsMap[dateKey] = item.timeSlots || [];
+        }
+      });
+      setAvailableTimeSlotsMap(slotsMap);
+    }
+  }, [availability]);
+
+  // Chuyển đổi selectedSessions sang định dạng bookings cho form
+  useEffect(() => {
+    const bookings: BookingInfo[] = selectedSessions.flatMap((session) => {
+      const dateStr = format(session.date, "yyyy-MM-dd");
+      return session.timeSlots.map((timeSlot) => ({
+        date: dateStr,
+        startTime: timeSlot.startTime,
+        endTime: timeSlot.endTime,
+      }));
+    });
+
+    form.setValue("bookings", bookings, {
+      shouldValidate: true,
+    });
+  }, [selectedSessions, form]);
+  // Add indicator for schedule data status
+  const hasAvailabilityData =
+    availability && Array.isArray(availability) && availability.length > 0;
+
+  // Handle date selection in calendar
+  const handleDateSelect = (date: Date | undefined) => {
+    if (!date) return;
+
+    const dateStr = format(date, "yyyy-MM-dd");
+    const dateExists = selectedDates.some(
+      (d) => format(d, "yyyy-MM-dd") === dateStr
+    );
+
+    let newSelectedDates: Date[];
+    if (dateExists) {
+      // Xóa ngày nếu đã được chọn
+      newSelectedDates = selectedDates.filter(
+        (d) => format(d, "yyyy-MM-dd") !== dateStr
+      );
+      // Xóa session tương ứng
+      setSelectedSessions((prev) =>
+        prev.filter((session) => format(session.date, "yyyy-MM-dd") !== dateStr)
+      );
+    } else {
+      // Thêm ngày mới
+      newSelectedDates = [...selectedDates, date];
+    }
+
+    setSelectedDates(newSelectedDates);
+    setCurrentViewingDate(date);
+  };
+
+  // Lấy slot khả dụng cho ngày đang xem
+  const getAvailableTimeSlotsForCurrentDate = () => {
+    if (!currentViewingDate) return [];
+    const dateKey = format(currentViewingDate, "yyyy-MM-dd");
+    return availableTimeSlotsMap[dateKey] || [];
+  };
+
+  // Xử lý chọn khung giờ cho một ngày cụ thể
+  const handleTimeSlotSelect = (date: Date, timeSlot: TimeSlot) => {
+    const dateStr = format(date, "yyyy-MM-dd");
+
+    // Kiểm tra xem ngày đã được chọn chưa
+    const sessionIndex = selectedSessions.findIndex(
+      (session) => format(session.date, "yyyy-MM-dd") === dateStr
+    );
+
+    let newSessions = [...selectedSessions];
+
+    if (sessionIndex > -1) {
+      // Nếu ngày đã có trong danh sách, toggle slot
+      const existingTimeSlots = [...newSessions[sessionIndex].timeSlots];
+
+      // Kiểm tra xem khung giờ đã được chọn chưa
+      const timeSlotIndex = existingTimeSlots.findIndex(
+        (slot) =>
+          slot.startTime === timeSlot.startTime &&
+          slot.endTime === timeSlot.endTime
+      );
+
+      if (timeSlotIndex > -1) {
+        // Nếu đã chọn rồi thì bỏ chọn
+        existingTimeSlots.splice(timeSlotIndex, 1);
+      } else {
+        // Nếu chưa chọn thì thêm vào
+        existingTimeSlots.push(timeSlot);
       }
 
-      // Tạo dữ liệu đặt lịch với định dạng mới
-      const bookingData = {
-        tutor_id: tutorIdNum,
-        title: values.title,
-        description: values.description || "",
-        teaching_mode: values.teaching_mode,
-        location: values.teaching_mode === "online" ? "" : values.location || "",
-        meeting_url: values.teaching_mode === "offline" ? "" : values.online_meeting_url || "",
-        // Gửi ngày và giờ riêng biệt thay vì dạng ISO string
-        date: datePart,
-        start_time: startTimeStr,
-        end_time: endTimeStr,
-        // Đảm bảo course_id là số hoặc undefined (không phải null)
-        ...(courseIdNum ? { course_id: courseIdNum } : {}),
-        notes: values.notes || "",
-        // Đảm bảo hourly_rate là số
-        hourly_rate: Number(tutorData?.hourly_rate || 0),
+      // Cập nhật lại session
+      newSessions[sessionIndex] = {
+        ...newSessions[sessionIndex],
+        timeSlots: existingTimeSlots,
       };
 
-      console.log("Dữ liệu đặt lịch gửi đi:", bookingData);
+      // Xóa session nếu không còn time slot nào
+      if (existingTimeSlots.length === 0) {
+        newSessions.splice(sessionIndex, 1);
+        // Cũng xóa ngày khỏi selectedDates
+        setSelectedDates(
+          selectedDates.filter((d) => format(d, "yyyy-MM-dd") !== dateStr)
+        );
+      }
+    } else {
+      // Thêm mới nếu chưa có
+      newSessions.push({
+        date,
+        timeSlots: [timeSlot],
+      });
+    }
 
-      // Gửi yêu cầu tạo booking đến API
-      const response = await apiRequest("POST", "/api/v1/bookings", bookingData);
-      
+    setSelectedSessions(newSessions);
+  };
+
+  // Kiểm tra slot đã được chọn cho một ngày cụ thể chưa
+  const isTimeSlotSelected = (date: Date, timeSlot: TimeSlot) => {
+    const dateStr = format(date, "yyyy-MM-dd");
+
+    const session = selectedSessions.find(
+      (session) => format(session.date, "yyyy-MM-dd") === dateStr
+    );
+
+    if (!session) return false;
+
+    return session.timeSlots.some(
+      (slot) =>
+        slot.startTime === timeSlot.startTime &&
+        slot.endTime === timeSlot.endTime
+    );
+  };
+
+  // Check if a date has available slots
+  const hasTimeSlots = (date: Date) => {
+    const dateStr = format(date, "yyyy-MM-dd");
+    return (
+      availableTimeSlotsMap[dateStr] &&
+      availableTimeSlotsMap[dateStr].length > 0
+    );
+  };
+
+  // Lấy slot khả dụng cho một ngày cụ thể
+  const getAvailableSlotsForDate = (date: Date): TimeSlot[] => {
+    const dateStr = format(date, "yyyy-MM-dd");
+    return availableTimeSlotsMap[dateStr] || [];
+  };
+
+  // Lấy các khung giờ đã được chọn cho ngày cụ thể
+  const getSelectedTimeSlotsForDate = (date: Date): TimeSlot[] => {
+    const dateStr = format(date, "yyyy-MM-dd");
+    const session = selectedSessions.find(
+      (s) => format(s.date, "yyyy-MM-dd") === dateStr
+    );
+    return session?.timeSlots || [];
+  };
+
+  // Xóa một phiên học đã chọn
+  const removeSession = (dateStr: string) => {
+    setSelectedSessions((prev) =>
+      prev.filter((session) => format(session.date, "yyyy-MM-dd") !== dateStr)
+    );
+
+    setSelectedDates((prev) =>
+      prev.filter((date) => format(date, "yyyy-MM-dd") !== dateStr)
+    );
+  };
+  // Form submission handling
+  const onSubmit = async (data: BookingFormValues) => {
+    // Form is already validated through the Zod schema, so we can proceed directly
+
+    // If all validations passed, proceed with form submission
+    console.log("Form data:", data);
+    console.log("Selected bookings:", data.bookings);
+
+    // Format the data to match the expected structure
+    const bookingData = {
+      tutorId: data.tutorId,
+      courseId: data.courseId,
+      mode: data.mode,
+      location: data.location,
+      note: data.note,
+      bookings: data.bookings,
+    };
+    try {
+      // Set loading state
+      form.formState.isSubmitting = true;
+
+      // Import apiRequest from queryClient
+      const { apiRequest } = await import("@/lib/queryClient");
+
+      // Submit data to API using the utility function for consistent error handling
+      const response = await apiRequest(
+        "POST",
+        "/api/v1/bookings",
+        bookingData
+      );
+
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.message || "Có lỗi xảy ra khi đặt lịch");
       }
 
-      const result = await response.json();
-      
+      // Show success toast
       toast({
         title: "Đặt lịch thành công",
-        description: "Bạn sẽ được chuyển hướng đến trang thanh toán",
-        duration: 5000,
+        description:
+          "Yêu cầu của bạn đã được gửi tới gia sư. Vui lòng chờ xác nhận.",
       });
 
-      // Chuyển hướng đến trang thanh toán nếu có
-      if (result.payment_url) {
-        window.location.href = result.payment_url;
-      } else {
-        navigate("/dashboard/student");
-      }
+      // Redirect to student dashboard after short delay
+      setTimeout(() => {
+        window.location.href = "/student-dashboard";
+      }, 2000);
     } catch (error: any) {
-      console.error("Lỗi khi đặt lịch:", error);
+      // Show error toast
       toast({
         title: "Đặt lịch thất bại",
-        description: error.message || "Vui lòng thử lại sau",
+        description:
+          error.message || "Có lỗi xảy ra khi đặt lịch. Vui lòng thử lại sau.",
         variant: "destructive",
       });
+      console.error("Booking error:", error);
     } finally {
-      setIsSubmitting(false);
+      form.formState.isSubmitting = false;
     }
   };
-
-  // Xử lý dữ liệu lịch trống từ gia sư
-  useEffect(() => {
-    if (!tutorData || !tutorData.availability) return;
-
-    try {
-      // Parse dữ liệu lịch trống từ string JSON (nếu cần)
-      const availabilityData = typeof tutorData.availability === 'string'
-        ? JSON.parse(tutorData.availability)
-        : tutorData.availability;
-
-      if (!Array.isArray(availabilityData) || availabilityData.length === 0) {
-        console.log("Không có dữ liệu lịch trống hoặc dữ liệu không đúng định dạng");
-        return;
-      }
-
-      console.log("Dữ liệu lịch trống gốc:", availabilityData);
-
-      // Lọc chỉ lấy các mục có type là "specific" (ngày cụ thể)
-      const specificSlots = availabilityData.filter(
-        (slot: any) => slot.type === "specific" && slot.date && slot.startTime && slot.endTime
-      ).map(slot => ({
-        type: slot.type,
-        date: slot.date,
-        startTime: slot.startTime,
-        endTime: slot.endTime
-      })) as AvailabilityItem[];
-
-      console.log("Các khoảng thời gian cụ thể:", specificSlots);
-
-      // Tổ chức dữ liệu theo ngày
-      const slotsByDate: Record<string, TimeSlot[]> = {};
-      const dates: Date[] = [];
-
-      // Chỉ xem xét các ngày từ hôm nay trở đi
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      specificSlots.forEach(slot => {
-        console.log("Đang xử lý khoảng thời gian:", slot);
-        
-        // QUAN TRỌNG: KHÔNG sử dụng new Date() tại đây vì nó có thể gây lỗi múi giờ
-        // Thay vào đó, dùng parse năm-tháng-ngày trực tiếp từ chuỗi
-        const [year, month, day] = slot.date.split("-").map(Number);
-        
-        // Tạo ngày mới với giờ địa phương để tránh lỗi múi giờ
-        const dateObj = new Date(year, month - 1, day, 0, 0, 0, 0);
-        console.log(`Tạo ngày từ ${year}-${month}-${day}:`, dateObj.toISOString());
-        
-        // Chỉ xem xét ngày hợp lệ và trong tương lai
-        if (!isNaN(dateObj.getTime()) && dateObj >= today) {
-          // Sử dụng date string như nó được lưu trữ, không chuyển đổi
-          const dateStr = slot.date;
-          
-          // Thêm khoảng thời gian vào ngày
-          if (!slotsByDate[dateStr]) {
-            slotsByDate[dateStr] = [];
-            dates.push(dateObj);
-          }
-          
-          // Chuẩn hóa giờ bắt đầu, đảm bảo định dạng HH:MM
-          let startTime = slot.startTime || "08:00";
-          if (startTime.length === 4) {
-            startTime = "0" + startTime;
-          }
-          
-          // Chuẩn hóa giờ kết thúc, đảm bảo định dạng HH:MM
-          let endTime = slot.endTime || "17:00";
-          if (endTime.length === 4) {
-            endTime = "0" + endTime;
-          }
-          
-          slotsByDate[dateStr].push({
-            startTime: startTime,
-            endTime: endTime
-          });
-        }
-      });
-
-      console.log("Dữ liệu lịch trống đã xử lý:", slotsByDate);
-      console.log("Các ngày có lịch trống:", dates);
-      
-      setAvailableDates(dates);
-      setAvailableTimeSlots(slotsByDate);
-
-    } catch (error) {
-      console.error("Lỗi khi xử lý dữ liệu lịch trống của gia sư:", error);
-    }
-  }, [tutorData]);
-
-  // Lấy danh sách giờ bắt đầu có sẵn cho ngày đã chọn
-  const getAvailableStartTimes = (selectedDate: Date | undefined): string[] => {
-    if (!selectedDate) return [];
-
-    // Lấy về năm, tháng, ngày từ ngày đã chọn để so sánh chính xác
-    const year = selectedDate.getFullYear();
-    const month = selectedDate.getMonth() + 1; // getMonth() trả về 0-11, cần +1
-    const day = selectedDate.getDate();
-    
-    // Tạo chuỗi ngày chuẩn yyyy-MM-dd
-    const dateStr = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-    
-    console.log("Tìm kiếm lịch trống cho ngày:", dateStr);
-    console.log("Dữ liệu lịch trống hiện có:", availableTimeSlots);
-    
-    // Thử tìm lịch trống theo định dạng chuẩn yyyy-MM-dd
-    let slots = availableTimeSlots[dateStr] || [];
-    
-    if (slots.length === 0) {
-      console.log(`Không có khoảng thời gian nào cho ngày ${dateStr} trong định dạng chuẩn`);
-      
-      // Duyệt qua tất cả các ngày trong availableTimeSlots để tìm ngày phù hợp
-      for (const key in availableTimeSlots) {
-        // Phân tích key (yyyy-MM-dd) thành các thành phần để so sánh
-        const [keyYear, keyMonth, keyDay] = key.split("-").map(Number);
-        
-        // So sánh từng thành phần riêng lẻ
-        const isSameDate = 
-          year === keyYear && 
-          month === keyMonth && 
-          day === keyDay;
-        
-        console.log(`So sánh ${year}-${month}-${day} với ${key} (${keyYear}-${keyMonth}-${keyDay}): ${isSameDate}`);
-        
-        if (isSameDate) {
-          console.log(`Tìm thấy ngày phù hợp: ${key}`);
-          slots = availableTimeSlots[key];
-          break;
-        }
-      }
-    }
-    
-    if (slots.length === 0) {
-      console.log(`Không tìm thấy khoảng thời gian nào cho ngày ${dateStr}`);
-      return [];
-    }
-
-    // Trả về danh sách giờ bắt đầu đã sắp xếp
-    return slots.map(slot => slot.startTime).sort();
-  };
-
-  // Cập nhật giờ kết thúc dựa trên giờ bắt đầu
-  const updateEndTime = (startTime: string) => {
-    const selectedDate = form.getValues("date");
-    if (!selectedDate || !startTime) return;
-
-    // Lấy về năm, tháng, ngày từ ngày đã chọn để so sánh chính xác
-    const year = selectedDate.getFullYear();
-    const month = selectedDate.getMonth() + 1; // getMonth() trả về 0-11, cần +1
-    const day = selectedDate.getDate();
-    
-    // Tạo chuỗi ngày chuẩn yyyy-MM-dd
-    const dateStr = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-    
-    console.log("Tìm khoảng thời gian cho ngày và giờ:", dateStr, startTime);
-    
-    // Cố gắng tìm slots từ tất cả các định dạng ngày có thể
-    let slots = availableTimeSlots[dateStr] || [];
-    
-    if (slots.length === 0) {
-      // Duyệt qua tất cả các ngày trong availableTimeSlots để tìm ngày phù hợp
-      for (const key in availableTimeSlots) {
-        // Phân tích key (yyyy-MM-dd) thành các thành phần để so sánh
-        const [keyYear, keyMonth, keyDay] = key.split("-").map(Number);
-        
-        // So sánh từng thành phần riêng lẻ
-        const isSameDate = 
-          year === keyYear && 
-          month === keyMonth && 
-          day === keyDay;
-        
-        console.log(`So sánh trong updateEndTime: ${year}-${month}-${day} với ${key}: ${isSameDate}`);
-        
-        if (isSameDate) {
-          slots = availableTimeSlots[key];
-          break;
-        }
-      }
-    }
-    
-    // Tìm khoảng thời gian tương ứng với giờ bắt đầu
-    const matchedSlot = slots.find(slot => slot.startTime === startTime);
-    
-    if (matchedSlot) {
-      console.log(`Tìm thấy khoảng thời gian: ${startTime} - ${matchedSlot.endTime}`);
-      form.setValue("end_time", matchedSlot.endTime);
-    } else {
-      console.log(`Không tìm thấy khoảng thời gian cho giờ bắt đầu ${startTime}`);
-      
-      // Tính giờ kết thúc mặc định (1 giờ sau giờ bắt đầu)
-      const [hour, minute] = startTime.split(":").map(Number);
-      let endHour = hour + 1;
-      if (endHour > 23) endHour = 23;
-      
-      const endTime = `${endHour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-      form.setValue("end_time", endTime);
-    }
-  };
-
-  // Theo dõi thay đổi của ngày và cập nhật giờ bắt đầu/kết thúc
-  useEffect(() => {
-    const date = form.watch("date");
-    
-    if (date) {
-      // Reset giờ bắt đầu và kết thúc
-      form.setValue("start_time", "");
-      form.setValue("end_time", "");
-      
-      // Kiểm tra nếu có giờ trống cho ngày đã chọn
-      const availableTimes = getAvailableStartTimes(date);
-      
-      if (availableTimes.length > 0) {
-        // Tự động chọn giờ bắt đầu đầu tiên
-        form.setValue("start_time", availableTimes[0]);
-        // Cập nhật giờ kết thúc tương ứng
-        updateEndTime(availableTimes[0]);
-      }
-    }
-  }, [form.watch("date")]);
-
-  // Theo dõi thay đổi của giờ bắt đầu và cập nhật giờ kết thúc
-  useEffect(() => {
-    const startTime = form.watch("start_time");
-    if (startTime) {
-      updateEndTime(startTime);
-    }
-  }, [form.watch("start_time")]);
-
-  // Theo dõi thay đổi của hình thức dạy
-  useEffect(() => {
-    const teachingMode = form.watch("teaching_mode");
-    
-    if (teachingMode === "online") {
-      form.setValue("location", "");
-    } else if (teachingMode === "offline") {
-      form.setValue("online_meeting_url", "");
-    }
-  }, [form.watch("teaching_mode")]);
-
-  // Hiển thị loading
-  if (tutorLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="ml-2">Đang tải thông tin...</span>
-      </div>
-    );
-  }
-
-  // Hiển thị lỗi
-  if (tutorError) {
-    return (
-      <div className="container max-w-4xl mx-auto py-8 px-4">
-        <Card className="border-red-200">
-          <CardHeader>
-            <CardTitle className="text-red-500">Lỗi</CardTitle>
-            <CardDescription>
-              Không thể tải thông tin gia sư. Vui lòng thử lại sau.
-            </CardDescription>
-          </CardHeader>
-          <CardFooter>
-            <Button onClick={() => window.history.back()} variant="outline">Quay lại</Button>
-          </CardFooter>
-        </Card>
-      </div>
-    );
-  }
-
-  // Hiển thị form khi đã tải dữ liệu thành công
-  // Kiểm tra xem người dùng đã đăng nhập chưa
-  if (!user) {
-    return (
-      <div className="container max-w-4xl mx-auto py-8 px-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Bạn cần đăng nhập</CardTitle>
-            <CardDescription>
-              Vui lòng đăng nhập để đặt lịch học với gia sư.
-            </CardDescription>
-          </CardHeader>
-          <CardFooter>
-            <Button onClick={() => navigate("/login")}>Đăng nhập</Button>
-          </CardFooter>
-        </Card>
-      </div>
-    );
-  }
-
-  // Kiểm tra vai trò người dùng
-  if (user.role !== "student") {
-    return (
-      <div className="container max-w-4xl mx-auto py-8 px-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Không có quyền truy cập</CardTitle>
-            <CardDescription>
-              Chỉ học sinh mới có thể đặt lịch học.
-            </CardDescription>
-          </CardHeader>
-          <CardFooter>
-            <Button onClick={() => window.history.back()} variant="outline">Quay lại</Button>
-          </CardFooter>
-        </Card>
-      </div>
-    );
-  }
-
-  // Lấy tên gia sư để hiển thị
-  const tutorName = tutorData?.user?.first_name && tutorData?.user?.last_name 
-    ? `${tutorData.user.first_name} ${tutorData.user.last_name}`
-    : "gia sư này";
 
   return (
-    <div className="container max-w-4xl mx-auto py-8 px-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Đặt lịch học với gia sư</CardTitle>
-          <CardDescription>
-            Nhập thông tin lịch học của bạn với{" "}
-            <span className="font-medium">{tutorName}</span>
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  {/* Thông báo khi gia sư chưa có lịch trống */}
-                  {availableDates.length === 0 && (
-                    <Card className="bg-amber-50 border-amber-200 mb-4">
-                      <CardContent className="p-4">
-                        <div className="flex items-start gap-2">
-                          <CalendarIcon className="w-5 h-5 text-amber-500 mt-0.5" />
-                          <div>
-                            <p className="font-medium text-amber-800">Gia sư chưa thiết lập lịch trống</p>
-                            <p className="text-sm text-amber-700 mt-1">
-                              Gia sư {tutorName} chưa cập nhật lịch trống. Vui lòng liên hệ trực tiếp với gia sư 
-                              hoặc quay lại sau.
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
+    <>
+      <div className="container mx-auto pt-4 pb-8 px-4 md:px-6">
+        <nav className="flex items-center space-x-1 text-sm mb-6">
+          <a
+            href="/"
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Trang chủ
+          </a>
+          <span className="text-muted-foreground">/</span>
+          <a
+            href="/tutors"
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Gia sư
+          </a>
+          <span className="text-muted-foreground">/</span>
+          <span className="font-medium">Đặt lịch học</span>
+        </nav>
+        <h1 className="text-3xl font-bold mb-2">Đặt lịch học</h1>
+        <div className="flex flex-wrap items-center gap-x-2 mb-8">
+          {tutorLoading || courseLoading ? (
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <p className="text-muted-foreground">Đang tải thông tin...</p>
+            </div>
+          ) : tutorError || courseError ? (
+            <div className="flex items-center gap-2 text-destructive">
+              <AlertCircle className="h-4 w-4" />
+              <p>Không thể tải thông tin. Vui lòng thử lại sau.</p>
+            </div>
+          ) : (
+            <p className="text-muted-foreground">
+              Đặt lịch học với gia sư{" "}
+              <span className="text-foreground font-medium">
+                {tutor?.fullName}
+              </span>
+              cho khóa học{" "}
+              <span className="text-foreground font-medium">
+                {course?.title}
+              </span>
+            </p>
+          )}
+        </div>
 
-                  <FormField
-                    control={form.control}
-                    name="title"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Tiêu đề buổi học</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Ví dụ: Ôn tập Toán lớp 10" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Mô tả buổi học</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Ví dụ: Em muốn ôn tập chương trình đại số và hình học lớp 10"
-                            className="h-32"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="teaching_mode"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Hình thức dạy</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          value={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Chọn hình thức dạy" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="online">Trực tuyến</SelectItem>
-                            <SelectItem value="offline">Trực tiếp</SelectItem>
-                            <SelectItem value="both">Cả hai</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Địa điểm (cho hình thức offline/both) */}
-                  {(form.watch("teaching_mode") === "offline" || form.watch("teaching_mode") === "both") && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main booking form */}
+          <div className="lg:col-span-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Thông tin buổi học</CardTitle>
+                <CardDescription>
+                  Chọn thời gian và hình thức học phù hợp với bạn
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Form {...form}>
+                  <form
+                    onSubmit={form.handleSubmit(onSubmit)}
+                    className="space-y-6"
+                  >
+                    {" "}
+                    {/* Date selection */}
                     <FormField
                       control={form.control}
-                      name="location"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Địa điểm học</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Ví dụ: 123 Nguyễn Huệ, Quận 1, TP.HCM"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormDescription>
-                            Nhập địa chỉ cụ thể nơi bạn muốn học trực tiếp với gia sư
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  )}
-
-                  {/* URL học trực tuyến (cho hình thức online/both) */}
-                  {(form.watch("teaching_mode") === "online" || form.watch("teaching_mode") === "both") && (
-                    <FormField
-                      control={form.control}
-                      name="online_meeting_url"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>URL phòng học trực tuyến (không bắt buộc)</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Ví dụ: https://meet.google.com/xyz-abcd-123"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormDescription>
-                            Bạn có thể để trống để gia sư tạo phòng học
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  )}
-
-                  <FormField
-                    control={form.control}
-                    name="notes"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Ghi chú thêm (không bắt buộc)</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Ví dụ: Em cần gia sư mang theo tài liệu"
-                            className="h-20"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="space-y-4">
-                  <div className="bg-muted p-4 rounded-lg mb-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <InfoIcon className="w-5 h-5 text-blue-500" />
-                      <h3 className="font-medium">Thông tin buổi học</h3>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Để đặt lịch học, vui lòng chọn một ngày và giờ mà gia sư có sẵn lịch trống. 
-                      Chỉ những ngày và giờ gia sư đã đăng ký lịch trống mới được hiển thị.
-                    </p>
-                  </div>
-
-                  <FormField
-                    control={form.control}
-                    name="date"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Ngày học</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant={"outline"}
-                                className={`w-full pl-3 text-left font-normal ${!field.value && "text-muted-foreground"}`}
-                                disabled={availableDates.length === 0}
-                              >
-                                {field.value ? (
-                                  format(field.value, "EEEE, dd/MM/yyyy", { locale: vi })
-                                ) : (
-                                  <span>Chọn ngày học</span>
-                                )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value}
-                              onSelect={(date) => {
-                                if (date) {
-                                  // Tạo một đối tượng Date mới với giờ địa phương đúng
-                                  const safeDate = new Date(
-                                    date.getFullYear(),
-                                    date.getMonth(),
-                                    date.getDate(),
-                                    0, 0, 0
-                                  );
-                                  console.log("Ngày được chọn trên calendar:", date);
-                                  console.log("Ngày sau khi xử lý:", safeDate);
-                                  field.onChange(safeDate);
-                                }
-                              }}
-                              disabled={(date) => {
-                                // Xử lý lại ngày để tìm trong availableTimeSlots
-                                const year = date.getFullYear();
-                                const month = date.getMonth() + 1;
-                                const day = date.getDate();
-                                const dateStr = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-                                
-                                // Kiểm tra xem ngày có trong danh sách availableDates không
-                                let exists = false;
-                                
-                                // Kiểm tra trực tiếp trong availableTimeSlots
-                                if (availableTimeSlots[dateStr] && availableTimeSlots[dateStr].length > 0) {
-                                  exists = true;
-                                }
-                                
-                                // Tìm kiếm chính xác theo năm/tháng/ngày
-                                if (!exists) {
-                                  for (const key in availableTimeSlots) {
-                                    const [keyYear, keyMonth, keyDay] = key.split("-").map(Number);
-                                    if (year === keyYear && month === keyMonth && day === keyDay) {
-                                      exists = true;
-                                      break;
-                                    }
-                                  }
-                                }
-                                
-                                return !exists;
-                              }}
-                              initialFocus
-                              locale={vi}
-                              weekStartsOn={1}
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        {availableDates.length === 0 && (
-                          <p className="text-xs text-amber-600">
-                            Gia sư chưa thiết lập lịch trống
-                          </p>
-                        )}
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="start_time"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Chọn khung giờ học</FormLabel>
-                        <Select
-                          onValueChange={(value) => {
-                            field.onChange(value);
-                            updateEndTime(value);
-                          }}
-                          value={field.value}
-                          disabled={!form.watch("date") || getAvailableStartTimes(form.watch("date")).length === 0}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Chọn khung giờ học" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {form.watch("date") && getAvailableStartTimes(form.watch("date")).length > 0 ? (
-                              getAvailableStartTimes(form.watch("date")).map((time: string) => {
-                                // Tìm khoảng thời gian tương ứng để hiển thị giờ kết thúc
-                                const selectedDate = form.watch("date");
-                                const year = selectedDate.getFullYear();
-                                const month = selectedDate.getMonth() + 1;
-                                const day = selectedDate.getDate();
-                                const dateStr = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-                                
-                                // Tìm slots từ cả hai nguồn
-                                let slots = availableTimeSlots[dateStr] || [];
-                                
-                                // Nếu không tìm thấy, thử tìm với cùng năm/tháng/ngày
-                                if (slots.length === 0) {
-                                  for (const key in availableTimeSlots) {
-                                    const [keyYear, keyMonth, keyDay] = key.split("-").map(Number);
-                                    if (year === keyYear && month === keyMonth && day === keyDay) {
-                                      slots = availableTimeSlots[key];
-                                      break;
-                                    }
-                                  }
-                                }
-                                
-                                const matchedSlot = slots.find(slot => slot.startTime === time);
-                                
-                                if (!matchedSlot) return null;
-                                
-                                return (
-                                  <SelectItem key={time} value={time}>
-                                    <span className="font-medium">{time} → {matchedSlot.endTime}</span>
-                                    {(() => {
-                                      // Tính thời gian học
-                                      const [startHour, startMin] = time.split(":").map(Number);
-                                      const [endHour, endMin] = matchedSlot.endTime.split(":").map(Number);
-                                      
-                                      const startMinutes = startHour * 60 + startMin;
-                                      const endMinutes = endHour * 60 + endMin;
-                                      
-                                      const diffMinutes = endMinutes - startMinutes;
-                                      const hours = Math.floor(diffMinutes / 60);
-                                      const minutes = diffMinutes % 60;
-                                      
-                                      return (
-                                        <span className="text-xs text-muted-foreground ml-2">
-                                          ({hours} giờ{minutes > 0 ? ` ${minutes} phút` : ""})
-                                        </span>
-                                      );
-                                    })()}
-                                  </SelectItem>
-                                );
-                              })
-                            ) : (
-                              <SelectItem value="no-slots" disabled>
-                                Không có khung giờ trống
-                              </SelectItem>
+                      name="bookings"
+                      render={() => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel className="flex items-center gap-2">
+                            Chọn ngày học
+                            {scheduleLoading && (
+                              <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
                             )}
-                          </SelectContent>
-                        </Select>
-                        {form.watch("start_time") && form.watch("end_time") && (
-                          <div className="text-sm text-muted-foreground mt-1 flex items-center">
-                            <div className="bg-primary/10 text-primary rounded-md px-2 py-1 font-medium">
-                              {form.watch("start_time")} → {form.watch("end_time")}
-                            </div>
-                            <input 
-                              type="hidden" 
-                              name="end_time" 
-                              value={form.watch("end_time")} 
-                            />
-                          </div>
-                        )}
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="mt-6">
-                    <h3 className="text-lg font-medium mb-2">Thông tin thanh toán</h3>
-                    <Separator className="mb-4" />
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span>Giá mỗi giờ:</span>
-                        <span className="font-medium">
-                          {new Intl.NumberFormat("vi-VN", {
-                            style: "currency",
-                            currency: "VND",
-                          }).format(
-                            courseData?.hourly_rate || (tutorData?.hourly_rate ? Number(tutorData.hourly_rate) : 0)
-                          )}
-                        </span>
-                      </div>
-                      
-                      {form.watch("start_time") && form.watch("end_time") && (
-                        <>
-                          <div className="flex justify-between">
-                            <span>Thời gian học:</span>
-                            <span>
-                              {(() => {
-                                if (!form.watch("start_time") || !form.watch("end_time")) {
-                                  return "0 giờ";
-                                }
-                                
-                                const [startHour, startMin] = form.watch("start_time").split(":").map(Number);
-                                const [endHour, endMin] = form.watch("end_time").split(":").map(Number);
-                                
-                                const startMinutes = startHour * 60 + startMin;
-                                const endMinutes = endHour * 60 + endMin;
-                                
-                                const diffMinutes = endMinutes - startMinutes;
-                                const hours = Math.floor(diffMinutes / 60);
-                                const minutes = diffMinutes % 60;
-                                
-                                return `${hours} giờ${minutes > 0 ? ` ${minutes} phút` : ""}`;
-                              })()}
-                            </span>
-                          </div>
-                          
-                          <Separator />
-                          
-                          <div className="flex justify-between text-lg font-medium">
-                            <span>Tổng tiền:</span>
-                            <span>
-                              {(() => {
-                                if (!form.watch("start_time") || !form.watch("end_time")) {
-                                  return "0 VNĐ";
-                                }
-                                
-                                const [startHour, startMin] = form.watch("start_time").split(":").map(Number);
-                                const [endHour, endMin] = form.watch("end_time").split(":").map(Number);
-                                
-                                const startMinutes = startHour * 60 + startMin;
-                                const endMinutes = endHour * 60 + endMin;
-                                
-                                const diffMinutes = endMinutes - startMinutes;
-                                const hours = diffMinutes / 60;
-                                
-                                const hourlyRate = courseData?.hourly_rate || (tutorData?.hourly_rate ? Number(tutorData.hourly_rate) : 0);
-                                const totalAmount = hourlyRate * hours;
-                                
-                                return new Intl.NumberFormat("vi-VN", {
-                                  style: "currency",
-                                  currency: "VND",
-                                }).format(totalAmount);
-                              })()}
-                            </span>
-                          </div>
-                        </>
+                          </FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant={"outline"}
+                                  className={cn(
+                                    "w-full pl-3 text-left font-normal",
+                                    selectedDates.length === 0 &&
+                                      "text-muted-foreground"
+                                  )}
+                                  disabled={scheduleLoading || !!scheduleError}
+                                >
+                                  {selectedDates.length > 0 ? (
+                                    <span>
+                                      Đã chọn {selectedDates.length} ngày học
+                                    </span>
+                                  ) : (
+                                    <span>Chọn ngày học</span>
+                                  )}
+                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent
+                              className="w-auto p-0"
+                              align="start"
+                            >
+                              <Calendar
+                                mode="multiple"
+                                selected={selectedDates}
+                                onSelect={(dates) => {
+                                  if (!Array.isArray(dates)) return;
+                                  setSelectedDates(dates);
+                                }}
+                                onDayClick={handleDateSelect}
+                                locale={vi}
+                                modifiers={{
+                                  available: hasTimeSlots,
+                                  selected: (date) =>
+                                    selectedDates.some(
+                                      (d) =>
+                                        format(d, "yyyy-MM-dd") ===
+                                        format(date, "yyyy-MM-dd")
+                                    ),
+                                }}
+                                modifiersStyles={{
+                                  available: {
+                                    fontWeight: "bold",
+                                    backgroundColor:
+                                      "hsl(var(--primary) / 0.1)",
+                                    color: "hsl(var(--primary))",
+                                  },
+                                  selected: {
+                                    backgroundColor: "hsl(var(--primary))",
+                                    color: "hsl(var(--primary-foreground))",
+                                  },
+                                }}
+                                disabled={(date) => {
+                                  // Disable dates in the past
+                                  const now = new Date();
+                                  now.setHours(0, 0, 0, 0);
+                                  return date < now || !hasTimeSlots(date);
+                                }}
+                                fromDate={new Date()}
+                              />
+                            </PopoverContent>
+                          </Popover>{" "}
+                          <FormDescription>
+                            {scheduleError ? (
+                              <div className="text-destructive flex items-center gap-1">
+                                <AlertCircle className="h-3 w-3" />
+                                <span>Không thể tải lịch dạy</span>
+                              </div>
+                            ) : !hasAvailabilityData && !scheduleLoading ? (
+                              <div className="text-amber-600 flex items-center gap-1">
+                                <AlertCircle className="h-3 w-3" />
+                                <span>Gia sư chưa cập nhật lịch dạy</span>
+                              </div>
+                            ) : (
+                              <span>
+                                Chọn một hoặc nhiều ngày có lịch trống (hiển thị
+                                màu xanh nhạt)
+                              </span>
+                            )}
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
                       )}
-                    </div>
-                    
-                    <div className="mt-4 border rounded-md p-4 bg-muted/30">
-                      <h4 className="text-sm font-medium mb-2">Phương thức thanh toán</h4>
-                      <div className="space-y-2">
-                        <div className="flex items-center">
-                          <input
-                            type="radio"
-                            id="payment-method-vnpay"
-                            name="payment-method"
-                            className="mr-2"
-                            defaultChecked
-                          />
-                          <label htmlFor="payment-method-vnpay" className="text-sm flex items-center">
-                            <img 
-                              src="https://cdn.haitrieu.com/wp-content/uploads/2022/10/Icon-VNPAY-QR.png" 
-                              alt="VNPAY" 
-                              className="h-6 w-auto mr-2" 
-                            />
-                            Thanh toán qua VNPAY
-                          </label>
+                    />
+                    {/* Selected sessions display */}
+                    {selectedDates.length > 0 && (
+                      <div className="space-y-4">
+                        <h3 className="text-sm font-medium">
+                          Lịch học đã chọn
+                        </h3>
+                        <div className="space-y-3">
+                          {selectedDates.map((date) => {
+                            const dateStr = format(date, "yyyy-MM-dd");
+                            const dateFormatted = format(
+                              date,
+                              "EEEE, dd/MM/yyyy",
+                              {
+                                locale: vi,
+                              }
+                            );
+
+                            const selectedTimeSlots =
+                              getSelectedTimeSlotsForDate(date);
+                            const availableSlots =
+                              getAvailableSlotsForDate(date);
+
+                            return (
+                              <div
+                                key={dateStr}
+                                className="border rounded-md p-4 space-y-3"
+                              >
+                                <div className="flex justify-between items-center">
+                                  <h4 className="font-medium text-sm">
+                                    {dateFormatted}
+                                  </h4>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeSession(dateStr)}
+                                  >
+                                    <span className="sr-only">Xóa ngày</span>
+                                    &times;
+                                  </Button>
+                                </div>
+                                <div>
+                                  <FormLabel className="text-xs">
+                                    Chọn khung giờ học (có thể chọn nhiều)
+                                  </FormLabel>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-1.5">
+                                    {availableSlots.map((slot) => {
+                                      const isSelected = selectedTimeSlots.some(
+                                        (selectedSlot) =>
+                                          selectedSlot.startTime ===
+                                            slot.startTime &&
+                                          selectedSlot.endTime === slot.endTime
+                                      );
+
+                                      return (
+                                        <Button
+                                          key={`${dateStr}-${slot.startTime}-${slot.endTime}`}
+                                          type="button"
+                                          size="sm"
+                                          variant={
+                                            isSelected ? "default" : "outline"
+                                          }
+                                          className={cn(
+                                            "flex items-center justify-center gap-1.5 text-xs py-5 transition-all",
+                                            isSelected
+                                              ? "bg-primary text-primary-foreground shadow-sm"
+                                              : "hover:bg-primary/10 hover:border-primary/50"
+                                          )}
+                                          onClick={() =>
+                                            handleTimeSlotSelect(date, slot)
+                                          }
+                                        >
+                                          <Clock
+                                            className={cn(
+                                              "w-3 h-3 mr-1",
+                                              isSelected
+                                                ? "text-current"
+                                                : "text-muted-foreground"
+                                            )}
+                                          />
+                                          <span className="whitespace-nowrap font-medium">
+                                            {slot.startTime} - {slot.endTime}
+                                          </span>
+                                        </Button>
+                                      );
+                                    })}
+                                  </div>
+                                  {availableSlots.length === 0 && (
+                                    <p className="text-muted-foreground text-xs mt-1">
+                                      Không có khung giờ trống cho ngày đã chọn
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                        <div className="text-xs text-muted-foreground mt-2">
-                          Sau khi đặt lịch, bạn sẽ được chuyển đến cổng thanh toán VNPAY để hoàn tất giao dịch.
-                          Số tiền thanh toán sẽ được giữ lại cho đến khi buổi học kết thúc.
+                        <div>
+                          {selectedSessions.length !== selectedDates.length ? (
+                            <div className="flex items-center p-2 bg-destructive/10 text-destructive rounded-md text-sm">
+                              <svg
+                                width="15"
+                                height="15"
+                                viewBox="0 0 15 15"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="w-4 h-4 mr-2"
+                              >
+                                <path
+                                  d="M7.49991 0.877045C3.84222 0.877045 0.877075 3.84219 0.877075 7.49988C0.877075 11.1575 3.84222 14.1227 7.49991 14.1227C11.1576 14.1227 14.1227 11.1575 14.1227 7.49988C14.1227 3.84219 11.1576 0.877045 7.49991 0.877045ZM1.82708 7.49988C1.82708 4.36686 4.36689 1.82704 7.49991 1.82704C10.6329 1.82704 13.1727 4.36686 13.1727 7.49988C13.1727 10.6329 10.6329 13.1727 7.49991 13.1727C4.36689 13.1727 1.82708 10.6329 1.82708 7.49988ZM8.24992 10.5C8.24992 10.9142 7.91413 11.25 7.49992 11.25C7.08571 11.25 6.74992 10.9142 6.74992 10.5C6.74992 10.0858 7.08571 9.75 7.49992 9.75C7.91413 9.75 8.24992 10.0858 8.24992 10.5ZM6.85358 4.89862C6.85358 4.47442 7.18936 4.13864 7.61356 4.13864C8.03776 4.13864 8.37354 4.47442 8.37354 4.89862V7.49988C8.37354 7.92408 8.03776 8.25986 7.61356 8.25986C7.18936 8.25986 6.85358 7.92408 6.85358 7.49988V4.89862Z"
+                                  fill="currentColor"
+                                  fillRule="evenodd"
+                                  clipRule="evenodd"
+                                ></path>
+                              </svg>
+                              Vui lòng chọn khung giờ học cho tất cả các ngày
+                              (còn thiếu{" "}
+                              {selectedDates.length - selectedSessions.length}{" "}
+                              ngày)
+                            </div>
+                          ) : (
+                            <p className="text-sm text-muted-foreground flex items-center">
+                              <svg
+                                width="15"
+                                height="15"
+                                viewBox="0 0 15 15"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="w-4 h-4 mr-2 text-green-600"
+                              >
+                                <path
+                                  d="M11.4669 3.72684C11.7558 3.91574 11.8369 4.30308 11.648 4.59198L7.39799 11.092C7.29783 11.2452 7.13556 11.3467 6.95402 11.3699C6.77247 11.3931 6.58989 11.3355 6.45446 11.2124L3.70446 8.71241C3.44905 8.48022 3.43023 8.08494 3.66242 7.82953C3.89461 7.57412 4.28989 7.55529 4.5453 7.78749L6.75292 9.79441L10.6018 3.90792C10.7907 3.61902 11.178 3.53795 11.4669 3.72684Z"
+                                  fill="currentColor"
+                                  fillRule="evenodd"
+                                  clipRule="evenodd"
+                                ></path>
+                              </svg>
+                              Đã chọn{" "}
+                              {selectedSessions.reduce(
+                                (total, session) =>
+                                  total + session.timeSlots.length,
+                                0
+                              )}{" "}
+                              khung giờ học cho {selectedDates.length} ngày
+                            </p>
+                          )}
                         </div>
                       </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end space-x-2 mt-6">
+                    )}
+                    {selectedDates.length === 0 && (
+                      <div className="rounded-md bg-muted/50 border border-border/50 p-4 text-center">
+                        <p className="text-sm text-muted-foreground">
+                          Vui lòng chọn ít nhất một ngày học từ lịch
+                        </p>
+                      </div>
+                    )}
+                    {/* Learning mode */}
+                    {course?.deliveryModes && (
+                      <FormField
+                        control={form.control}
+                        name="mode"
+                        render={({ field }) => (
+                          <FormItem className="space-y-3">
+                            <FormLabel>Hình thức học</FormLabel>
+                            <FormControl>
+                              <RadioGroup
+                                onValueChange={field.onChange}
+                                value={field.value}
+                                className="flex flex-col sm:flex-row gap-3"
+                              >
+                                {(course.deliveryModes === "online" ||
+                                  course.deliveryModes === "both") && (
+                                  <div className="flex items-center space-x-2 border rounded-md p-3 cursor-pointer hover:bg-secondary/50 transition-colors">
+                                    <RadioGroupItem
+                                      value="online"
+                                      id="online"
+                                    />
+                                    <div className="grid gap-1.5">
+                                      <label
+                                        htmlFor="online"
+                                        className="text-sm font-medium leading-none cursor-pointer flex items-center gap-1.5"
+                                      >
+                                        <MonitorSmartphone className="w-4 h-4" />
+                                        Học trực tuyến
+                                      </label>
+                                      <div className="text-[13px] text-muted-foreground">
+                                        Thông qua Google Meet hoặc Zoom
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                                {(course.deliveryModes === "offline" ||
+                                  course.deliveryModes === "both") && (
+                                  <div className="flex items-center space-x-2 border rounded-md p-3 cursor-pointer hover:bg-secondary/50 transition-colors">
+                                    <RadioGroupItem
+                                      value="offline"
+                                      id="offline"
+                                    />
+                                    <div className="grid gap-1.5">
+                                      <label
+                                        htmlFor="offline"
+                                        className="text-sm font-medium leading-none cursor-pointer flex items-center gap-1.5"
+                                      >
+                                        <MapPin className="w-4 h-4" />
+                                        Học trực tiếp
+                                      </label>
+                                      <div className="text-[13px] text-muted-foreground">
+                                        Tại địa điểm thỏa thuận với gia sư
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </RadioGroup>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+                    {/* Location input for offline mode */}
+                    {watchMode === "offline" && (
+                      <FormField
+                        control={form.control}
+                        name="location"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Địa điểm học trực tiếp</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <input
+                                  placeholder="Nhập địa chỉ học tập (ví dụ: quán cà phê, thư viện...)"
+                                  className="pl-10 w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                  {...field}
+                                />
+                              </div>
+                            </FormControl>
+                            <FormDescription>
+                              Địa điểm sẽ được thông báo cho gia sư trước buổi
+                              học
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+                    {/* Optional note */}
+                    <FormField
+                      control={form.control}
+                      name="note"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Lời nhắn (không bắt buộc)</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Textarea
+                                placeholder="Nhập lời nhắn cho gia sư (nhu cầu học tập, mong muốn...)"
+                                className="resize-none min-h-[100px]"
+                                maxLength={300}
+                                {...field}
+                              />
+                              <div className="absolute bottom-2 right-2 text-xs text-muted-foreground">
+                                {field.value?.length || 0}/300
+                              </div>
+                            </div>
+                          </FormControl>
+                          <FormDescription>
+                            Gia sư sẽ nhận được thông tin này trước buổi học
+                            (tối đa 300 ký tự)
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </form>
+                </Form>
+              </CardContent>
+              <CardFooter className="flex-col sm:flex-row gap-4 pt-6 border-t">
                 <Button
-                  type="button"
                   variant="outline"
+                  className="w-full sm:w-auto"
                   onClick={() => window.history.back()}
                 >
-                  Hủy
+                  Quay lại
                 </Button>
-                <Button 
-                  type="submit" 
-                  disabled={isSubmitting || availableDates.length === 0} 
-                  className="bg-primary hover:bg-primary/90"
+                <Button
+                  className="w-full sm:w-auto"
+                  onClick={form.handleSubmit(onSubmit)}
+                  disabled={
+                    !form.formState.isValid || form.formState.isSubmitting
+                  }
                 >
-                  {isSubmitting ? (
+                  {form.formState.isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Đang xử lý...
                     </>
                   ) : (
-                    "Xác nhận đặt lịch và thanh toán"
+                    "Xác nhận đặt lịch"
                   )}
                 </Button>
-              </div>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
-    </div>
+              </CardFooter>
+            </Card>
+          </div>
+
+          {/* Sidebar with course and tutor info */}
+          <div>
+            {/* Course information card */}
+            <Card className="mb-6">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Thông tin khóa học</CardTitle>
+              </CardHeader>
+              <CardContent className="pb-6">
+                {courseLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary/70" />
+                  </div>
+                ) : courseError ? (
+                  <div className="flex flex-col items-center justify-center py-8 gap-2 text-destructive">
+                    <AlertCircle className="h-8 w-8" />
+                    <p>Không thể tải thông tin khóa học</p>
+                  </div>
+                ) : course ? (
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="font-medium text-base md:text-lg mb-1">
+                        {course.title}
+                      </h3>{" "}
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        <Badge variant="outline" className="bg-primary/5">
+                          {typeof course.subject === "object" &&
+                          course.subject !== null
+                            ? course.subject.name
+                            : course.subject}
+                        </Badge>{" "}
+                        <Badge variant="outline" className="bg-primary/5">
+                          {typeof course.educationLevel === "object" &&
+                          course.educationLevel !== null
+                            ? course.educationLevel.name
+                            : course.educationLevel}
+                        </Badge>
+                        {course.tags?.map((tag, index) => (
+                          <Badge
+                            key={index}
+                            variant="outline"
+                            className="bg-secondary/20"
+                          >
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {course.description}
+                      </p>
+                    </div>
+                    <Separator />
+                    <div className="grid gap-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm">Thời lượng:</span>
+                        <span className="font-medium">{course.duration}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm">Học phí:</span>
+                        <span className="font-medium">
+                          {new Intl.NumberFormat("vi-VN", {
+                            style: "currency",
+                            currency: "VND",
+                          }).format(course.pricePerSession)}
+                          /buổi
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm">Hình thức:</span>
+                        <span className="flex items-center gap-2">
+                          {(course.deliveryModes === "online" ||
+                            course.deliveryModes === "both") && (
+                            <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+                              Online
+                            </span>
+                          )}
+                          {(course.deliveryModes === "offline" ||
+                            course.deliveryModes === "both") && (
+                            <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full">
+                              Offline
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground text-center py-4">
+                    Không có dữ liệu khóa học
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Tutor information card */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Thông tin gia sư</CardTitle>
+              </CardHeader>
+              <CardContent className="pb-6">
+                {tutorLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary/70" />
+                  </div>
+                ) : tutorError ? (
+                  <div className="flex flex-col items-center justify-center py-8 gap-2 text-destructive">
+                    <AlertCircle className="h-8 w-8" />
+                    <p>Không thể tải thông tin gia sư</p>
+                  </div>
+                ) : tutor ? (
+                  <>
+                    <div className="flex items-start gap-3 mb-4">
+                      <Avatar className="h-16 w-16">
+                        <AvatarImage src={tutor.avatar} alt={tutor.fullName} />
+                        <AvatarFallback>
+                          {tutor.fullName
+                            ? tutor.fullName.split(" ").pop()?.charAt(0) ||
+                              tutor.fullName.charAt(0)
+                            : "?"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <h3 className="font-medium text-base">
+                          {tutor.fullName}
+                        </h3>
+                        <div className="flex items-center gap-1 my-1">
+                          <span className="text-sm font-medium text-amber-500">
+                            {tutor.rating}
+                          </span>
+                          <span className="text-amber-500 flex">
+                            {"★".repeat(Math.round(tutor.rating || 0))}
+                            {"☆".repeat(5 - Math.round(tutor.rating || 0))}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            ({tutor.totalReviews} đánh giá)
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {tutor.experience} kinh nghiệm giảng dạy
+                        </p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-sm">
+                        <span className="font-medium">Email:</span>{" "}
+                        {tutor.email}
+                      </p>
+                      <p className="text-sm">
+                        <span className="font-medium">Địa điểm:</span>{" "}
+                        {tutor.address}
+                      </p>
+                      <p className="text-sm">
+                        <span className="font-medium">Ngày sinh:</span>{" "}
+                        {tutor.birthdate &&
+                          format(new Date(tutor.birthdate), "dd/MM/yyyy")}
+                      </p>
+                      <p className="text-sm flex items-center gap-2">
+                        <span className="font-medium">Xác minh:</span>{" "}
+                        {tutor.verified ? (
+                          <span className="inline-flex items-center bg-green-50 text-green-700 text-xs px-2 py-0.5 rounded-full">
+                            <svg
+                              className="w-3 h-3 mr-1"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                clipRule="evenodd"
+                              ></path>
+                            </svg>
+                            Đã xác minh
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center bg-yellow-50 text-yellow-700 text-xs px-2 py-0.5 rounded-full">
+                            Chưa xác minh
+                          </span>
+                        )}
+                      </p>
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">Giới thiệu:</p>
+                        <div className="text-sm bg-muted/40 p-3 rounded-md">
+                          {tutor.bio}
+                        </div>
+                      </div>{" "}
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">Môn học:</p>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {tutor.subjects.map((subject, index) => (
+                            <Badge
+                              key={index}
+                              variant="secondary"
+                              className="text-xs"
+                            >
+                              {typeof subject === "object" && subject !== null
+                                ? subject.name
+                                : subject}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-muted-foreground text-center py-4">
+                    Không có dữ liệu gia sư
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }

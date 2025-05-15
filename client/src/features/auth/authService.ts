@@ -34,6 +34,11 @@ const register = async (userData: any): Promise<any> => {
 
   // In the updated flow, registration doesn't return a token immediately
   // because the user needs to verify their email first
+  // Store token in localStorage when registering
+  if (data.token) {
+    localStorage.setItem("token", data.token);
+    // console.log("Token saved after registration:", data.token);
+  }
 
   // We don't automatically send OTP here anymore
   // It will be sent when user reaches the verification page to avoid multiple sends
@@ -71,7 +76,7 @@ const login = async (userData: {
   }
 
   const data = await response.json();
-  console.log("Login response (raw):", data);
+  // console.log("Login response (raw):", data);
 
   // Xử lý cấu trúc phản hồi từ server
   let user, token;
@@ -97,7 +102,7 @@ const login = async (userData: {
   // Lưu token
   if (token) {
     localStorage.setItem("token", token);
-    console.log("Token saved:", token);
+    // console.log("Token saved:", token);
   } else {
     console.warn("No token received in login response");
   }

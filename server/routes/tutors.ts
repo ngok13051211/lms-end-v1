@@ -84,11 +84,10 @@ router.get(
 );
 
 // Lấy khóa học của gia sư theo ID
-router.get(
-  "/:id/courses",
-  validateParams(schema.idSchema),
-  tutorController.getTutorCourses
-);
+router.get("/:id/courses", validateParams(schema.idSchema), (req, res) => {
+  console.log(`Router handling courses request for tutor ID: ${req.params.id}`);
+  return tutorController.getTutorCourses(req, res);
+});
 
 // Lấy thông tin gia sư theo ID
 router.get(
