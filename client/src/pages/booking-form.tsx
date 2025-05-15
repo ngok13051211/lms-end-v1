@@ -212,7 +212,10 @@ type BookingFormValues = z.infer<typeof bookingFormSchema>;
 
 // API functions to fetch data from backend
 const fetchTutor = async (tutorId: string): Promise<Tutor> => {
+  console.log("Fetching tuto");
   const response = await fetch(`/api/v1/tutors/${tutorId}`);
+
+  console.log("Fetching tutor data from API:", response);
   if (!response.ok) {
     throw new Error(`Error fetching tutor data: ${response.statusText}`);
   }

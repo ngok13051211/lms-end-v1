@@ -16,7 +16,9 @@ import {
   ChevronRight,
   Users,
   Settings,
-  Calendar, // Added Calendar icon for the schedule
+  Calendar,
+  UserCheck,
+  BarChart3, // Added BarChart3 icon for statistics reports
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useDispatch } from "react-redux";
@@ -109,24 +111,29 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     } else if (user.role === "admin") {
       return [
         {
-          label: "Dashboard",
+          label: "Tổng quan",
           icon: <Home className="h-5 w-5" />,
-          href: "/dashboard/admin",
+          href: "/admin-dashboard",
         },
         {
-          label: "Users",
+          label: "Duyệt yêu cầu gia sư",
+          icon: <UserCheck className="h-5 w-5" />,
+          href: "/admin-dashboard/tutor-verification",
+        },
+        {
+          label: "Báo cáo thống kê",
+          icon: <BarChart3 className="h-5 w-5" />,
+          href: "/admin-dashboard/reports",
+        },
+        {
+          label: "Quản lý người dùng",
           icon: <Users className="h-5 w-5" />,
-          href: "/dashboard/admin/users",
+          href: "/admin-dashboard/users",
         },
         {
-          label: "Tutors",
+          label: "Quản lý gia sư",
           icon: <User className="h-5 w-5" />,
-          href: "/dashboard/admin/tutors",
-        },
-        {
-          label: "Settings",
-          icon: <Settings className="h-5 w-5" />,
-          href: "/dashboard/admin/settings",
+          href: "/admin-dashboard/tutors",
         },
       ];
     }
@@ -174,11 +181,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             return (
               <div
                 key={item.href}
-                className={`flex items-center px-4 py-3 text-sm rounded-md transition-colors cursor-pointer ${
-                  isActive
+                className={`flex items-center px-4 py-3 text-sm rounded-md transition-colors cursor-pointer ${isActive
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                }`}
+                  }`}
                 onClick={() => {
                   if (isMobile) setSidebarOpen(false);
                   window.location.href = item.href;

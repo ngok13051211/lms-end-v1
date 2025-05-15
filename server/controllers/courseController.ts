@@ -355,3 +355,72 @@ export const getAllCourses = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Internal server error" });
   }
 };
+
+/**
+ * Get course by ID
+ * This endpoint is used to fetch detailed information about a specific course
+ * for use in the booking form
+ */
+export const getCourseById = async (req: Request, res: Response) => {
+  try {
+    const courseId = parseInt(req.params.id);
+    if (isNaN(courseId)) {
+      return res.status(400).json({ message: "Invalid course ID" });
+    }
+
+    // Fetch course with related subject, education level, and tutor info
+    const course = await db.query.courses.findFirst({
+      where: and(
+        eq(schema.courses.id, courseId),
+        eq(schema.courses.status, "active") // Only return active courses
+      ),
+      with: {
+        subject: true,
+        level: true,
+        tutor: {
+          with: {
+            user: {
+              columns: {
+                id: true,
+                first_name: true,
+                last_name: true,
+                avatar: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!course) {
+      return res
+        .status(404)
+        .json({ message: "Course not found or not active" });
+    }
+
+    // Format the response to match the frontend expectations
+    const formattedCourse = {
+      id: course.id.toString(),
+      title: course.title,
+      description: course.description || "",
+      subject: course.subject,
+      educationLevel: course.level,
+      pricePerSession: parseFloat(course.hourly_rate),
+      deliveryModes: course.teaching_mode,
+      tutor: {
+        id: course.tutor.id,
+        name: `${course.tutor.user.first_name} ${course.tutor.user.last_name}`,
+        avatar: course.tutor.user.avatar,
+      },
+      // Default duration if not specified elsewhere
+      duration: "60 minutes",
+      // Add empty tags array
+      tags: [],
+    };
+
+    return res.status(200).json(formattedCourse);
+  } catch (error) {
+    console.error("Get course by ID error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
