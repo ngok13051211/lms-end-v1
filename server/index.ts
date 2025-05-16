@@ -20,7 +20,7 @@ app.use(
     origin:
       process.env.NODE_ENV === "production"
         ? process.env.CLIENT_URL
-        : ["http://192.168.1.35:3000", "http://192.168.1.35:5000"],
+        : ["http://localhost:3000", "http://localhost:5000"],
     credentials: true, // Cho phép chia sẻ cookie giữa frontend và backend
   })
 );
@@ -96,7 +96,7 @@ app.use((req, res, next) => {
     // Route handler cho path gốc trong development mode
     app.get("/", (req, res) => {
       // Chuyển hướng đến client Vite
-      res.redirect("http://192.168.1.35:3000");
+      res.redirect("http://localhost:3000");
     });
   } else {
     console.log("Starting in PRODUCTION mode");
@@ -114,7 +114,7 @@ app.use((req, res, next) => {
   server.listen(
     {
       port,
-      host: "192.168.1.35",
+      host: "localhost",
       // reusePort: true,
     },
     () => {

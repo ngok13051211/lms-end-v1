@@ -36,4 +36,8 @@ router.delete(
   roleMiddleware(["tutor"]),
   scheduleController.deleteSchedule
 );
+
+// Lấy lịch trống của gia sư theo ID (public, không cần xác thực)
+router.get("/:tutorId", scheduleController.getAvailableTutorSchedulesByTutorId);
+
 export default router;

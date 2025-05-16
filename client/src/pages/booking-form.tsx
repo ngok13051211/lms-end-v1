@@ -59,17 +59,27 @@ import { Separator } from "@/components/ui/separator";
 // API types
 interface Tutor {
   id: string;
-  fullName: string;
-  avatar: string;
-  email: string;
-  address: string;
-  verified: boolean;
-  birthdate: string;
-  rating: number;
-  totalReviews: number;
-  experience: string;
-  education: string;
+  user_id: number;
   bio: string;
+  date_of_birth?: string;
+  address?: string;
+  certifications?: string;
+  availability?: string;
+  is_verified: boolean;
+  is_featured?: boolean;
+  rejection_reason?: string;
+  rating: number;
+  total_reviews: number;
+  experience_years?: number;
+  education?: string;
+  user?: {
+    id: number;
+    first_name: string;
+    last_name: string;
+    email: string;
+    avatar?: string;
+    phone?: string;
+  };
   subjects: (Subject | string)[];
 }
 
@@ -99,6 +109,7 @@ interface Course {
 }
 
 interface ScheduleTimeSlot {
+  id: number; // Schedule ID for easier reference when booking
   startTime: string; // Format HH:mm (example: "08:00")
   endTime: string; // Format HH:mm (example: "10:00")
 }
@@ -110,6 +121,7 @@ interface ScheduleDay {
 
 // Định nghĩa kiểu dữ liệu cho khung giờ
 type TimeSlot = {
+  id: number; // Schedule ID for easier reference when booking
   startTime: string; // Format HH:mm (example: "08:00")
   endTime: string; // Format HH:mm (example: "10:00")
 };
@@ -122,6 +134,7 @@ type SelectedSessionInfo = {
 
 // Định nghĩa kiểu booking để trả về API
 type BookingInfo = {
+  scheduleId: number; // ID of the teaching schedule
   date: string; // Format YYYY-MM-DD (example: "2025-05-16")
   startTime: string; // Format HH:mm (example: "08:00")
   endTime: string; // Format HH:mm (example: "10:00")
@@ -140,6 +153,9 @@ const bookingFormSchema = z
       .array(
         z
           .object({
+            scheduleId: z.number({
+              required_error: "ID lịch học không được cung cấp",
+            }),
             date: z
               .string({
                 required_error: "Vui lòng chọn ngày học",
@@ -231,11 +247,47 @@ const fetchCourse = async (courseId: string): Promise<Course> => {
 };
 
 const fetchTutorSchedule = async (tutorId: string): Promise<ScheduleDay[]> => {
-  const response = await fetch(`/api/v1/schedules/${tutorId}`);
+  // Add optional query parameters for course or date filtering
+  const courseId = new URLSearchParams(window.location.search).get("course");
+  const queryParams = new URLSearchParams();
+  if (courseId) {
+    queryParams.append("course", courseId);
+  }
+  // Create URL with query parameters
+  const url = `/api/v1/schedules/${tutorId}${
+    queryParams.toString() ? `?${queryParams.toString()}` : ""
+  }`;
+
+  console.log("Fetching schedule data from URL:", url);
+  const response = await fetch(url);
+
   if (!response.ok) {
     throw new Error(`Error fetching schedule data: ${response.statusText}`);
   }
-  return response.json();
+
+  const result = await response.json();
+  console.log("Schedule API response:", result);
+  // Handle the API response format
+  if (result.success) {
+    console.log("Available schedule data:", result.data);
+
+    // Process the data to ensure time slots are in HH:MM format (without seconds)
+    const processedData = (result.data || []).map((day: any) => ({
+      date: day.date,
+      timeSlots: (day.timeSlots || []).map((slot: any) => ({
+        id: slot.id,
+        startTime: slot.startTime
+          ? slot.startTime.substring(0, 5)
+          : slot.startTime,
+        endTime: slot.endTime ? slot.endTime.substring(0, 5) : slot.endTime,
+      })),
+    }));
+
+    console.log("Processed schedule data:", processedData);
+    return processedData;
+  } else {
+    throw new Error(result.message || "Failed to fetch schedule data");
+  }
 };
 
 export default function BookingForm() {
@@ -306,6 +358,9 @@ export default function BookingForm() {
     },
   });
 
+  // Watch the mode field to conditionally render fields
+  const watchMode = form.watch("mode");
+
   useEffect(() => {
     if (course?.deliveryModes) {
       const mode =
@@ -321,17 +376,36 @@ export default function BookingForm() {
     }
   }, [course, form]);
 
-  const watchMode = form.watch("mode");
   // Khởi tạo availableTimeSlots khi component mount
   useEffect(() => {
+    console.log("Processing availability data:", availability);
     if (availability && Array.isArray(availability)) {
       const slotsMap: Record<string, TimeSlot[]> = {};
+
+      // Log available dates clearly
+      console.log(
+        "Available dates from API:",
+        availability.map((item) => item.date).join(", ")
+      );
+
       availability.forEach((item) => {
         if (item && item.date) {
           const dateKey = format(parseISO(item.date), "yyyy-MM-dd");
-          slotsMap[dateKey] = item.timeSlots || [];
+          console.log(`Adding time slots for date ${dateKey}:`, item.timeSlots);
+
+          // Make sure time slots have proper format (HH:MM without seconds)
+          const formattedTimeSlots = (item.timeSlots || []).map((slot) => ({
+            id: slot.id,
+            startTime: slot.startTime
+              ? slot.startTime.substring(0, 5)
+              : slot.startTime,
+            endTime: slot.endTime ? slot.endTime.substring(0, 5) : slot.endTime,
+          }));
+
+          slotsMap[dateKey] = formattedTimeSlots;
         }
       });
+      console.log("Final availableTimeSlotsMap:", slotsMap);
       setAvailableTimeSlotsMap(slotsMap);
     }
   }, [availability]);
@@ -341,6 +415,7 @@ export default function BookingForm() {
     const bookings: BookingInfo[] = selectedSessions.flatMap((session) => {
       const dateStr = format(session.date, "yyyy-MM-dd");
       return session.timeSlots.map((timeSlot) => ({
+        scheduleId: timeSlot.id, // Include the schedule ID for the booking
         date: dateStr,
         startTime: timeSlot.startTime,
         endTime: timeSlot.endTime,
@@ -403,13 +478,14 @@ export default function BookingForm() {
 
     if (sessionIndex > -1) {
       // Nếu ngày đã có trong danh sách, toggle slot
-      const existingTimeSlots = [...newSessions[sessionIndex].timeSlots];
-
-      // Kiểm tra xem khung giờ đã được chọn chưa
+      const existingTimeSlots = [...newSessions[sessionIndex].timeSlots]; // Kiểm tra xem khung giờ đã được chọn chưa
       const timeSlotIndex = existingTimeSlots.findIndex(
         (slot) =>
-          slot.startTime === timeSlot.startTime &&
-          slot.endTime === timeSlot.endTime
+          // If we have an ID, prefer to use that for comparison
+          (slot.id && timeSlot.id && slot.id === timeSlot.id) ||
+          // Otherwise fall back to comparing start/end times
+          (slot.startTime === timeSlot.startTime &&
+            slot.endTime === timeSlot.endTime)
       );
 
       if (timeSlotIndex > -1) {
@@ -454,21 +530,35 @@ export default function BookingForm() {
     );
 
     if (!session) return false;
-
     return session.timeSlots.some(
       (slot) =>
-        slot.startTime === timeSlot.startTime &&
-        slot.endTime === timeSlot.endTime
+        // Use ID for comparison if available
+        (slot.id && timeSlot.id && slot.id === timeSlot.id) ||
+        // Fall back to comparing start/end times
+        (slot.startTime === timeSlot.startTime &&
+          slot.endTime === timeSlot.endTime)
     );
-  };
-
-  // Check if a date has available slots
+  }; // Check if a date has available slots
   const hasTimeSlots = (date: Date) => {
     const dateStr = format(date, "yyyy-MM-dd");
-    return (
+    const hasSlots =
       availableTimeSlotsMap[dateStr] &&
-      availableTimeSlotsMap[dateStr].length > 0
+      availableTimeSlotsMap[dateStr].length > 0;
+
+    // Log all date checks to debug calendar highlighting
+    console.log(
+      `Checking date ${dateStr} - has slots: ${hasSlots ? "YES" : "NO"}`
     );
+
+    // Only log slot details for dates that have slots to avoid console spam
+    if (hasSlots) {
+      console.log(
+        `Date ${dateStr} available time slots:`,
+        availableTimeSlotsMap[dateStr]
+      );
+    }
+
+    return hasSlots;
   };
 
   // Lấy slot khả dụng cho một ngày cụ thể
@@ -593,7 +683,9 @@ export default function BookingForm() {
             <p className="text-muted-foreground">
               Đặt lịch học với gia sư{" "}
               <span className="text-foreground font-medium">
-                {tutor?.fullName}
+                {tutor?.user
+                  ? `${tutor.user.first_name} ${tutor.user.last_name}`
+                  : "Gia sư"}
               </span>
               cho khóa học{" "}
               <span className="text-foreground font-medium">
@@ -1135,54 +1227,67 @@ export default function BookingForm() {
                   </div>
                 ) : tutor ? (
                   <>
+                    {" "}
                     <div className="flex items-start gap-3 mb-4">
                       <Avatar className="h-16 w-16">
-                        <AvatarImage src={tutor.avatar} alt={tutor.fullName} />
+                        <AvatarImage
+                          src={tutor.user?.avatar}
+                          alt={
+                            tutor.user
+                              ? `${tutor.user.first_name} ${tutor.user.last_name}`
+                              : "Tutor"
+                          }
+                        />
                         <AvatarFallback>
-                          {tutor.fullName
-                            ? tutor.fullName.split(" ").pop()?.charAt(0) ||
-                              tutor.fullName.charAt(0)
+                          {tutor.user
+                            ? (tutor.user.first_name?.charAt(0) || "") +
+                              (tutor.user.last_name?.charAt(0) || "")
                             : "?"}
                         </AvatarFallback>
                       </Avatar>
                       <div>
                         <h3 className="font-medium text-base">
-                          {tutor.fullName}
+                          {tutor.user
+                            ? `${tutor.user.first_name} ${tutor.user.last_name}`
+                            : "Tutor"}
                         </h3>
                         <div className="flex items-center gap-1 my-1">
                           <span className="text-sm font-medium text-amber-500">
-                            {tutor.rating}
+                            {tutor.rating || 0}
                           </span>
                           <span className="text-amber-500 flex">
                             {"★".repeat(Math.round(tutor.rating || 0))}
                             {"☆".repeat(5 - Math.round(tutor.rating || 0))}
                           </span>
                           <span className="text-xs text-muted-foreground">
-                            ({tutor.totalReviews} đánh giá)
+                            ({tutor.total_reviews || 0} đánh giá)
                           </span>
                         </div>
                         <p className="text-sm text-muted-foreground">
-                          {tutor.experience} kinh nghiệm giảng dạy
+                          {tutor.experience_years
+                            ? `${tutor.experience_years} năm kinh nghiệm giảng dạy`
+                            : "Chưa có thông tin kinh nghiệm"}
                         </p>
                       </div>
-                    </div>
+                    </div>{" "}
                     <div className="space-y-2">
                       <p className="text-sm">
                         <span className="font-medium">Email:</span>{" "}
-                        {tutor.email}
+                        {tutor.user?.email || "Chưa có thông tin"}
                       </p>
                       <p className="text-sm">
                         <span className="font-medium">Địa điểm:</span>{" "}
-                        {tutor.address}
+                        {tutor.address || "Chưa có thông tin địa điểm"}
                       </p>
                       <p className="text-sm">
                         <span className="font-medium">Ngày sinh:</span>{" "}
-                        {tutor.birthdate &&
-                          format(new Date(tutor.birthdate), "dd/MM/yyyy")}
+                        {tutor.date_of_birth
+                          ? format(new Date(tutor.date_of_birth), "dd/MM/yyyy")
+                          : "Chưa có thông tin"}
                       </p>
                       <p className="text-sm flex items-center gap-2">
                         <span className="font-medium">Xác minh:</span>{" "}
-                        {tutor.verified ? (
+                        {tutor.is_verified ? (
                           <span className="inline-flex items-center bg-green-50 text-green-700 text-xs px-2 py-0.5 rounded-full">
                             <svg
                               className="w-3 h-3 mr-1"
@@ -1202,29 +1307,65 @@ export default function BookingForm() {
                             Chưa xác minh
                           </span>
                         )}
-                      </p>
+                      </p>{" "}
                       <div className="space-y-1">
                         <p className="text-sm font-medium">Giới thiệu:</p>
                         <div className="text-sm bg-muted/40 p-3 rounded-md">
-                          {tutor.bio}
+                          {tutor.bio || "Chưa có thông tin giới thiệu"}
                         </div>
                       </div>{" "}
                       <div className="space-y-1">
                         <p className="text-sm font-medium">Môn học:</p>
                         <div className="flex flex-wrap gap-1 mt-1">
-                          {tutor.subjects.map((subject, index) => (
-                            <Badge
-                              key={index}
-                              variant="secondary"
-                              className="text-xs"
-                            >
-                              {typeof subject === "object" && subject !== null
-                                ? subject.name
-                                : subject}
-                            </Badge>
-                          ))}
+                          {tutor.subjects && tutor.subjects.length > 0 ? (
+                            tutor.subjects.map((subject, index) => (
+                              <Badge
+                                key={index}
+                                variant="secondary"
+                                className="text-xs"
+                              >
+                                {typeof subject === "object" && subject !== null
+                                  ? subject.name
+                                  : subject}
+                              </Badge>
+                            ))
+                          ) : (
+                            <span className="text-sm text-muted-foreground">
+                              Chưa có thông tin môn học
+                            </span>
+                          )}
                         </div>
-                      </div>
+                      </div>{" "}
+                      {tutor.certifications && (
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium">Chứng nhận:</p>
+                          <div className="text-sm bg-muted/40 p-3 rounded-md">
+                            {(() => {
+                              try {
+                                const certs = JSON.parse(
+                                  tutor.certifications || "[]"
+                                );
+                                return Array.isArray(certs) &&
+                                  certs.length > 0 ? (
+                                  <p>Gia sư đã được xác thực chứng nhận</p>
+                                ) : (
+                                  <p>Chưa có thông tin chứng nhận</p>
+                                );
+                              } catch (e) {
+                                return <p>Chưa có thông tin chứng nhận</p>;
+                              }
+                            })()}
+                          </div>
+                        </div>
+                      )}
+                      {tutor.availability && (
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium">Lịch dạy:</p>
+                          <div className="text-sm bg-muted/40 p-3 rounded-md">
+                            {tutor.availability || "Linh hoạt"}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </>
                 ) : (

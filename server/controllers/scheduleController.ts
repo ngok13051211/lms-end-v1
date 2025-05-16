@@ -664,3 +664,159 @@ export const deleteSchedule = async (req: Request, res: Response) => {
     });
   }
 };
+
+/**
+ * Get available schedules for a specific tutor
+ * @route GET /api/v1/schedules/:tutorId
+ * @query courseId - Optional filter by course ID
+ * @returns {Object} Response object
+ * @returns {Boolean} Response.success - Whether the request was successful
+ * @returns {String} [Response.message] - Message if no schedules are found
+ * @returns {Array} [Response.data] - Array of schedule days with date and timeSlots
+ * @returns {String} [Response.data[].date] - Date in YYYY-MM-DD format
+ * @returns {Array} [Response.data[].timeSlots] - Array of time slot objects
+ * @returns {String} [Response.data[].timeSlots[].startTime] - Start time in HH:MM format
+ * @returns {String} [Response.data[].timeSlots[].endTime] - End time in HH:MM format
+ * @access Public
+ */
+export const getAvailableTutorSchedulesByTutorId = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const tutorId = parseInt(req.params.tutorId);
+    const courseId = req.query.courseId
+      ? parseInt(req.query.courseId as string)
+      : undefined;
+    const startDate = req.query.startDate
+      ? String(req.query.startDate)
+      : undefined;
+    const endDate = req.query.endDate ? String(req.query.endDate) : undefined;
+
+    if (isNaN(tutorId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid tutor ID",
+      });
+    }
+
+    // Get current date without time component
+    const currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0);
+    const formattedCurrentDate = format(currentDate, "yyyy-MM-dd");
+
+    // Build query conditions
+    const conditions = [
+      eq(teachingSchedules.tutor_id, tutorId),
+      eq(teachingSchedules.status, "available"),
+    ];
+
+    // Add date condition based on provided date range or default to 3 months
+    let fromDate = formattedCurrentDate;
+    let toDate: string;
+
+    if (startDate && /^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
+      // If startDate is provided and valid, use it (but not before today)
+      const parsedStartDate = parseISO(startDate);
+      if (!isNaN(parsedStartDate.getTime()) && parsedStartDate >= currentDate) {
+        fromDate = startDate;
+      }
+    }
+
+    if (endDate && /^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
+      // If endDate is provided and valid, use it
+      const parsedEndDate = parseISO(endDate);
+      if (!isNaN(parsedEndDate.getTime())) {
+        toDate = endDate;
+      } else {
+        // Default to 3 months from now if endDate is invalid
+        const threeMonthsLater = new Date();
+        threeMonthsLater.setMonth(threeMonthsLater.getMonth() + 3);
+        toDate = format(threeMonthsLater, "yyyy-MM-dd");
+      }
+    } else {
+      // Default to 3 months from now
+      const threeMonthsLater = new Date();
+      threeMonthsLater.setMonth(threeMonthsLater.getMonth() + 3);
+      toDate = format(threeMonthsLater, "yyyy-MM-dd");
+    }
+
+    conditions.push(between(teachingSchedules.date, fromDate, toDate));
+
+    // Optional: Filter by course ID if provided
+    if (courseId && !isNaN(courseId)) {
+      conditions.push(eq(teachingSchedules.course_id, courseId));
+    }
+    console.log(`Fetching schedules for tutor ID ${tutorId} with conditions:`, {
+      tutorId,
+      courseId,
+      dateRange: { from: fromDate, to: toDate },
+      // Don't stringify conditions as it contains circular references
+    });
+
+    // Query available schedules
+    const availableSchedules = await db.query.teachingSchedules.findMany({
+      where: and(...conditions),
+      orderBy: [asc(teachingSchedules.date), asc(teachingSchedules.start_time)],
+    });
+
+    console.log(
+      `Found ${availableSchedules.length} available schedules:`,
+      availableSchedules
+    );
+
+    // If no schedules found
+    if (availableSchedules.length === 0) {
+      console.log("No available schedules found for this tutor");
+      return res.status(200).json({
+        success: true,
+        message: "Không có lịch trống",
+        data: [],
+      });
+    } // Group schedules by date
+    const schedulesByDate: Record<
+      string,
+      {
+        id: number;
+        startTime: string;
+        endTime: string;
+      }[]
+    > = {};
+
+    availableSchedules.forEach((schedule) => {
+      const dateStr = format(schedule.date, "yyyy-MM-dd");
+
+      if (!schedulesByDate[dateStr]) {
+        schedulesByDate[dateStr] = [];
+      } // Format times to HH:MM - time is stored as string in PostgreSQL
+      // Ensure we have proper HH:MM format for frontend
+      const startTime = schedule.start_time;
+      const endTime = schedule.end_time;
+
+      schedulesByDate[dateStr].push({
+        id: schedule.id, // Add schedule ID for easier reference
+        startTime,
+        endTime,
+      });
+    }); // Format the response as specified
+    const formattedSchedules = Object.keys(schedulesByDate).map((date) => ({
+      date,
+      timeSlots: schedulesByDate[date],
+    }));
+
+    console.log("Formatted schedules for response:", formattedSchedules);
+
+    // Return the formatted schedules
+    return res.status(200).json({
+      success: true,
+      data: formattedSchedules,
+    });
+  } catch (error: any) {
+    console.error("Error fetching tutor's available schedules:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Có lỗi xảy ra khi lấy lịch trống của gia sư",
+      error: error.message || String(error),
+    });
+  }
+};
