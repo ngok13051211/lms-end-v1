@@ -6,6 +6,7 @@ import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import Login from "@/pages/login";
 import Register from "@/pages/register";
+import VerifyEmail from "@/pages/verify-email";
 import TutorProfile from "@/pages/tutor-profile";
 import TutorListing from "@/pages/tutor-listing";
 import SubjectDetail from "@/pages/subject-detail";
@@ -21,6 +22,10 @@ import StudentDashboardProfile from "@/pages/student-dashboard-profile";
 import StudentDashboardTutors from "@/pages/student-dashboard-tutors";
 import StudentDashboardMessages from "@/pages/student-dashboard-messages";
 import AdminDashboard from "@/pages/admin-dashboard";
+import AdminTutorVerification from "@/pages/admin-tutor-verification";
+import AdminReports from "@/pages/admin-reports";
+import AdminUsers from "@/pages/admin-users";
+import AdminTutors from "@/pages/admin-tutors";
 import BecomeTutor from "@/pages/become-tutor";
 import BookingForm from "@/pages/booking-form";
 import PrivateRoute from "@/components/auth/PrivateRoute";
@@ -58,6 +63,7 @@ function Router() {
       <Route path="/" component={withMainLayout(Home)} />
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
+      <Route path="/verify-email/:email" component={VerifyEmail} />
       <Route path="/tutors" component={withMainLayout(TutorListing)} />
       <Route path="/tutors/:id" component={withMainLayout(TutorProfile)} />
       <Route path="/subjects" component={withMainLayout(Subjects)} />
@@ -154,8 +160,24 @@ function Router() {
       </Route>
 
       {/* Admin dashboard */}
-      <Route path="/dashboard/admin">
+      <Route path="/admin-dashboard">
         <PrivateRoute role="admin" component={AdminDashboard} />
+      </Route>
+
+      <Route path="/admin-dashboard/tutor-verification">
+        <PrivateRoute role="admin" component={AdminTutorVerification} />
+      </Route>
+
+      <Route path="/admin-dashboard/reports">
+        <PrivateRoute role="admin" component={AdminReports} />
+      </Route>
+
+      <Route path="/admin-dashboard/users">
+        <PrivateRoute role="admin" component={AdminUsers} />
+      </Route>
+
+      <Route path="/admin-dashboard/tutors">
+        <PrivateRoute role="admin" component={AdminTutors} />
       </Route>
 
       {/* Booking form route */}

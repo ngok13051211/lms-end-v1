@@ -96,7 +96,7 @@ app.use((req, res, next) => {
     // Route handler cho path gốc trong development mode
     app.get("/", (req, res) => {
       // Chuyển hướng đến client Vite
-      res.redirect("http://localhost:3000");
+      res.redirect("http:localhost:3000");
     });
   } else {
     console.log("Starting in PRODUCTION mode");

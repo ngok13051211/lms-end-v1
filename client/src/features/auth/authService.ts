@@ -1,7 +1,7 @@
 import { User } from "@shared/schema";
 
 // Register user
-const register = async (userData: any): Promise<User> => {
+const register = async (userData: any): Promise<any> => {
   // Transform camelCase to snake_case for backend compatibility
   const transformedData = {
     username: userData.username,
@@ -23,18 +23,31 @@ const register = async (userData: any): Promise<User> => {
 
   if (!response.ok) {
     const errorData = await response.json();
+    // Xử lý thông báo lỗi chi tiết hơn
+    if (errorData.error && errorData.error.code === "USER_ALREADY_EXISTS") {
+      throw new Error(errorData.message || "Email đã được sử dụng");
+    }
     throw new Error(errorData.message || "Registration failed");
   }
 
   const data = await response.json();
 
+  // In the updated flow, registration doesn't return a token immediately
+  // because the user needs to verify their email first
   // Store token in localStorage when registering
   if (data.token) {
     localStorage.setItem("token", data.token);
     // console.log("Token saved after registration:", data.token);
   }
 
-  return data.user;
+  // We don't automatically send OTP here anymore
+  // It will be sent when user reaches the verification page to avoid multiple sends
+
+  return {
+    success: data.success,
+    message: data.message,
+    email: userData.email
+  };
 };
 
 const login = async (userData: {
@@ -52,6 +65,13 @@ const login = async (userData: {
 
   if (!response.ok) {
     const errorData = await response.json();
+
+    // Special handling for unverified accounts
+    if (errorData.error?.message.includes("not verified") ||
+      errorData.error?.message.includes("unverified")) {
+      throw new Error("Account unverified. Please verify your email address.");
+    }
+
     throw new Error(errorData.error?.message || "Login failed");
   }
 

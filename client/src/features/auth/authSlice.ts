@@ -8,6 +8,7 @@ interface AuthState {
   isLoading: boolean;
   isSuccess: boolean;
   error: string | null;
+  registrationEmail: string | null;
 }
 
 interface ProfileUpdateData {
@@ -22,6 +23,7 @@ const initialState: AuthState = {
   isLoading: false,
   isSuccess: false,
   error: null,
+  registrationEmail: null,
 };
 
 // Register user
@@ -77,6 +79,9 @@ export const authSlice = createSlice({
       state.isSuccess = false;
       state.error = null;
     },
+    clearRegistration: (state) => {
+      state.registrationEmail = null;
+    },
     updateAvatar: (state, action: PayloadAction<string>) => {
       if (state.user) {
         state.user.avatar = action.payload;
@@ -102,10 +107,11 @@ export const authSlice = createSlice({
         state.isLoading = true;
         state.error = null;
       })
-      .addCase(registerUser.fulfilled, (state, action: PayloadAction<User>) => {
+      .addCase(registerUser.fulfilled, (state, action: PayloadAction<any>) => {
         state.isLoading = false;
         state.isSuccess = true;
-        state.user = action.payload;
+        // With the new flow, registration doesn't set the user yet (email needs verification)
+        state.registrationEmail = action.payload.email;
       })
       .addCase(registerUser.rejected, (state, action: PayloadAction<any>) => {
         state.isLoading = false;
@@ -141,10 +147,14 @@ export const authSlice = createSlice({
       // Logout
       .addCase(logout.fulfilled, (state) => {
         state.user = null;
+        state.accessToken = null;
+        state.registrationEmail = null;
+        state.error = null;
+        state.isSuccess = false;
       });
   },
 });
 
-export const { reset, updateAvatar, updateUserProfile, setUser } =
+export const { reset, updateAvatar, updateUserProfile, setUser, clearRegistration } =
   authSlice.actions;
 export default authSlice.reducer;
