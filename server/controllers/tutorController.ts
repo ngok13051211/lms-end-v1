@@ -199,18 +199,14 @@ export const getTutors = async (req: Request, res: Response) => {
         )
         .where(
           or(
-            sql`LOWER(${schema.users.first_name}) LIKE ${
-              "%" + searchLower + "%"
-            }`,
-            sql`LOWER(${schema.users.last_name}) LIKE ${
-              "%" + searchLower + "%"
-            }`,
-            sql`LOWER(${schema.tutorProfiles.bio}) LIKE ${
-              "%" + searchLower + "%"
-            }`,
-            sql`LOWER(${schema.tutorProfiles.certifications}) LIKE ${
-              "%" + searchLower + "%"
-            }`
+            sql`LOWER(${schema.users.first_name}) LIKE ${"%" + searchLower + "%"
+              }`,
+            sql`LOWER(${schema.users.last_name}) LIKE ${"%" + searchLower + "%"
+              }`,
+            sql`LOWER(${schema.tutorProfiles.bio}) LIKE ${"%" + searchLower + "%"
+              }`,
+            sql`LOWER(${schema.tutorProfiles.certifications}) LIKE ${"%" + searchLower + "%"
+              }`
           )
         );
 
@@ -384,9 +380,8 @@ export const getTutors = async (req: Request, res: Response) => {
         .select({ id: schema.tutorProfiles.id })
         .from(schema.tutorProfiles)
         .where(
-          sql`LOWER(${schema.tutorProfiles.bio}) LIKE ${
-            "%" + locationLower + "%"
-          }`
+          sql`LOWER(${schema.tutorProfiles.bio}) LIKE ${"%" + locationLower + "%"
+            }`
         );
 
       if (tutorsWithLocationInBio.length > 0) {
@@ -816,9 +811,9 @@ export const getTutorReviews = async (req: Request, res: Response) => {
         created_at: review.created_at,
         course: review.course
           ? {
-              id: review.course.id,
-              title: review.course.title,
-            }
+            id: review.course.id,
+            title: review.course.title,
+          }
           : null,
         student: {
           id: review.student.id,
@@ -2015,10 +2010,13 @@ export const getTutorVerifications = async (req: Request, res: Response) => {
       id: tutor.id,
       bio: tutor.bio,
       certifications: tutor.certifications,
+      date_of_birth: tutor.date_of_birth,
+      address: tutor.address,
       created_at: tutor.created_at,
       user: {
         id: tutor.user.id,
-        name: `${tutor.user.first_name} ${tutor.user.last_name}`,
+        first_name: tutor.user.first_name,
+        last_name: tutor.user.last_name,
         email: tutor.user.email,
         avatar: tutor.user.avatar,
         phone: tutor.user.phone,
