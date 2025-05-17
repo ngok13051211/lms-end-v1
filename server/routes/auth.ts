@@ -2,7 +2,7 @@ import { Router } from "express";
 import * as authController from "../controllers/authController";
 import { validateBody } from "../middlewares/validationMiddleware";
 import * as schema from "@shared/schema";
-import { authLimiter } from "../middlewares/rateLimitMiddleware";
+
 import { authMiddleware } from "../middlewares/authMiddleware";
 import { z } from "zod";
 
@@ -23,7 +23,6 @@ const verifyOtpSchema = z.object({
  */
 router.post(
   "/register",
-  authLimiter,
   validateBody(schema.registerSchema),
   authController.register
 );
@@ -37,7 +36,6 @@ router.post(
  */
 router.post(
   "/login",
-  authLimiter,
   validateBody(schema.loginSchema),
   authController.login
 );
@@ -60,7 +58,6 @@ router.post("/logout", authController.logout);
  */
 router.post(
   "/verify-otp",
-  authLimiter,
   validateBody(verifyOtpSchema),
   authController.verifyOtp
 );

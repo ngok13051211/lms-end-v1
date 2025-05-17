@@ -5,7 +5,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import cors from "cors";
 import { errorHandler, notFoundHandler } from "./middlewares/errorMiddleware";
 import { responseMiddleware } from "./middlewares/responseMiddleware";
-import { generalLimiter } from "./middlewares/rateLimitMiddleware";
+
 import { swaggerSpec, swaggerUi } from "./config/swagger";
 import cookieParser from "cookie-parser";
 import path from "path";
@@ -30,8 +30,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser()); // Parser cookies
 
-// Middleware rate limiting
-app.use("/api", generalLimiter); // Áp dụng rate limit cho tất cả các route API
+// Rate limiting đã được loại bỏ
 
 // Middleware chuẩn hóa phản hồi
 app.use(responseMiddleware);

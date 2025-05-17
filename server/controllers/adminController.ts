@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { db } from "@db";
 import * as schema from "@shared/schema";
 import { eq, and, desc, sql, count } from "drizzle-orm";
+import { console } from "inspector";
 
 /**
  * @desc    Lấy danh sách tất cả người dùng
@@ -85,7 +86,7 @@ export const getUsers = async (req: Request, res: Response) => {
 export const getUserById = async (req: Request, res: Response) => {
   try {
     const userId = parseInt(req.params.id);
-
+    console.log("User ID:", userId);
     if (isNaN(userId)) {
       return res.status(400).json({ message: "Invalid user ID" });
     }
@@ -96,7 +97,7 @@ export const getUserById = async (req: Request, res: Response) => {
         password: false,
       },
     });
-
+    console.log("User:", user);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -116,6 +117,61 @@ export const getUserById = async (req: Request, res: Response) => {
  * @route   GET /api/v1/admin/stats
  * @access  Private/Admin
  */
+/**
+ * @desc    Khóa tài khoản người dùng
+ * @route   PATCH /api/v1/admin/users/:id/deactivate
+ * @access  Private/Admin
+ */
+export const deactivateUser = async (req: Request, res: Response) => {
+  try {
+    const userId = parseInt(req.params.id);
+
+    if (isNaN(userId)) {
+      return res.status(400).json({
+        success: false,
+        message: "ID người dùng không hợp lệ"
+      });
+    }
+
+    // Kiểm tra xem người dùng có tồn tại không
+    const user = await db.query.users.findFirst({
+      where: eq(schema.users.id, userId),
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy người dùng"
+      });
+    }
+
+    // Nếu người dùng là admin, không cho phép khóa
+    if (user.role === "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Không thể khóa tài khoản admin khác",
+      });
+    }
+
+    // Cập nhật trạng thái tài khoản thành không hoạt động
+    await db
+      .update(schema.users)
+      .set({ is_active: false, updated_at: new Date() })
+      .where(eq(schema.users.id, userId));
+
+    return res.status(200).json({
+      success: true,
+      message: "Đã khóa tài khoản người dùng thành công",
+    });
+  } catch (error) {
+    console.error("Deactivate user error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi server khi khóa tài khoản",
+    });
+  }
+};
+
 export const getAdminStats = async (req: Request, res: Response) => {
   try {
     // Đảm bảo người dùng có quyền admin

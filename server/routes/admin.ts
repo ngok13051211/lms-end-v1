@@ -15,6 +15,24 @@ router.get(
   adminController.getUsers
 );
 
+// Lấy chi tiết người dùng theo ID
+router.get(
+  "/users/:id",
+  authMiddleware,
+  roleMiddleware(["admin"]),
+  validateParams(schema.idSchema),
+  adminController.getUserById
+);
+
+// Khóa tài khoản người dùng
+router.patch(
+  "/users/:id/deactivate",
+  authMiddleware,
+  roleMiddleware(["admin"]),
+  validateParams(schema.idSchema),
+  adminController.deactivateUser
+);
+
 // Lấy danh sách xác minh gia sư
 router.get(
   "/tutors/verification",

@@ -4,7 +4,6 @@ import { authMiddleware } from "../middlewares/authMiddleware";
 import uploadService from "../services/uploadService";
 import { validateBody } from "../middlewares/validationMiddleware";
 import * as schema from "@shared/schema";
-import { uploadLimiter } from "../middlewares/rateLimitMiddleware";
 
 const router = Router();
 
@@ -20,7 +19,6 @@ router.patch(
 router.post(
   "/avatar",
   authMiddleware,
-  uploadLimiter,
   uploadService.uploadAvatar,
   userController.updateAvatar
 );

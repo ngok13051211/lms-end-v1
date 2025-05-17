@@ -1,7 +1,6 @@
 import { Router } from "express";
 import * as verificationController from "../controllers/verificationController";
 import { validateBody } from "../middlewares/validationMiddleware";
-import { authLimiter } from "../middlewares/rateLimitMiddleware";
 import { z } from "zod";
 
 const router = Router();
@@ -23,7 +22,6 @@ const verifyOtpSchema = z.object({
  */
 router.post(
   "/send-otp",
-  authLimiter, // Apply rate limiting for security
   validateBody(sendOtpSchema),
   verificationController.sendOtp
 );
@@ -34,7 +32,6 @@ router.post(
  */
 router.post(
   "/verify-otp",
-  authLimiter, // Apply rate limiting for security
   validateBody(verifyOtpSchema),
   verificationController.verifyOtp
 );

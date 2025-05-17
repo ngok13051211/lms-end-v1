@@ -172,6 +172,77 @@ async function seed() {
       updated_at: new Date(),
     });
 
+     // Thêm 4 môn học còn lại
+    const subjects = [
+      { name: "Tiếng Anh", icon: "language", description: "Môn tiếng Anh phổ thông" },
+      { name: "Hóa học", icon: "science", description: "Môn hóa học phổ thông" },
+      { name: "Vật lý", icon: "bolt", description: "Môn vật lý phổ thông" },
+      { name: "Ngữ văn", icon: "book-open", description: "Môn ngữ văn phổ thông" },
+    ];
+
+    for (const sub of subjects) {
+      await db.insert(schema.subjects).values({
+        name: sub.name,
+        icon: sub.icon,
+        description: sub.description,
+        hourly_rate: "150000",
+        created_at: new Date(),
+        updated_at: new Date(),
+      }).onConflictDoNothing();
+    }
+
+    // Thêm 10 students
+    for (let i = 1; i <= 10; i++) {
+      const email = `student${i + 1}@homitutor.vn`;
+      const [student] = await db.insert(schema.users).values({
+        username: `student${i + 1}`,
+        email,
+        password: await bcrypt.hash("student123", 10),
+        first_name: faker.person.firstName(),
+        last_name: faker.person.lastName(),
+        role: "student",
+        is_verified: true,
+        avatar: faker.image.avatar(),
+        phone: faker.phone.number("0#########"),
+        created_at: new Date(),
+        updated_at: new Date(),
+      }).onConflictDoNothing().returning();
+    }
+
+    // Thêm 10 tutors và hồ sơ tutor
+    for (let i = 1; i <= 10; i++) {
+      const email = `tutor${i + 1}@homitutor.vn`;
+      const [tutorUser] = await db.insert(schema.users).values({
+        username: `tutor${i + 1}`,
+        email,
+        password: await bcrypt.hash("tutor123", 10),
+        first_name: faker.person.firstName(),
+        last_name: faker.person.lastName(),
+        role: "tutor",
+        is_verified: true,
+        avatar: faker.image.avatar(),
+        phone: faker.phone.number("0#########"),
+        created_at: new Date(),
+        updated_at: new Date(),
+      }).onConflictDoNothing().returning();
+
+      await db.insert(schema.tutorProfiles).values({
+        user_id: tutorUser.id,
+        bio: faker.lorem.sentences(2),
+        date_of_birth: faker.date.birthdate({ min: 1985, max: 1998, mode: "year" }).toISOString().split("T")[0],
+        address: faker.location.city(),
+        certifications: JSON.stringify([faker.image.urlPicsumPhotos()]),
+        availability: JSON.stringify({ monday: ["08:00-10:00"] }),
+        is_verified: true,
+        is_featured: false,
+        rating: "4.0",
+        total_reviews: 0,
+        created_at: new Date(),
+        updated_at: new Date(),
+      });
+    }
+
+
     console.log("✅ Seeding completed successfully.");
   } catch (error) {
     console.error("❌ Error seeding database:", error);

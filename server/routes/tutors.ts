@@ -7,7 +7,6 @@ import {
   validateParams,
 } from "../middlewares/validationMiddleware";
 import * as schema from "@shared/schema";
-import { uploadLimiter } from "../middlewares/rateLimitMiddleware";
 
 const router = Router();
 
@@ -55,7 +54,6 @@ router.post(
   "/certifications",
   authMiddleware,
   roleMiddleware(["tutor"]),
-  uploadLimiter,
   uploadService.uploadDocuments,
   tutorController.uploadCertifications
 );

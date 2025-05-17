@@ -41,6 +41,7 @@ import { Loader2, Search, Filter, MoreHorizontal, UserPlus } from "lucide-react"
 // Interface cho dữ liệu người dùng
 interface User {
   id: number;
+  username: string;
   first_name: string;
   last_name: string;
   email: string;
@@ -48,11 +49,21 @@ interface User {
   is_active: boolean;
   avatar?: string;
   created_at: string;
+  updated_at: string;
 }
 
-interface UsersResponse {
+interface ApiResponse {
+  success: boolean;
   users: User[];
-  totalPages: number;
+  count: number;
+  total_pages: number;
+  current_page: number;
+  message?: string;
+}
+
+interface UserDetailResponse {
+  success: boolean;
+  user: User;
 }
 
 export default function AdminUsers() {
@@ -60,12 +71,24 @@ export default function AdminUsers() {
   const [roleFilter, setRoleFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   // Truy vấn danh sách người dùng
-  const { data, isLoading } = useQuery<UsersResponse>({
-    queryKey: [`/api/v1/admin/users?search=${searchTerm}&role=${roleFilter}&page=${page}&pageSize=${pageSize}`],
-    // Tắt API call để sử dụng dữ liệu mẫu
-    enabled: false,
+  const { data, isLoading, refetch } = useQuery<ApiResponse>({
+    queryKey: [`users-list-${searchTerm}-${roleFilter}-${page}`],
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/v1/admin/users?search=${searchTerm}&role=${roleFilter === "all" ? "" : roleFilter}&page=${page}&limit=${pageSize}`,
+        {
+          credentials: 'include'
+        }
+      );
+      if (!response.ok) {
+        throw new Error('Không thể tải dữ liệu người dùng');
+      }
+      return response.json();
+    },
   });
 
   // Dữ liệu mẫu
@@ -121,10 +144,12 @@ export default function AdminUsers() {
       created_at: "2025-01-10T16:45:00Z"
     }
   ];
-
-  const mockResponse: UsersResponse = {
+  const mockResponse = {
     users: mockUsers,
-    totalPages: 1
+    count: mockUsers.length,
+    total_pages: 1,
+    current_page: 1,
+    success: true
   };
 
   const usersData = data || mockResponse;
@@ -138,11 +163,53 @@ export default function AdminUsers() {
       day: '2-digit'
     });
   };
+  // Xử lý xem chi tiết người dùng
+  const handleViewUserDetail = async (userId: number) => {
+    try {
+      console.log("User ID FEEE", userId);
+      const response = await fetch(`/api/v1/admin/users/${userId}`, {
+        credentials: 'include'
+      });
 
-  // Xử lý toggle trạng thái người dùng
-  const toggleUserStatus = (userId: number, currentStatus: boolean) => {
-    // Trong môi trường thực tế, gọi API để cập nhật trạng thái
-    console.log(`Toggle user ${userId} status from ${currentStatus} to ${!currentStatus}`);
+      if (!response.ok) {
+        throw new Error('Không thể lấy thông tin chi tiết người dùng');
+      }
+
+      const data: UserDetailResponse = await response.json();
+      setSelectedUser(data.user);
+      setIsDetailModalOpen(true);
+    } catch (error) {
+      console.error('Lỗi khi lấy thông tin chi tiết người dùng:', error);
+    }
+  };
+
+  // Xử lý khóa tài khoản người dùng
+  const deactivateUser = async (userId: number) => {
+    if (!window.confirm('Bạn có chắc chắn muốn khóa tài khoản này?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/v1/admin/users/${userId}/deactivate`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Không thể khóa tài khoản người dùng');
+      }
+
+      // Cập nhật lại danh sách sau khi khóa tài khoản
+      await refetch();
+
+      alert('Đã khóa tài khoản người dùng thành công');
+    } catch (error) {
+      console.error('Lỗi khi khóa tài khoản người dùng:', error);
+      alert('Đã xảy ra lỗi khi khóa tài khoản người dùng');
+    }
   };
 
   return (
@@ -320,15 +387,17 @@ export default function AdminUsers() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>Hành động</DropdownMenuLabel>
-                              <DropdownMenuItem>Xem chi tiết</DropdownMenuItem>
+                              <DropdownMenuLabel>Hành động</DropdownMenuLabel>                              <DropdownMenuItem onClick={() => handleViewUserDetail(user.id)}>
+                                Xem chi tiết
+                              </DropdownMenuItem>
                               <DropdownMenuItem>Chỉnh sửa</DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
-                                onClick={() => toggleUserStatus(user.id, user.is_active)}
-                                className={user.is_active ? "text-red-600" : "text-green-600"}
+                                onClick={() => user.is_active && deactivateUser(user.id)}
+                                className={user.is_active ? "text-red-600" : "text-gray-400"}
+                                disabled={!user.is_active}
                               >
-                                {user.is_active ? "Khóa tài khoản" : "Kích hoạt"}
+                                {user.is_active ? "Khóa tài khoản" : "Đã bị khóa"}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -336,9 +405,7 @@ export default function AdminUsers() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
-
-                {usersData.totalPages > 1 && (
+                </table>                {usersData.total_pages > 1 && (
                   <div className="flex justify-center mt-6">
                     <div className="flex items-center space-x-2">
                       <Button
@@ -349,16 +416,16 @@ export default function AdminUsers() {
                         Trước
                       </Button>
                       <span className="text-sm text-muted-foreground">
-                        Trang {page} / {usersData.totalPages}
+                        Trang {page} / {usersData.total_pages}
                       </span>
                       <Button
                         variant="outline"
                         onClick={() =>
                           setPage((p) =>
-                            Math.min(usersData.totalPages, p + 1)
+                            Math.min(usersData.total_pages, p + 1)
                           )
                         }
-                        disabled={page === usersData.totalPages}
+                        disabled={page === usersData.total_pages}
                       >
                         Tiếp
                       </Button>
@@ -368,8 +435,125 @@ export default function AdminUsers() {
               </div>
             )}
           </CardContent>
-        </Card>
-      </div>
+        </Card>      </div>
+
+      {/* Modal chi tiết người dùng */}
+      <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Chi tiết người dùng</DialogTitle>
+            <DialogDescription>
+              Thông tin chi tiết của người dùng trong hệ thống
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedUser ? (
+            <div className="space-y-6 py-4">
+              <div className="flex flex-col md:flex-row gap-6 items-start">
+                <div className="flex-shrink-0">
+                  <Avatar className="h-24 w-24">
+                    <AvatarImage src={selectedUser.avatar} alt={`${selectedUser.first_name} ${selectedUser.last_name}`} />
+                    <AvatarFallback className="text-2xl">
+                      {selectedUser.first_name[0]}{selectedUser.last_name[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+
+                <div className="space-y-4 flex-1">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="text-sm font-medium text-muted-foreground">Họ tên</h4>
+                      <p className="text-base">{selectedUser.first_name} {selectedUser.last_name}</p>
+                    </div>
+
+                    <div>
+                      <h4 className="text-sm font-medium text-muted-foreground">Tên đăng nhập</h4>
+                      <p className="text-base">{selectedUser.username}</p>
+                    </div>
+
+                    <div>
+                      <h4 className="text-sm font-medium text-muted-foreground">Email</h4>
+                      <p className="text-base">{selectedUser.email}</p>
+                    </div>
+
+                    <div>
+                      <h4 className="text-sm font-medium text-muted-foreground">Vai trò</h4>
+                      <Badge
+                        variant={
+                          selectedUser.role === "admin"
+                            ? "default"
+                            : selectedUser.role === "tutor"
+                              ? "secondary"
+                              : "outline"
+                        }
+                        className="mt-1"
+                      >
+                        {selectedUser.role === "admin" ? "Quản trị viên" :
+                          selectedUser.role === "tutor" ? "Gia sư" : "Học viên"}
+                      </Badge>
+                    </div>
+
+                    <div>
+                      <h4 className="text-sm font-medium text-muted-foreground">Trạng thái</h4>
+                      <Badge
+                        variant={selectedUser.is_active ? "success" : "destructive"}
+                        className={selectedUser.is_active ? "mt-1 bg-green-100 text-green-800 hover:bg-green-200" : "mt-1"}
+                      >
+                        {selectedUser.is_active ? "Đang hoạt động" : "Bị khóa"}
+                      </Badge>
+                    </div>
+
+                    <div>
+                      <h4 className="text-sm font-medium text-muted-foreground">Ngày tham gia</h4>
+                      <p className="text-base">{formatDate(selectedUser.created_at)}</p>
+                    </div>
+
+                    <div>
+                      <h4 className="text-sm font-medium text-muted-foreground">Cập nhật lần cuối</h4>
+                      <p className="text-base">{formatDate(selectedUser.updated_at)}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {selectedUser.role === "tutor" && (
+                <div className="pt-4 border-t">
+                  <h3 className="font-medium text-lg mb-3">Thông tin gia sư</h3>
+                  <p className="text-muted-foreground text-sm">
+                    Xem thêm trong trang quản lý gia sư
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="py-8 flex items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <span className="ml-2">Đang tải thông tin...</span>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsDetailModalOpen(false)}
+            >
+              Đóng
+            </Button>
+
+            {selectedUser?.is_active && selectedUser?.role !== "admin" && (
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  deactivateUser(selectedUser.id);
+                  setIsDetailModalOpen(false);
+                }}
+              >
+                Khóa tài khoản
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }
