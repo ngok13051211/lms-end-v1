@@ -30,13 +30,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -48,9 +41,6 @@ import {
   AlertCircle,
   BadgeCheck,
   Star,
-  BookOpen,
-  GraduationCap,
-  FileCheck,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -63,21 +53,6 @@ const tutorProfileSchema = z.object({
   bio: z.string().optional(),
   date_of_birth: z.string().optional(),
   address: z.string().optional(),
-  first_name: z.string().min(2, "Tên phải có ít nhất 2 ký tự").optional(),
-  last_name: z.string().min(2, "Họ phải có ít nhất 2 ký tự").optional(),
-  phone: z.string().optional(),
-});
-
-// Schema for teaching requests
-const teachingRequestSchema = z.object({
-  subject_id: z.string({
-    required_error: "Vui lòng chọn môn học",
-  }),
-  level_id: z.string({
-    required_error: "Vui lòng chọn cấp dạy",
-  }),
-  introduction: z.string().min(10, "Giới thiệu phải có ít nhất 10 ký tự"),
-  experience: z.string().min(10, "Kinh nghiệm phải có ít nhất 10 ký tự"),
 });
 
 export default function TutorDashboardProfile() {
@@ -86,11 +61,6 @@ export default function TutorDashboardProfile() {
   const [avatar, setAvatar] = useState<File | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
-
-  // Teaching request state
-  const [teachingRequestDialogOpen, setTeachingRequestDialogOpen] = useState(false);
-  const [requestCertifications, setRequestCertifications] = useState<File[]>([]);
-  const [uploadingCertifications, setUploadingCertifications] = useState(false);
 
   // Get tutor profile
   const {
@@ -115,42 +85,10 @@ export default function TutorDashboardProfile() {
     },
   });
 
-  // Teaching request form
-  const teachingRequestForm = useForm<z.infer<typeof teachingRequestSchema>>({
-    resolver: zodResolver(teachingRequestSchema),
-    defaultValues: {
-      subject_id: "",
-      level_id: "",
-      introduction: "",
-      experience: "",
-    },
-  });
-
-  // Fetch subjects and education levels for teaching request
-  const { data: subjects = [] } = useQuery<any[]>({
-    queryKey: [`/api/v1/subjects`],
-    enabled: teachingRequestDialogOpen,
-  });
-
-  const { data: educationLevels = [] } = useQuery<any[]>({
-    queryKey: [`/api/v1/education-levels`],
-    enabled: teachingRequestDialogOpen,
-  });
-
   // Handle file change for avatar upload
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       setAvatar(e.target.files[0]);
-    }
-  };
-
-  // Handle certificate file change for teaching request
-  const handleCertificationsChange = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const files = Array.from(e.target.files);
-      setRequestCertifications(files);
     }
   };
 
@@ -219,6 +157,7 @@ export default function TutorDashboardProfile() {
       setUploadingAvatar(false);
     }
   };
+
   // Update profile mutation
   const updateProfileMutation = useMutation({
     mutationFn: async (data: z.infer<typeof tutorProfileSchema>) => {
@@ -227,9 +166,6 @@ export default function TutorDashboardProfile() {
         bio: data.bio || "",
         date_of_birth: data.date_of_birth,
         address: data.address,
-        first_name: data.first_name,
-        last_name: data.last_name,
-        phone: data.phone,
       };
 
       console.log("Updating profile with:", profileData);
@@ -261,77 +197,6 @@ export default function TutorDashboardProfile() {
     },
   });
 
-  // Certification upload mutation for teaching request
-  const certificationsUploadMutation = useMutation({
-    mutationFn: async (files: File[]) => {
-      const formData = new FormData();
-      files.forEach((file) => {
-        formData.append("documents", file);
-      });
-
-      const res = await fetch("/api/v1/tutors/certifications", {
-        method: "POST",
-        body: formData,
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
-
-      if (!res.ok) {
-        throw new Error("Không thể tải lên chứng chỉ");
-      }
-
-      const data = await res.json();
-      return data.urls || [];
-    },
-    onSuccess: (data) => {
-      toast({
-        title: "Tải lên thành công",
-        description: `${requestCertifications.length} tệp đã được tải lên`,
-        variant: "default",
-      });
-      return data;
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Tải lên thất bại",
-        description: error.message,
-        variant: "destructive",
-      });
-      throw error;
-    },
-  });
-
-  // Teaching request submission mutation
-  const teachingRequestMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const res = await apiRequest(
-        "POST",
-        `/api/v1/tutors/teaching-requests`,
-        data
-      );
-      return res.json();
-    },
-    onSuccess: () => {
-      setTeachingRequestDialogOpen(false);
-      setRequestCertifications([]);
-      teachingRequestForm.reset();
-
-      toast({
-        title: "Yêu cầu đã gửi thành công",
-        description: "Yêu cầu giảng dạy của bạn đã được gửi và đang chờ duyệt",
-        variant: "default",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Gửi yêu cầu thất bại",
-        description: error instanceof Error ? error.message : "Có lỗi xảy ra",
-        variant: "destructive",
-      });
-    },
-  });
-
   // Submit handler for profile form
   const onSubmit = async (values: z.infer<typeof tutorProfileSchema>) => {
     // Chỉ cập nhật thông tin cơ bản
@@ -339,34 +204,6 @@ export default function TutorDashboardProfile() {
       await updateProfileMutation.mutateAsync(values);
     } catch (error) {
       console.error("Lỗi khi cập nhật hồ sơ:", error);
-    }
-  };
-
-  // Submit teaching request handler
-  const onSubmitTeachingRequest = async (values: z.infer<typeof teachingRequestSchema>) => {
-    try {
-      // First, upload certifications if any
-      let certificationUrls: string[] = [];
-      if (requestCertifications.length > 0) {
-        setUploadingCertifications(true);
-        try {
-          const result = await certificationsUploadMutation.mutateAsync(requestCertifications);
-          certificationUrls = result;
-        } finally {
-          setUploadingCertifications(false);
-        }
-      }
-
-      // Then submit the teaching request with the certification URLs
-      await teachingRequestMutation.mutateAsync({
-        subject_id: parseInt(values.subject_id),
-        level_id: parseInt(values.level_id),
-        introduction: values.introduction,
-        experience: values.experience,
-        certifications: certificationUrls.length > 0 ? JSON.stringify(certificationUrls) : null,
-      });
-    } catch (error) {
-      console.error("Lỗi khi gửi yêu cầu giảng dạy:", error);
     }
   };
 
@@ -379,15 +216,8 @@ export default function TutorDashboardProfile() {
       profileForm.setValue("bio", tutorProfile.bio || "");
       profileForm.setValue("date_of_birth", tutorProfile.date_of_birth || "");
       profileForm.setValue("address", tutorProfile.address || "");
-
-      // Thêm dữ liệu user vào form
-      if (user) {
-        profileForm.setValue("first_name", user.first_name || "");
-        profileForm.setValue("last_name", user.last_name || "");
-        profileForm.setValue("phone", user.phone || "");
-      }
     }
-  }, [tutorProfile, profileForm, user]);
+  }, [tutorProfile, profileForm]);
 
   if (profileLoading) {
     return (
@@ -517,7 +347,8 @@ export default function TutorDashboardProfile() {
                       <h3 className="text-sm font-medium text-muted-foreground mb-1">
                         Đánh giá
                       </h3>
-                      <div className="flex items-center">                        <Star className="h-4 w-4 text-warning fill-warning mr-1" />
+                      <div className="flex items-center">
+                        <Star className="h-4 w-4 text-warning fill-warning mr-1" />
                         <span>
                           {tutorProfile?.rating} ({tutorProfile?.total_reviews}{" "}
                           đánh giá)
@@ -532,8 +363,8 @@ export default function TutorDashboardProfile() {
                       <p className="text-base">
                         {tutorProfile?.date_of_birth
                           ? new Date(
-                            tutorProfile.date_of_birth
-                          ).toLocaleDateString("vi-VN")
+                              tutorProfile.date_of_birth
+                            ).toLocaleDateString("vi-VN")
                           : "Chưa cập nhật"}
                       </p>
                     </div>
@@ -548,23 +379,10 @@ export default function TutorDashboardProfile() {
                     </div>
                   </div>
 
-                  <div className="mt-6 flex flex-wrap gap-x-6 gap-y-4">
-                    <Button
-                      variant="outline"
-                      className="flex items-center"
-                      onClick={() => setProfileDialogOpen(true)}
-                    >
-                      <Edit className="mr-2 h-4 w-4" />
-                      Chỉnh sửa thông tin
-                    </Button>
-
-                    <Button
-                      variant="secondary"
-                      className="flex items-center"
-                      onClick={() => setTeachingRequestDialogOpen(true)}
-                    >
-                      <BookOpen className="mr-2 h-4 w-4" />
-                      Yêu cầu giảng dạy
+                  <div className="flex justify-end">
+                    <Button onClick={() => setProfileDialogOpen(true)}>
+                      <Edit className="h-4 w-4 mr-2" />
+                      {tutorProfile ? "Chỉnh sửa hồ sơ" : "Tạo hồ sơ"}
                     </Button>
                   </div>
                 </div>
@@ -608,64 +426,9 @@ export default function TutorDashboardProfile() {
               Cập nhật thông tin cơ bản trong hồ sơ gia sư của bạn
             </DialogDescription>
           </DialogHeader>
+
           <Form {...profileForm}>
             <form onSubmit={profileForm.handleSubmit(onSubmit)} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={profileForm.control}
-                  name="first_name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Tên</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Tên của bạn"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={profileForm.control}
-                  name="last_name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Họ</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Họ của bạn"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <FormField
-                control={profileForm.control}
-                name="phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Số điện thoại</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Số điện thoại của bạn"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Số điện thoại để liên hệ khi cần thiết
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
               <FormField
                 control={profileForm.control}
                 name="bio"
@@ -736,189 +499,6 @@ export default function TutorDashboardProfile() {
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   )}
                   {tutorProfile ? "Cập nhật hồ sơ" : "Tạo hồ sơ"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Teaching Request Dialog - New dialog for creating requests */}
-      <Dialog open={teachingRequestDialogOpen} onOpenChange={setTeachingRequestDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>Tạo yêu cầu dạy học</DialogTitle>
-            <DialogDescription>
-              Điền thông tin chi tiết về yêu cầu dạy học của bạn
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...teachingRequestForm}>
-            <form
-              onSubmit={teachingRequestForm.handleSubmit(onSubmitTeachingRequest)}
-              className="space-y-6"
-            >
-              <div className="grid grid-cols-1 gap-4">
-                <FormField
-                  control={teachingRequestForm.control}
-                  name="subject_id"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Môn học</FormLabel>
-                      <FormControl>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Chọn môn học" />
-                            </SelectTrigger>
-                          </FormControl>                          <SelectContent>
-                            {subjects.length === 0 ? (
-                              <SelectItem value="no_subjects" disabled>
-                                Không có môn học nào
-                              </SelectItem>
-                            ) : (
-                              subjects.map((subject) => (
-                                <SelectItem key={subject.id} value={`${subject.id}`}>
-                                  {subject.name}
-                                </SelectItem>
-                              ))
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={teachingRequestForm.control}
-                  name="level_id"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Cấp độ</FormLabel>
-                      <FormControl>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Chọn cấp độ" />
-                            </SelectTrigger>
-                          </FormControl>                          <SelectContent>
-                            {educationLevels.length === 0 ? (
-                              <SelectItem value="no_levels" disabled>
-                                Không có cấp độ nào
-                              </SelectItem>
-                            ) : (
-                              educationLevels.map((level) => (
-                                <SelectItem key={level.id} value={`${level.id}`}>
-                                  {level.name}
-                                </SelectItem>
-                              ))
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={teachingRequestForm.control}
-                  name="introduction"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Giới thiệu bản thân</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Giới thiệu về bản thân, kinh nghiệm giảng dạy..."
-                          className="min-h-[100px]"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={teachingRequestForm.control}
-                  name="experience"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Kinh nghiệm giảng dạy</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Nội dung thêm về yêu cầu dạy học của bạn..."
-                          className="min-h-[100px]"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div>
-                  <FormLabel className="block mb-2">Chứng chỉ</FormLabel>
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="file"
-                        accept="image/*,.pdf"
-                        className="hidden"
-                        id="certification-upload"
-                        multiple
-                        onChange={handleCertificationsChange}
-                      />
-                      <label
-                        htmlFor="certification-upload"
-                        className="flex items-center px-3 py-2 text-sm border rounded cursor-pointer bg-background hover:bg-muted transition-colors"
-                      >
-                        <FileCheck className="mr-2 h-4 w-4" />
-                        Chọn tệp chứng chỉ
-                      </label>
-
-                      {uploadingCertifications && (
-                        <div className="flex items-center">
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                          <span className="text-sm">Đang tải lên...</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {requestCertifications.length > 0 && (
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium">
-                          {requestCertifications.length} tệp đã chọn:
-                        </p>
-                        <ul className="text-sm text-muted-foreground">
-                          {requestCertifications.map((file, index) => (
-                            <li key={index}>
-                              {file.name} ({(file.size / 1024).toFixed(1)} KB)
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <DialogFooter>
-                <Button
-                  type="submit"
-                  disabled={teachingRequestForm.formState.isSubmitting}
-                >
-                  {teachingRequestForm.formState.isSubmitting && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  Gửi yêu cầu
                 </Button>
               </DialogFooter>
             </form>
