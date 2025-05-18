@@ -538,6 +538,9 @@ export const tutorProfileSchema = z.object({
   address: z.string().optional(),
   certifications: z.string().optional(), // JSON string chứa URLs
   availability: z.string().optional(), // JSON string
+  first_name: z.string().min(2, "Tên phải có ít nhất 2 ký tự").optional(),
+  last_name: z.string().min(2, "Họ phải có ít nhất 2 ký tự").optional(),
+  phone: z.string().optional(),
 });
 
 export const courseInsertSchema = createInsertSchema(courses);
@@ -620,9 +623,6 @@ export const bookingSessionValidationSchema = z.object({
   end_time: z.string(), // Định dạng "HH:MM"
   status: z.string().default("pending"),
 });
-
-export const bookingRequestSelectSchema = createSelectSchema(bookingRequests);
-export const bookingSessionSelectSchema = createSelectSchema(bookingSessions);
 
 // Schema cho cập nhật trạng thái booking request
 export const bookingRequestStatusSchema = z.object({
@@ -823,6 +823,29 @@ export const createScheduleSchema = z.union([
   recurringScheduleSchema,
 ]);
 
+// Schema cho tạo yêu cầu giảng dạy
+export const teachingRequestSchema = z.object({
+  subject_id: z.number({
+    required_error: "Môn học là bắt buộc"
+  }),
+  level_id: z.number({
+    required_error: "Cấp độ giảng dạy là bắt buộc"
+  }),
+  introduction: z.string({
+    required_error: "Giới thiệu là bắt buộc"
+  }).min(10, "Giới thiệu phải có ít nhất 10 ký tự"),
+  experience: z.string().optional(),
+  certifications: z.string().optional(), // JSON string chứa URLs
+});
+
+// Schema cho cập nhật trạng thái yêu cầu giảng dạy
+export const teachingRequestStatusSchema = z.object({
+  status: z.enum(["pending", "approved", "rejected"], {
+    errorMap: () => ({ message: "Trạng thái không hợp lệ" }),
+  }),
+  rejection_reason: z.string().optional(), // Lý do nếu từ chối
+});
+
 export const schema = {
   users,
   tutorProfiles,
@@ -832,46 +855,4 @@ export const schema = {
   bookingRequests,
   bookingSessions,
 };
-
-export type User = typeof users.$inferSelect;
-export type NewUser = typeof users.$inferInsert;
-
-export type TutorProfile = typeof tutorProfiles.$inferSelect;
-export type NewTutorProfile = typeof tutorProfiles.$inferInsert;
-
-export type Course = typeof courses.$inferSelect;
-export type NewCourse = typeof courses.$inferInsert;
-
-export type Subject = typeof subjects.$inferSelect;
-export type NewSubject = typeof subjects.$inferInsert;
-
-export type EducationLevel = typeof educationLevels.$inferSelect;
-export type NewEducationLevel = typeof educationLevels.$inferInsert;
-
-export type FavoriteTutor = typeof favoriteTutors.$inferSelect;
-export type NewFavoriteTutor = typeof favoriteTutors.$inferInsert;
-
-export type SubjectEducationLevel = typeof subjectEducationLevels.$inferSelect;
-export type NewSubjectEducationLevel =
-  typeof subjectEducationLevels.$inferInsert;
-
-export type BookingRequest = typeof bookingRequests.$inferSelect;
-export type NewBookingRequest = typeof bookingRequests.$inferInsert;
-
-export type BookingSession = typeof bookingSessions.$inferSelect;
-export type NewBookingSession = typeof bookingSessions.$inferInsert;
-
-export type Payment = typeof payments.$inferSelect;
-export type NewPayment = typeof payments.$inferInsert;
-
-export type SessionNote = typeof sessionNotes.$inferSelect;
-export type NewSessionNote = typeof sessionNotes.$inferInsert;
-
-// Types for teaching schedules
-export type TeachingSchedule = typeof teachingSchedules.$inferSelect;
-export type NewTeachingSchedule = typeof teachingSchedules.$inferInsert;
-
-// Add types for email OTPs
-export type EmailOtp = typeof emailOtps.$inferSelect;
-export type NewEmailOtp = typeof emailOtps.$inferInsert;
 

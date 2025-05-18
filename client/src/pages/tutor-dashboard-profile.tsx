@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "@/store";
+import { updateUserProfile, updateAvatar } from "@/features/auth/authSlice";
 import {
   Card,
   CardContent,
@@ -57,6 +58,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import TutorDashboardLayout from "@/components/layout/TutorDashboardLayout";
 import { format } from "date-fns";
+import TeachingRequestsList from "@/components/tutor/TeachingRequestsList";
 
 // Form schema for tutor profile
 const tutorProfileSchema = z.object({
@@ -83,6 +85,7 @@ const teachingRequestSchema = z.object({
 export default function TutorDashboardProfile() {
   const { toast } = useToast();
   const { user } = useSelector((state: RootState) => state.auth);
+  const dispatch = useDispatch();
   const [avatar, setAvatar] = useState<File | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
@@ -136,11 +139,18 @@ export default function TutorDashboardProfile() {
     queryKey: [`/api/v1/education-levels`],
     enabled: teachingRequestDialogOpen,
   });
+  // State để lưu preview URL của avatar đã chọn
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
   // Handle file change for avatar upload
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      setAvatar(e.target.files[0]);
+      const file = e.target.files[0];
+      setAvatar(file);
+
+      // Tạo URL preview cho avatar
+      const previewUrl = URL.createObjectURL(file);
+      setAvatarPreview(previewUrl);
     }
   };
 
@@ -179,14 +189,25 @@ export default function TutorDashboardProfile() {
       }
 
       return res.json();
-    },
-    onSuccess: () => {
+    }, onSuccess: (data) => {
+      // Cập nhật avatar trong Redux store ngay lập tức
+      if (data && data.data && data.data.user && data.data.user.avatar) {
+        dispatch(updateAvatar(data.data.user.avatar));
+      }
+
       toast({
         title: "Ảnh đại diện đã cập nhật",
         description: "Ảnh đại diện của bạn đã được cập nhật thành công",
         variant: "default",
       });
+      // Giải phóng URL đối tượng
+      if (avatarPreview) {
+        URL.revokeObjectURL(avatarPreview);
+      }
+
       setAvatar(null);
+      setAvatarPreview(null);
+
       // Force reload user data
       queryClient.invalidateQueries({ queryKey: [`/api/v1/auth/me`] });
       // Also reload tutor profile
@@ -240,9 +261,20 @@ export default function TutorDashboardProfile() {
         profileData
       );
       return res.json();
-    },
-    onSuccess: () => {
+    }, onSuccess: (data) => {
+      // Invalidate cả hồ sơ gia sư và thông tin user
       queryClient.invalidateQueries({ queryKey: [`/api/v1/tutors/profile`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/v1/auth/me`] });      // Cập nhật Redux store với thông tin mới
+      if (data.data) {
+        // Cập nhật thông tin user trong Redux store
+        dispatch(updateUserProfile({
+          first_name: data.data.first_name,
+          last_name: data.data.last_name,
+          phone: data.data.phone
+        }));
+      }
+
+      // Đóng dialog
       setProfileDialogOpen(false);
 
       toast({
@@ -311,11 +343,14 @@ export default function TutorDashboardProfile() {
         data
       );
       return res.json();
-    },
-    onSuccess: () => {
+    }, onSuccess: () => {
       setTeachingRequestDialogOpen(false);
       setRequestCertifications([]);
-      teachingRequestForm.reset();
+      teachingRequestForm.reset();      // Invalidate các query liên quan để cập nhật dữ liệu
+      queryClient.invalidateQueries({ queryKey: [`/api/v1/tutors/teaching-requests`] });
+
+      // Đồng thời cập nhật thông tin profile của tutor nếu cần
+      queryClient.invalidateQueries({ queryKey: [`/api/v1/tutors/profile`] });
 
       toast({
         title: "Yêu cầu đã gửi thành công",
@@ -369,7 +404,6 @@ export default function TutorDashboardProfile() {
       console.error("Lỗi khi gửi yêu cầu giảng dạy:", error);
     }
   };
-
   // Tải profile và thiết lập form
   useEffect(() => {
     if (tutorProfile) {
@@ -388,6 +422,15 @@ export default function TutorDashboardProfile() {
       }
     }
   }, [tutorProfile, profileForm, user]);
+
+  // Cleanup avatar preview URL khi component unmount
+  useEffect(() => {
+    return () => {
+      if (avatarPreview) {
+        URL.revokeObjectURL(avatarPreview);
+      }
+    };
+  }, [avatarPreview]);
 
   if (profileLoading) {
     return (
@@ -414,65 +457,80 @@ export default function TutorDashboardProfile() {
 
           <CardContent>
             <div className="space-y-8">
-              <div className="flex flex-col md:flex-row gap-8">
-                <div className="flex-shrink-0">
-                  <div className="relative">
-                    <Avatar className="h-32 w-32 border-2 border-primary">
-                      <AvatarImage
-                        src={user?.avatar ?? undefined}
-                        alt={user?.first_name ?? ""}
+              <div className="flex flex-col md:flex-row gap-8">                <div className="flex-shrink-0">
+                <div className="relative">
+                  <Avatar className={`h-32 w-32 border-2 ${uploadingAvatar ? 'border-warning animate-pulse' : 'border-primary'}`}>
+                    <AvatarImage
+                      src={user?.avatar ?? undefined}
+                      alt={user?.first_name ?? ""}
+                      className={`transition-opacity duration-300 ${uploadingAvatar ? 'opacity-50' : ''}`}
+                    />
+                    {uploadingAvatar && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-background/40 z-10">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      </div>
+                    )}
+                    <AvatarFallback className="text-3xl">
+                      {user?.first_name?.[0]}
+                      {user?.last_name?.[0]}
+                    </AvatarFallback>
+                  </Avatar>
+
+                  <div className="mt-4">
+                    <label className="block mb-2 text-sm font-medium">
+                      Cập nhật ảnh đại diện
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        id="avatar-upload"
+                        onChange={handleFileChange}
                       />
-                      <AvatarFallback className="text-3xl">
-                        {user?.first_name?.[0]}
-                        {user?.last_name?.[0]}
-                      </AvatarFallback>
-                    </Avatar>
-
-                    <div className="mt-4">
-                      <label className="block mb-2 text-sm font-medium">
-                        Cập nhật ảnh đại diện
+                      <label
+                        htmlFor="avatar-upload"
+                        className="flex items-center px-3 py-2 text-sm border rounded cursor-pointer bg-background hover:bg-muted transition-colors"
+                      >
+                        <Upload className="mr-2 h-4 w-4" />
+                        Chọn ảnh
                       </label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          id="avatar-upload"
-                          onChange={handleFileChange}
-                        />
-                        <label
-                          htmlFor="avatar-upload"
-                          className="flex items-center px-3 py-2 text-sm border rounded cursor-pointer bg-background hover:bg-muted transition-colors"
-                        >
-                          <Upload className="mr-2 h-4 w-4" />
-                          Chọn ảnh
-                        </label>
 
-                        {avatar && (
-                          <Button
-                            onClick={handleAvatarUpload}
-                            disabled={uploadingAvatar}
-                            size="sm"
-                          >
-                            {uploadingAvatar ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Đang tải lên...
-                              </>
-                            ) : (
-                              "Tải lên"
-                            )}
-                          </Button>
+                      {avatar && (
+                        <Button
+                          onClick={handleAvatarUpload}
+                          disabled={uploadingAvatar}
+                          size="sm"
+                        >
+                          {uploadingAvatar ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Đang tải lên...
+                            </>
+                          ) : (
+                            "Tải lên"
+                          )}
+                        </Button>
+                      )}
+                    </div>                      {avatar && (
+                      <div className="mt-2">
+                        <p className="text-sm text-muted-foreground mb-2">
+                          {avatar.name} ({(avatar.size / 1024).toFixed(1)} KB)
+                        </p>
+                        {avatarPreview && (
+                          <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-primary">
+                            <img
+                              src={avatarPreview}
+                              alt="Avatar preview"
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
                         )}
                       </div>
-                      {avatar && (
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {avatar.name}
-                        </p>
-                      )}
-                    </div>
+                    )}
                   </div>
                 </div>
+              </div>
 
                 <div className="flex-1">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -594,7 +652,20 @@ export default function TutorDashboardProfile() {
               <p className="whitespace-pre-wrap">{tutorProfile.bio}</p>
             </CardContent>
           </Card>
-        )}
+        )}        {/* Teaching Requests List */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Yêu cầu giảng dạy</CardTitle>
+            <CardDescription>
+              Danh sách các yêu cầu giảng dạy của bạn và trạng thái phê duyệt
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <TeachingRequestsList
+              onCreateRequest={() => setTeachingRequestDialogOpen(true)}
+            />
+          </CardContent>
+        </Card>
       </div>
 
       {/* Profile Dialog - Simplified with only basic fields */}

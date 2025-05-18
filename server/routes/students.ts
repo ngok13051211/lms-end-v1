@@ -1,5 +1,5 @@
 import { Router } from "express";
-import * as studentController from "../controllers/tutorController";
+import * as studentController from "../controllers/studentController";
 import { authMiddleware, roleMiddleware } from "../middlewares/authMiddleware";
 import { validateParams } from "../middlewares/validationMiddleware";
 import * as schema from "@shared/schema";

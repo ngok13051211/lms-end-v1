@@ -26,30 +26,37 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 
-// Interface cho tutors đang chờ xác minh
-interface PendingTutor {
+// Interface cho yêu cầu giảng dạy đang chờ duyệt
+interface TeachingRequest {
   id: number;
-  bio?: string;
-  certifications?: string;
-  date_of_birth?: string;
-  address?: string;
-  user: {
+  subject: {
     id: number;
-    first_name?: string;
-    last_name?: string;
-    name?: string; // API có thể trả về name đã ghép sẵn
-    email: string;
-    phone?: string;
-    avatar?: string;
+    name: string;
   };
-  subjects?: Array<{
+  level: {
     id: number;
     name: string;
-  }>;
-  levels?: Array<{
+  };
+  tutor_profile: {
     id: number;
-    name: string;
-  }>;
+    bio?: string;
+    date_of_birth?: string;
+    address?: string;
+    user: {
+      id: number;
+      first_name?: string;
+      last_name?: string;
+      email: string;
+      phone?: string;
+      avatar?: string;
+    };
+  };
+  introduction: string;
+  experience: string;
+  certifications?: string; // JSON string chứa mảng các URL
+  status: string; // "pending", "approved", "rejected"
+  approved_by?: number;
+  rejection_reason?: string;
   created_at: string;
 }
 
@@ -62,64 +69,56 @@ async function fetchJson<T>(method: string, url: string, data?: unknown): Promis
 export default function AdminTutorVerification() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [selectedTutor, setSelectedTutor] = useState<PendingTutor | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<TeachingRequest | null>(null);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
-  const [currentTutorId, setCurrentTutorId] = useState<number | null>(null);
-  const [detailsOpen, setDetailsOpen] = useState(false);
-  // Truy vấn danh sách tutors đang chờ xác minh
-  const { data: pendingTutors, isLoading, error } = useQuery({
-    queryKey: ["/api/v1/admin/tutors/verification"],
-    queryFn: () => fetchJson<PendingTutor[]>("GET", "/api/v1/admin/tutors/verification"),
+  const [currentRequestId, setCurrentRequestId] = useState<number | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);  // Truy vấn danh sách yêu cầu giảng dạy đang chờ duyệt
+  const { data: pendingRequests = [], isLoading, error } = useQuery<TeachingRequest[]>({
+    queryKey: ["/api/v1/admin/teaching-requests/pending"],
+    queryFn: () => fetchJson<TeachingRequest[]>("GET", "/api/v1/admin/teaching-requests/pending"),
     refetchOnWindowFocus: false,
-    onError: (err) => {
-      console.error("Failed to fetch pending tutors:", err);
-      toast({
-        title: "Lỗi tải dữ liệu",
-        description: "Không thể tải danh sách gia sư chờ xác minh. Vui lòng thử lại sau.",
-        variant: "destructive",
-      });
-    }
   });
-  // Mutation để phê duyệt gia sư
+
+  // Mutation để phê duyệt yêu cầu giảng dạy
   const approveMutation = useMutation({
-    mutationFn: (tutorId: number) =>
-      fetchJson("PATCH", `/api/v1/admin/tutors/${tutorId}/approve`, {}),
+    mutationFn: (requestId: number) =>
+      fetchJson("PATCH", `/api/v1/admin/teaching-requests/${requestId}/approve`, {}),
     onSuccess: () => {
       toast({
         title: "Thành công",
-        description: "Đã chấp nhận yêu cầu xác minh gia sư",
+        description: "Đã chấp nhận yêu cầu giảng dạy",
         variant: "default",
       });
-      // Đóng dialog chi tiết nếu đang mở
-      setDetailsOpen(false);
+      // Đóng dialog chi tiết nếu đang mở      setDetailsOpen(false);
       // Cập nhật lại danh sách sau khi xử lý thành công
-      queryClient.invalidateQueries({ queryKey: ["/api/v1/admin/tutors/verification"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/v1/admin/teaching-requests/pending"] });
     },
     onError: (error: any) => {
-      const errorMessage = error?.message || "Không thể xác minh gia sư. Vui lòng thử lại sau.";
+      const errorMessage = error?.message || "Không thể duyệt yêu cầu giảng dạy. Vui lòng thử lại sau.";
       toast({
         title: "Lỗi",
         description: errorMessage,
         variant: "destructive",
       });
-      console.error("Error approving tutor:", error);
+      console.error("Error approving teaching request:", error);
     },
   });
-  // Mutation để từ chối gia sư
+
+  // Mutation để từ chối yêu cầu giảng dạy
   const rejectMutation = useMutation({
-    mutationFn: ({ tutorId, reason }: { tutorId: number; reason: string }) =>
-      fetchJson("PATCH", `/api/v1/admin/tutors/${tutorId}/reject`, { reason }),
+    mutationFn: ({ requestId, reason }: { requestId: number; reason: string }) =>
+      fetchJson("PATCH", `/api/v1/admin/teaching-requests/${requestId}/reject`, { rejection_reason: reason }),
     onSuccess: () => {
       toast({
         title: "Thành công",
-        description: "Đã từ chối yêu cầu xác minh gia sư",
+        description: "Đã từ chối yêu cầu giảng dạy",
         variant: "default",
       });
       setRejectDialogOpen(false);
       setRejectionReason('');
       // Cập nhật lại danh sách sau khi xử lý thành công
-      queryClient.invalidateQueries({ queryKey: ["/api/v1/admin/tutors/verification"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/v1/admin/teaching-requests/pending"] });
     },
     onError: (error: any) => {
       const errorMessage = error?.message || "Không thể từ chối yêu cầu. Vui lòng thử lại sau.";
@@ -128,7 +127,7 @@ export default function AdminTutorVerification() {
         description: errorMessage,
         variant: "destructive",
       });
-      console.error("Error rejecting tutor:", error);
+      console.error("Error rejecting teaching request:", error);
     },
   });
 
@@ -143,23 +142,22 @@ export default function AdminTutorVerification() {
       minute: '2-digit'
     });
   };
-
-  // Xử lý phê duyệt tutor
-  const handleApproveTutor = (tutorId: number) => {
-    approveMutation.mutate(tutorId);
+  // Xử lý phê duyệt yêu cầu giảng dạy
+  const handleApproveRequest = (requestId: number) => {
+    approveMutation.mutate(requestId);
   };
 
-  // Mở dialog từ chối và lưu ID gia sư hiện tại
-  const openRejectDialog = (tutorId: number) => {
-    setCurrentTutorId(tutorId);
+  // Mở dialog từ chối và lưu ID yêu cầu hiện tại
+  const openRejectDialog = (requestId: number) => {
+    setCurrentRequestId(requestId);
     setRejectDialogOpen(true);
   };
 
-  // Xử lý từ chối tutor
+  // Xử lý từ chối yêu cầu
   const handleRejectSubmit = () => {
-    if (currentTutorId && rejectionReason.trim()) {
+    if (currentRequestId && rejectionReason.trim()) {
       rejectMutation.mutate({
-        tutorId: currentTutorId,
+        requestId: currentRequestId,
         reason: rejectionReason.trim()
       });
     } else {
@@ -171,9 +169,9 @@ export default function AdminTutorVerification() {
     }
   };
 
-  // Hiển thị chi tiết hồ sơ gia sư
-  const handleViewTutorDetail = (tutor: PendingTutor) => {
-    setSelectedTutor(tutor);
+  // Hiển thị chi tiết yêu cầu giảng dạy
+  const handleViewRequestDetail = (request: TeachingRequest) => {
+    setSelectedRequest(request);
     setDetailsOpen(true);
   };
   // Kiểm tra nếu URL là hình ảnh
@@ -260,323 +258,397 @@ export default function AdminTutorVerification() {
       return "Định dạng chứng chỉ không hợp lệ";
     }
   };
-
-  // Dữ liệu mẫu cho tutors đang chờ xác minh (sử dụng khi development)
-  const mockPendingTutors: PendingTutor[] = [
+  // Dữ liệu mẫu cho các yêu cầu giảng dạy đang chờ duyệt (sử dụng khi development)
+  const mockPendingRequests: TeachingRequest[] = [
     {
       id: 1,
-      user: {
-        id: 101,
-        first_name: "Nguyễn",
-        last_name: "Văn A",
-        email: "nguyenvana@example.com",
-        avatar: "https://ui-avatars.com/api/?name=Nguyen+Van+A",
-        phone: "0123456789",
+      subject: {
+        id: 1,
+        name: "Toán học"
       },
-      bio: "Giáo viên có 5 năm kinh nghiệm dạy Toán tại trường THPT Chuyên...",
-      date_of_birth: "1990-05-15",
-      address: "Quận 1, TP HCM",
+      level: {
+        id: 2,
+        name: "Trung học phổ thông"
+      },
+      tutor_profile: {
+        id: 1,
+        bio: "Giáo viên có 5 năm kinh nghiệm dạy học",
+        date_of_birth: "1990-05-15",
+        address: "Quận 1, TP HCM",
+        user: {
+          id: 101,
+          first_name: "Nguyễn",
+          last_name: "Văn A",
+          email: "nguyenvana@example.com",
+          avatar: "https://ui-avatars.com/api/?name=Nguyen+Van+A",
+          phone: "0123456789"
+        }
+      },
+      introduction: "Tôi là giáo viên có 5 năm kinh nghiệm giảng dạy môn Toán tại trường THPT chuyên. Tôi mong muốn được đồng hành cùng các bạn học sinh trên con đường học tập.",
+      experience: "5 năm giảng dạy tại trường THPT chuyên, 2 năm làm gia sư cho học sinh thi đại học.",
       certifications: JSON.stringify([
         "https://example.com/cert1.pdf",
-        "https://example.com/cert2.pdf"
+        "https://example.com/cert2.jpg"
       ]),
-      subjects: [
-        { id: 1, name: "Toán học" },
-        { id: 2, name: "Vật lý" }
-      ],
-      levels: [
-        { id: 1, name: "Trung học cơ sở" },
-        { id: 2, name: "Trung học phổ thông" }
-      ],
+      status: "pending",
       created_at: "2025-05-10T10:30:00Z"
     },
     {
       id: 2,
-      user: {
-        id: 102,
-        first_name: "Trần",
-        last_name: "Thị B",
-        email: "tranthib@example.com",
-        avatar: "https://ui-avatars.com/api/?name=Tran+Thi+B",
-        phone: "0987654321",
+      subject: {
+        id: 2,
+        name: "Tiếng Anh"
       },
-      bio: "Giảng viên đại học với 10 năm kinh nghiệm giảng dạy ngành Ngôn ngữ Anh...",
-      subjects: [
-        { id: 3, name: "Tiếng Anh" }
-      ],
-      levels: [
-        { id: 2, name: "Trung học phổ thông" },
-        { id: 3, name: "Đại học" }
-      ],
+      level: {
+        id: 3,
+        name: "Đại học"
+      },
+      tutor_profile: {
+        id: 2,
+        bio: "Giảng viên đại học với chuyên môn ngôn ngữ Anh",
+        date_of_birth: "1985-08-20",
+        address: "Quận 3, TP HCM",
+        user: {
+          id: 102,
+          first_name: "Trần",
+          last_name: "Thị B",
+          email: "tranthib@example.com",
+          avatar: "https://ui-avatars.com/api/?name=Tran+Thi+B",
+          phone: "0987654321"
+        }
+      },
+      introduction: "Tôi là giảng viên đại học chuyên ngành Ngôn ngữ Anh với hơn 10 năm kinh nghiệm. Tôi đã hướng dẫn nhiều sinh viên đạt chứng chỉ IELTS và TOEFL.",
+      experience: "10 năm giảng dạy tại đại học, 5 năm làm việc tại trung tâm ngoại ngữ.",
+      certifications: JSON.stringify([
+        "https://example.com/cert3.pdf",
+        "https://example.com/cert4.jpg"
+      ]),
+      status: "pending",
       created_at: "2025-05-12T14:25:00Z"
     },
     {
       id: 3,
-      user: {
-        id: 103,
-        first_name: "Lê",
-        last_name: "Văn C",
-        email: "levanc@example.com",
-        avatar: "https://ui-avatars.com/api/?name=Le+Van+C",
+      subject: {
+        id: 3,
+        name: "Vật lý"
       },
+      level: {
+        id: 2,
+        name: "Trung học phổ thông"
+      },
+      tutor_profile: {
+        id: 3,
+        user: {
+          id: 103,
+          first_name: "Lê",
+          last_name: "Văn C",
+          email: "levanc@example.com",
+          avatar: "https://ui-avatars.com/api/?name=Le+Van+C",
+        }
+      },
+      introduction: "Tôi là giáo viên vật lý với kinh nghiệm 3 năm giảng dạy tại các trường THPT.",
+      experience: "3 năm giảng dạy tại trường THPT, thường xuyên tham gia các hoạt động bồi dưỡng học sinh giỏi.",
+      status: "pending",
       created_at: "2025-05-13T09:15:00Z"
     },
     {
       id: 4,
-      user: {
-        id: 104,
-        first_name: "Phạm",
-        last_name: "Thị D",
-        email: "phamthid@example.com",
-        avatar: "https://ui-avatars.com/api/?name=Pham+Thi+D",
+      subject: {
+        id: 4,
+        name: "Hóa học"
       },
+      level: {
+        id: 2,
+        name: "Trung học phổ thông"
+      },
+      tutor_profile: {
+        id: 4,
+        user: {
+          id: 104,
+          first_name: "Phạm",
+          last_name: "Thị D",
+          email: "phamthid@example.com",
+          avatar: "https://ui-avatars.com/api/?name=Pham+Thi+D",
+        }
+      },
+      introduction: "Chuyên gia hóa học với kinh nghiệm giảng dạy phong phú.",
+      experience: "4 năm giảng dạy tại các trung tâm luyện thi đại học.",
+      status: "pending",
       created_at: "2025-05-14T11:20:00Z"
-    },
-    {
-      id: 5,
-      user: {
-        id: 105,
-        first_name: "Hoàng",
-        last_name: "Văn E",
-        email: "hoangvane@example.com",
-        avatar: "https://ui-avatars.com/api/?name=Hoang+Van+E",
-      },
-      created_at: "2025-05-14T16:45:00Z"
     }
   ];
-
   // Sử dụng dữ liệu API trong production hoặc dữ liệu mẫu trong development
-  const displayPendingTutors = pendingTutors || mockPendingTutors;
-  return (
+  const displayPendingRequests = pendingRequests.length > 0 ? pendingRequests : mockPendingRequests; return (
     <DashboardLayout>
-      <div className="p-6 max-w-7xl mx-auto space-y-6">        <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-3xl font-bold tracking-tight">Duyệt yêu cầu gia sư</h1>
-            {!isLoading && !error && displayPendingTutors && displayPendingTutors.length > 0 && (
-              <Badge className="ml-2 bg-primary text-white text-sm">
-                {displayPendingTutors.length}
-              </Badge>
-            )}
+      <div className="p-6 max-w-7xl mx-auto space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-3xl font-bold tracking-tight">Duyệt yêu cầu giảng dạy</h1>
+              {!isLoading && !error && displayPendingRequests && displayPendingRequests.length > 0 && (
+                <Badge className="ml-2 bg-primary text-white text-sm">
+                  {displayPendingRequests.length}
+                </Badge>
+              )}
+            </div>
+            <p className="text-muted-foreground mt-1">
+              Kiểm tra và phê duyệt các yêu cầu giảng dạy từ gia sư trên nền tảng
+            </p>
           </div>
-          <p className="text-muted-foreground mt-1">
-            Kiểm tra và phê duyệt các yêu cầu đăng ký làm gia sư trên nền tảng
-          </p>
-        </div>
-      </div>
-
-        <Card>
+        </div>        <Card>
           <CardHeader>
-            <CardTitle>Danh sách gia sư chờ xác minh</CardTitle>
+            <CardTitle>Danh sách yêu cầu giảng dạy chờ duyệt</CardTitle>
             <CardDescription>
-              Những hồ sơ gia sư đang chờ phê duyệt để tham gia vào hệ thống
+              Các yêu cầu giảng dạy của gia sư đang chờ phê duyệt
             </CardDescription>
           </CardHeader>
-          <CardContent>            {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <span className="ml-2">Đang tải dữ liệu...</span>
-            </div>
-          ) : error ? (
-            <div className="text-center py-12">
-              <XCircle className="h-16 w-16 mx-auto text-destructive" />
-              <p className="mt-4 text-lg text-muted-foreground">Đã xảy ra lỗi khi tải dữ liệu</p>
-              <Button variant="outline" className="mt-4" onClick={() => window.location.reload()}>
-                Thử lại
-              </Button>
-            </div>
-          ) : displayPendingTutors.length === 0 ? (
-            <div className="text-center py-12">
-              <UserCheck className="h-16 w-16 mx-auto text-muted-foreground" />
-              <p className="mt-4 text-lg text-muted-foreground">Không có gia sư nào đang chờ xác minh</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">                <table className="w-full">
-              <thead>
-                <tr className="border-b text-left">
-                  <th className="py-4 px-4 font-medium">Gia sư</th>
-                  <th className="py-4 px-4 font-medium">Email</th>
-                  <th className="py-4 px-4 font-medium">Ngày yêu cầu</th>
-                  <th className="py-4 px-4 font-medium text-right">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                {displayPendingTutors.map((tutor) => (
-                  <tr key={tutor.id} className="border-b hover:bg-muted/50">
-                    <td className="py-4 px-4">
-                      <div className="flex items-center">
-                        <Avatar className="h-10 w-10 mr-3">
-                          <AvatarImage src={tutor.user.avatar} alt={`${tutor.user.name || `${tutor.user.first_name} ${tutor.user.last_name}`}`} />
-                          <AvatarFallback>
-                            {tutor.user.first_name?.[0] || (tutor.user.name?.split(' ')[0]?.[0] || '')}
-                            {tutor.user.last_name?.[0] || (tutor.user.name?.split(' ').pop()?.[0] || '')}
-                          </AvatarFallback>
-                        </Avatar>
-                        <button
-                          onClick={() => handleViewTutorDetail(tutor)}
-                          className="font-medium text-left hover:underline hover:text-primary cursor-pointer"
-                        >
-                          {tutor.user.name || `${tutor.user.first_name || ''} ${tutor.user.last_name || ''}`}
-                        </button>
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">{tutor.user.email}</td>
-                    <td className="py-4 px-4">{formatDate(tutor.created_at)}</td>
-                    <td className="py-4 px-4 text-right">
-                      <div className="flex items-center justify-end space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleViewTutorDetail(tutor)}
-                        >
-                          <Info className="h-4 w-4 mr-1" />
-                          Chi tiết
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-green-600"
-                          onClick={() => handleApproveTutor(tutor.id)}
-                          disabled={approveMutation.isPending && approveMutation.variables === tutor.id}
-                        >
-                          {approveMutation.isPending && approveMutation.variables === tutor.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <CheckCircle className="h-4 w-4 mr-1" />
-                          )}
-                          Chấp nhận
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-red-600"
-                          onClick={() => openRejectDialog(tutor.id)}
-                          disabled={approveMutation.isPending && approveMutation.variables === tutor.id}
-                        >
-                          <XCircle className="h-4 w-4 mr-1" />
-                          Từ chối
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>                <div className="flex items-center justify-between mt-6">
-                <div className="text-sm text-muted-foreground">
-                  Hiển thị <span className="font-medium">{displayPendingTutors.length}</span> gia sư đang chờ xác minh
-                </div>
-                {displayPendingTutors.length > 10 && (
-                  <div className="flex space-x-2">
-                    <Button variant="outline" size="sm" disabled>
-                      Trước
-                    </Button>
-                    <Button variant="outline" size="sm" disabled>
-                      Tiếp
-                    </Button>
-                  </div>
-                )}
+          <CardContent>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <span className="ml-2">Đang tải dữ liệu...</span>
               </div>
-            </div>
-          )}
+            ) : error ? (
+              <div className="text-center py-12">
+                <XCircle className="h-16 w-16 mx-auto text-destructive" />
+                <p className="mt-4 text-lg text-muted-foreground">Đã xảy ra lỗi khi tải dữ liệu</p>
+                <Button variant="outline" className="mt-4" onClick={() => window.location.reload()}>
+                  Thử lại
+                </Button>
+              </div>
+            ) : displayPendingRequests.length === 0 ? (
+              <div className="text-center py-12">
+                <UserCheck className="h-16 w-16 mx-auto text-muted-foreground" />
+                <p className="mt-4 text-lg text-muted-foreground">Không có yêu cầu giảng dạy nào đang chờ duyệt</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b text-left">
+                      <th className="py-4 px-4 font-medium">Gia sư</th>
+                      <th className="py-4 px-4 font-medium">Môn học</th>
+                      <th className="py-4 px-4 font-medium">Cấp độ</th>
+                      <th className="py-4 px-4 font-medium">Ngày yêu cầu</th>
+                      <th className="py-4 px-4 font-medium text-right">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {displayPendingRequests.map((request) => (<tr key={request.id} className="border-b hover:bg-muted/50">
+                      <td className="py-4 px-4">
+                        <div className="flex items-center">
+                          <Avatar className="h-10 w-10 mr-3">                              <AvatarImage
+                            src={request.tutor_profile.user.avatar}
+                            alt={`${request.tutor_profile.user.first_name} ${request.tutor_profile.user.last_name}`} />
+                            <AvatarFallback>
+                              {request.tutor_profile.user.first_name?.[0] || ''}
+                              {request.tutor_profile.user.last_name?.[0] || ''}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <button
+                              onClick={() => handleViewRequestDetail(request)}
+                              className="font-medium text-left hover:underline hover:text-primary cursor-pointer"
+                            >
+                              {`${request.tutor_profile.user.first_name || ''} ${request.tutor_profile.user.last_name || ''}`}
+                            </button>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {request.tutor_profile.user.email}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <Badge variant="outline" className="bg-primary/10">
+                          {request.subject.name}
+                        </Badge>
+                        <div className="text-xs text-muted-foreground mt-1 line-clamp-1">
+                          {request.introduction.substring(0, 40)}...
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <Badge variant="secondary">
+                          {request.level.name}
+                        </Badge>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {request.experience ? "Có kinh nghiệm" : "Chưa có kinh nghiệm"}
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        {formatDate(request.created_at)}
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {new Date(request.created_at).toLocaleDateString('vi-VN')}
+                        </div>
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        <div className="flex items-center justify-end space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleViewRequestDetail(request)}
+                          >
+                            <Info className="h-4 w-4 mr-1" />
+                            Chi tiết
+                          </Button>                            <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-green-600"
+                            onClick={() => handleApproveRequest(request.id)}
+                            disabled={approveMutation.isPending && approveMutation.variables === request.id}
+                          >
+                            {approveMutation.isPending && approveMutation.variables === request.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <CheckCircle className="h-4 w-4 mr-1" />
+                            )}
+                            Chấp nhận
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600"
+                            onClick={() => openRejectDialog(request.id)}
+                            disabled={approveMutation.isPending && approveMutation.variables === request.id}
+                          >
+                            <XCircle className="h-4 w-4 mr-1" />
+                            Từ chối
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="flex items-center justify-between mt-6">
+                  <div className="text-sm text-muted-foreground">
+                    Hiển thị <span className="font-medium">{displayPendingRequests.length}</span> yêu cầu giảng dạy đang chờ duyệt
+                  </div>
+                  {displayPendingRequests.length > 10 && (
+                    <div className="flex space-x-2">
+                      <Button variant="outline" size="sm" disabled>
+                        Trước
+                      </Button>
+                      <Button variant="outline" size="sm" disabled>
+                        Tiếp
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
-      </div>
-
-      {/* Dialog xem chi tiết hồ sơ gia sư */}
+      </div>      {/* Dialog xem chi tiết yêu cầu giảng dạy */}
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
         <DialogContent className="sm:max-w-[700px]">
           <DialogHeader>
-            <DialogTitle>Chi tiết hồ sơ gia sư</DialogTitle>
+            <DialogTitle>Chi tiết yêu cầu giảng dạy</DialogTitle>
           </DialogHeader>
 
-          {selectedTutor && (
+          {selectedRequest && (
             <div className="space-y-6">
               <div className="flex items-center gap-4">
                 <Avatar className="h-20 w-20">
                   <AvatarImage
-                    src={selectedTutor.user.avatar}
-                    alt={`${selectedTutor.user.first_name} ${selectedTutor.user.last_name}`}
+                    src={selectedRequest.tutor_profile.user.avatar}
+                    alt={`${selectedRequest.tutor_profile.user.first_name} ${selectedRequest.tutor_profile.user.last_name}`}
                   />
-                  <AvatarFallback className="text-xl">                    {selectedTutor.user.first_name?.[0] || (selectedTutor.user.name?.split(' ')[0]?.[0] || '')}
-                    {selectedTutor.user.last_name?.[0] || (selectedTutor.user.name?.split(' ').pop()?.[0] || '')}
+                  <AvatarFallback className="text-xl">
+                    {selectedRequest.tutor_profile.user.first_name?.[0] || ''}
+                    {selectedRequest.tutor_profile.user.last_name?.[0] || ''}
                   </AvatarFallback>
                 </Avatar>
-                <div>                  <h3 className="text-lg font-semibold">
-                  {selectedTutor.user.name || `${selectedTutor.user.first_name || ''} ${selectedTutor.user.last_name || ''}`}
-                </h3>
+                <div>
+                  <h3 className="text-lg font-semibold">
+                    {`${selectedRequest.tutor_profile.user.first_name || ''} ${selectedRequest.tutor_profile.user.last_name || ''}`}
+                  </h3>
                   <div className="flex items-center text-muted-foreground mt-1">
                     <Mail className="h-4 w-4 mr-1" />
-                    <span>{selectedTutor.user.email}</span>
+                    <span>{selectedRequest.tutor_profile.user.email}</span>
                   </div>
-                  {selectedTutor.user.phone && (
+                  {selectedRequest.tutor_profile.user.phone && (
                     <div className="flex items-center text-muted-foreground mt-1">
                       <Phone className="h-4 w-4 mr-1" />
-                      <span>{selectedTutor.user.phone}</span>
+                      <span>{selectedRequest.tutor_profile.user.phone}</span>
                     </div>
                   )}
                 </div>
               </div>
 
-              <Separator />
+              <Separator />              <div className="flex items-center justify-between mb-2">
+                <Badge variant="outline" className="text-xs">
+                  Yêu cầu gửi: {formatDate(selectedRequest.created_at)}
+                </Badge>
+              </div>
 
-              <div className="grid gap-4">
-                {selectedTutor.bio && (
+              <div className="grid gap-5">
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <h4 className="font-medium text-sm mb-1 flex items-center">
+                      <BookOpen className="h-4 w-4 mr-1" /> Môn học
+                    </h4>
+                    <Badge variant="outline" className="bg-primary/10">
+                      {selectedRequest.subject.name}
+                    </Badge>
+                  </div>
+
+                  <div className="flex-1">
+                    <h4 className="font-medium text-sm mb-1 flex items-center">
+                      <GraduationCap className="h-4 w-4 mr-1" /> Cấp độ giảng dạy
+                    </h4>
+                    <Badge variant="secondary">
+                      {selectedRequest.level.name}
+                    </Badge>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="font-medium text-sm mb-1 flex items-center">
+                    <Info className="h-4 w-4 mr-1" /> Giới thiệu
+                  </h4>
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">{selectedRequest.introduction}</p>
+                </div>
+
+                <div>
+                  <h4 className="font-medium text-sm mb-1 flex items-center">
+                    <BookOpen className="h-4 w-4 mr-1" /> Kinh nghiệm giảng dạy
+                  </h4>
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">{selectedRequest.experience}</p>
+                </div>
+
+                {selectedRequest.tutor_profile.bio && (
                   <div>
                     <h4 className="font-medium text-sm mb-1 flex items-center">
-                      <Info className="h-4 w-4 mr-1" /> Giới thiệu
+                      <Info className="h-4 w-4 mr-1" /> Giới thiệu bản thân
                     </h4>
-                    <p className="text-sm text-muted-foreground">{selectedTutor.bio}</p>
+                    <p className="text-sm text-muted-foreground">{selectedRequest.tutor_profile.bio}</p>
                   </div>
                 )}
 
-                {selectedTutor.date_of_birth && (
+                {selectedRequest.tutor_profile.date_of_birth && (
                   <div>
                     <h4 className="font-medium text-sm mb-1 flex items-center">
                       <Calendar className="h-4 w-4 mr-1" /> Ngày sinh
                     </h4>
-                    <p className="text-sm text-muted-foreground">{selectedTutor.date_of_birth}</p>
+                    <p className="text-sm text-muted-foreground">{selectedRequest.tutor_profile.date_of_birth}</p>
                   </div>
                 )}
 
-                {selectedTutor.address && (
+                {selectedRequest.tutor_profile.address && (
                   <div>
                     <h4 className="font-medium text-sm mb-1 flex items-center">
                       <MapPin className="h-4 w-4 mr-1" /> Địa chỉ
                     </h4>
-                    <p className="text-sm text-muted-foreground">{selectedTutor.address}</p>
+                    <p className="text-sm text-muted-foreground">{selectedRequest.tutor_profile.address}</p>
                   </div>
                 )}
 
-                {selectedTutor.subjects && selectedTutor.subjects.length > 0 && (
-                  <div>
-                    <h4 className="font-medium text-sm mb-1 flex items-center">
-                      <BookOpen className="h-4 w-4 mr-1" /> Môn học
-                    </h4>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedTutor.subjects.map(subject => (
-                        <Badge key={subject.id} variant="outline">{subject.name}</Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {selectedTutor.levels && selectedTutor.levels.length > 0 && (
-                  <div>
-                    <h4 className="font-medium text-sm mb-1 flex items-center">
-                      <GraduationCap className="h-4 w-4 mr-1" /> Cấp độ giảng dạy
-                    </h4>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedTutor.levels.map(level => (
-                        <Badge key={level.id} variant="outline">{level.name}</Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}                <div>
+                <div>
                   <h4 className="font-medium text-sm mb-2 flex items-center">
                     <FileText className="h-4 w-4 mr-1" /> Chứng chỉ
                   </h4>
                   <div className="text-sm">
-                    {renderCertifications(selectedTutor.certifications)}
+                    {renderCertifications(selectedRequest.certifications)}
                   </div>
                 </div>
               </div>
@@ -584,20 +656,22 @@ export default function AdminTutorVerification() {
               <Separator />
 
               <DialogFooter>
-                <div className="w-full flex justify-between">                  <Button
-                  variant="destructive"
-                  onClick={() => {
-                    setDetailsOpen(false);
-                    openRejectDialog(selectedTutor.id);
-                  }}
-                  disabled={approveMutation.isPending}
-                >
-                  <XCircle className="h-4 w-4 mr-1" />
-                  Từ chối
-                </Button><Button
-                  onClick={() => handleApproveTutor(selectedTutor.id)}
-                  disabled={approveMutation.isPending}
-                >
+                <div className="w-full flex justify-between">
+                  <Button
+                    variant="destructive"
+                    onClick={() => {
+                      setDetailsOpen(false);
+                      openRejectDialog(selectedRequest.id);
+                    }}
+                    disabled={approveMutation.isPending}
+                  >
+                    <XCircle className="h-4 w-4 mr-1" />
+                    Từ chối
+                  </Button>
+                  <Button
+                    onClick={() => handleApproveRequest(selectedRequest.id)}
+                    disabled={approveMutation.isPending}
+                  >
                     {approveMutation.isPending ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -615,13 +689,11 @@ export default function AdminTutorVerification() {
             </div>
           )}
         </DialogContent>
-      </Dialog>
-
-      {/* Dialog từ chối gia sư */}
+      </Dialog>      {/* Dialog từ chối yêu cầu giảng dạy */}
       <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Từ chối yêu cầu xác minh gia sư</DialogTitle>
+            <DialogTitle>Từ chối yêu cầu giảng dạy</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
@@ -634,14 +706,15 @@ export default function AdminTutorVerification() {
                 className="min-h-[120px]"
               />
               <p className="text-sm text-muted-foreground">
-                Lý do từ chối sẽ được gửi tới gia sư.
+                Lý do từ chối sẽ được gửi tới gia sư để họ có thể điều chỉnh và gửi lại yêu cầu.
               </p>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setRejectDialogOpen(false)}>
               Hủy bỏ
-            </Button>                  <Button
+            </Button>
+            <Button
               variant="destructive"
               onClick={handleRejectSubmit}
               disabled={rejectMutation.isPending}

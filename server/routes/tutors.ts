@@ -16,6 +16,22 @@ router.get("/", tutorController.getTutors);
 // Lấy danh sách gia sư nổi bật
 router.get("/featured", tutorController.getFeaturedTutors);
 
+// Xử lý yêu cầu dạy học
+router.post(
+  "/teaching-requests",
+  authMiddleware,
+  roleMiddleware(["tutor"]),
+  tutorController.handleTeachingRequest
+);
+
+// Lấy danh sách yêu cầu đăng ký dạy học của bản thân
+router.get(
+  "/teaching-requests",
+  authMiddleware,
+  roleMiddleware(["tutor"]),
+  tutorController.getOwnTeachingRequests
+);
+
 // Lấy các gia sư tương tự
 router.get(
   "/similar/:id",

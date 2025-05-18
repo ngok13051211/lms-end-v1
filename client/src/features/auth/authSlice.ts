@@ -14,6 +14,7 @@ interface AuthState {
 interface ProfileUpdateData {
   first_name?: string;
   last_name?: string;
+  phone?: string;
   // Có thể thêm các trường khác ở đây nếu cần
 }
 

@@ -33,30 +33,64 @@ router.patch(
   adminController.deactivateUser
 );
 
-// Lấy danh sách xác minh gia sư
+// Lấy danh sách xác minh gia sư (DEPRECATED - sử dụng /teaching-requests/pending thay thế)
+// router.get(
+//   "/tutors/verification",
+//   authMiddleware,
+//   roleMiddleware(["admin"]),
+//   tutorController.getTutorVerifications
+// );
+
+// DEPRECATED: Phê duyệt gia sư trực tiếp (sử dụng /teaching-requests/:id/approve thay thế)
+// router.patch(
+//   "/tutors/:id/approve",
+//   authMiddleware,
+//   roleMiddleware(["admin"]),
+//   validateParams(schema.idSchema),
+//   tutorController.approveTutor
+// );
+
+// DEPRECATED: Từ chối gia sư trực tiếp (sử dụng /teaching-requests/:id/reject thay thế)
+// router.patch(
+//   "/tutors/:id/reject",
+//   authMiddleware,
+//   roleMiddleware(["admin"]),
+//   validateParams(schema.idSchema),
+//   tutorController.rejectTutor
+// );
+
+// Lấy tất cả danh sách yêu cầu đăng ký dạy học
 router.get(
-  "/tutors/verification",
+  "/teaching-requests",
   authMiddleware,
   roleMiddleware(["admin"]),
-  tutorController.getTutorVerifications
+  tutorController.getTeachingRequests
 );
 
-// Phê duyệt gia sư
+// Lấy danh sách yêu cầu đăng ký dạy học đang chờ duyệt
+router.get(
+  "/teaching-requests/pending",
+  authMiddleware,
+  roleMiddleware(["admin"]),
+  tutorController.getPendingTeachingRequests
+);
+
+// Phê duyệt yêu cầu đăng ký dạy học
 router.patch(
-  "/tutors/:id/approve",
+  "/teaching-requests/:id/approve",
   authMiddleware,
   roleMiddleware(["admin"]),
   validateParams(schema.idSchema),
-  tutorController.approveTutor
+  tutorController.approveTeachingRequest
 );
 
-// Từ chối gia sư
+// Từ chối yêu cầu đăng ký dạy học
 router.patch(
-  "/tutors/:id/reject",
+  "/teaching-requests/:id/reject",
   authMiddleware,
   roleMiddleware(["admin"]),
   validateParams(schema.idSchema),
-  tutorController.rejectTutor
+  tutorController.rejectTeachingRequest
 );
 
 // Lấy thống kê admin
