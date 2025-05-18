@@ -115,16 +115,12 @@ export const getQueryFn: <T>(options: {
       }
     }
 
-    console.log(`Query Request: GET ${url}`);
 
     try {
       const res = await fetch(url, {
         credentials: "include",
         headers,
       });
-
-      console.log(`Query Response: ${res.status} ${res.statusText}`);
-
       if (unauthorizedBehavior === "returnNull" && res.status === 401) {
         return null;
       }

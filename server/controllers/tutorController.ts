@@ -134,20 +134,20 @@ export const getEducationLevels = async (req: Request, res: Response) => {
   }
 };
 
-// // Get featured testimonials
-// export const getTestimonials = async (req: Request, res: Response) => {
-//   try {
-//     const testimonials = await db.query.testimonials.findMany({
-//       where: eq(schema.testimonials.is_featured, true),
-//       limit: 3,
-//     });
+// Get featured testimonials
+export const getTestimonials = async (req: Request, res: Response) => {
+  try {
+    const testimonials = await db.query.testimonials.findMany({
+      where: eq(schema.testimonials.is_featured, true),
+      limit: 3,
+    });
 
-//     return res.status(200).json(testimonials);
-//   } catch (error) {
-//     console.error("Get testimonials error:", error);
-//     return res.status(500).json({ message: "Internal server error" });
-//   }
-// };
+    return res.status(200).json(testimonials);
+  } catch (error) {
+    console.error("Get testimonials error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
 
 // Get tutors with filters
 export const getTutors = async (req: Request, res: Response) => {
@@ -1148,10 +1148,10 @@ export const getOwnTutorProfile = async (req: Request, res: Response) => {
       avatar: user.avatar
     };
 
-    console.log(
-      "Formatted profile for frontend:",
-      JSON.stringify(formattedProfile)
-    );
+    // console.log(
+    //   "Formatted profile for frontend:",
+    //   JSON.stringify(formattedProfile)
+    // );
 
     return res.status(200).json(formattedProfile);
   } catch (error) {

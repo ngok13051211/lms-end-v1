@@ -52,6 +52,8 @@ import {
   BookOpen,
   GraduationCap,
   FileCheck,
+  FileText,
+  X as IconX,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -82,18 +84,69 @@ const teachingRequestSchema = z.object({
   experience: z.string().min(10, "Kinh nghiệm phải có ít nhất 10 ký tự"),
 });
 
+// Helper function to extract file name from URL
+const getFileNameFromUrl = (url: string): string => {
+  try {
+    // Extract the last part of the URL path
+    const pathname = new URL(url).pathname;
+    let filename = pathname.split('/').pop() || '';
+
+    // Remove any query parameters
+    filename = filename.split('?')[0];
+
+    // If filename has a weird format (like from Cloudinary), try to make it more readable
+    if (filename.includes('_') && filename.length > 20) {
+      return `Certificate ${Math.floor(Math.random() * 1000)}`;
+    }
+
+    return decodeURIComponent(filename);
+  } catch {
+    return `Certificate ${Math.floor(Math.random() * 1000)}`;
+  }
+};
+
 export default function TutorDashboardProfile() {
   const { toast } = useToast();
   const { user } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch();
   const [avatar, setAvatar] = useState<File | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
-
-  // Teaching request state
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);  // Teaching request state
   const [teachingRequestDialogOpen, setTeachingRequestDialogOpen] = useState(false);
   const [requestCertifications, setRequestCertifications] = useState<File[]>([]);
   const [uploadingCertifications, setUploadingCertifications] = useState(false);
+  const [certificateUrls, setCertificateUrls] = useState<string[]>([]);  // Reset certificate state when dialog closes
+  const handleTeachingRequestDialogChange = (open: boolean) => {
+    console.log("Dialog thay đổi trạng thái:", open);
+
+    // Nếu đang tải lên chứng chỉ và người dùng cố đóng dialog
+    if (!open && uploadingCertifications) {
+      toast({
+        title: "Đang tải lên chứng chỉ",
+        description: "Vui lòng đợi quá trình tải lên hoàn tất trước khi đóng",
+        variant: "warning",
+      });
+      return; // Không cho phép đóng dialog
+    }
+
+    setTeachingRequestDialogOpen(open);
+    if (!open) {
+      console.log("Đóng dialog, xóa state chứng chỉ");
+      // Reset certificate state when dialog closes
+      setRequestCertifications([]);
+      setCertificateUrls([]);
+
+      // Xóa dữ liệu trong localStorage khi đóng dialog
+      try {
+        localStorage.removeItem('temp_certificate_urls');
+      } catch (e) {
+        console.error("Lỗi khi xóa certificateUrls từ localStorage:", e);
+      }
+    } else {
+      // Khi mở dialog, log ra trạng thái hiện tại
+      console.log("Mở dialog, trạng thái certificateUrls:", certificateUrls);
+    }
+  };
 
   // Get tutor profile
   const {
@@ -152,15 +205,126 @@ export default function TutorDashboardProfile() {
       const previewUrl = URL.createObjectURL(file);
       setAvatarPreview(previewUrl);
     }
-  };
-
-  // Handle certificate file change for teaching request
-  const handleCertificationsChange = (
+  };  // Handle certificate file change for teaching request
+  const handleCertificationsChange = async (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
     if (e.target.files && e.target.files.length > 0) {
       const files = Array.from(e.target.files);
-      setRequestCertifications(files);
+
+      console.log("Files được chọn:", files.map(f => ({ name: f.name, size: f.size })));
+
+      // Check if we would exceed the maximum allowed files (5)
+      if (certificateUrls.length + files.length > 5) {
+        toast({
+          title: "Quá nhiều tệp",
+          description: `Bạn chỉ có thể tải lên tối đa 5 chứng chỉ. Đã có ${certificateUrls.length} chứng chỉ.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Check file sizes
+      const maxSizeInBytes = 5 * 1024 * 1024; // 5MB
+      const oversizedFiles = files.filter(file => file.size > maxSizeInBytes);
+      if (oversizedFiles.length > 0) {
+        toast({
+          title: "Tệp quá lớn",
+          description: `${oversizedFiles.length} tệp vượt quá giới hạn 5MB và không thể tải lên.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setRequestCertifications(prev => [...prev, ...files]);
+
+      // Start upload immediately
+      setUploadingCertifications(true);
+      try {
+        const formData = new FormData();
+        files.forEach((file) => {
+          formData.append("documents", file);
+        });
+
+        console.log("Đang gửi request upload chứng chỉ...");
+        const res = await fetch("/api/v1/tutors/certifications", {
+          method: "POST",
+          body: formData,
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          console.error("Upload lỗi:", errorData);
+          throw new Error(errorData.message || "Không thể tải lên chứng chỉ");
+        } const data = await res.json();
+        console.log("Upload thành công, server trả về:", data);
+        // Truy cập URLs một cách chính xác dựa trên cấu trúc response từ server
+        let uploadedUrls = [];
+
+        console.log("Phân tích cấu trúc response:", {
+          hasUrls: !!data.urls,
+          hasCertifications: !!data.certifications,
+          hasDataUrls: !!(data.data && data.data.urls),
+          dataKeys: Object.keys(data)
+        });
+
+        if (data.urls && Array.isArray(data.urls)) {
+          uploadedUrls = data.urls;
+        } else if (data.certifications && Array.isArray(data.certifications)) {
+          uploadedUrls = data.certifications;
+        } else if (data.data && data.data.urls && Array.isArray(data.data.urls)) {
+          uploadedUrls = data.data.urls;
+        } else {
+          // Nếu không tìm thấy theo cấu trúc dự đoán, tìm kiếm bất kỳ trường nào là mảng URL
+          for (const key in data) {
+            if (Array.isArray(data[key]) && data[key].length > 0 &&
+              typeof data[key][0] === 'string' && data[key][0].startsWith('http')) {
+              console.log(`Tìm thấy mảng URL trong trường: ${key}`);
+              uploadedUrls = data[key];
+              break;
+            }
+          }
+        }
+
+        console.log("URLs trích xuất từ response:", uploadedUrls);
+
+        // Add the new URLs to the existing ones
+        console.log("certificateUrls trước khi cập nhật:", certificateUrls);
+        setCertificateUrls(prev => {
+          const newUrls = [...prev, ...uploadedUrls];
+          console.log("certificateUrls sau khi cập nhật:", newUrls);
+          // Lưu vào localStorage để đảm bảo không mất dữ liệu
+          try {
+            localStorage.setItem('temp_certificate_urls', JSON.stringify(newUrls));
+          } catch (e) {
+            console.error("Không thể lưu vào localStorage:", e);
+          }
+          return newUrls;
+        });
+
+        toast({
+          title: "Tải lên thành công",
+          description: `${files.length} tệp đã được tải lên thành công`,
+          variant: "default",
+        });
+      } catch (error) {
+        console.error("Lỗi upload chi tiết:", error);
+        toast({
+          title: "Tải lên thất bại",
+          description: error instanceof Error ? error.message : "Không thể tải lên chứng chỉ",
+          variant: "destructive",
+        });
+
+        // Remove the files that failed to upload
+        setRequestCertifications(prev => prev.filter(prevFile =>
+          !files.some(file => file.name === prevFile.name && file.size === prevFile.size)
+        ));
+      } finally {
+        setUploadingCertifications(false);
+      }
     }
   };
 
@@ -292,8 +456,7 @@ export default function TutorDashboardProfile() {
       });
     },
   });
-
-  // Certification upload mutation for teaching request
+  // Certification upload mutation for teaching request - now used as a fallback if needed
   const certificationsUploadMutation = useMutation({
     mutationFn: async (files: File[]) => {
       const formData = new FormData();
@@ -314,12 +477,15 @@ export default function TutorDashboardProfile() {
       }
 
       const data = await res.json();
-      return data.urls || [];
+      // Update our certificate URLs state
+      const newUrls = data.urls || [];
+      setCertificateUrls(prev => [...prev, ...newUrls]);
+      return newUrls;
     },
     onSuccess: (data) => {
       toast({
         title: "Tải lên thành công",
-        description: `${requestCertifications.length} tệp đã được tải lên`,
+        description: `${data.length} tệp đã được tải lên`,
         variant: "default",
       });
       return data;
@@ -333,20 +499,39 @@ export default function TutorDashboardProfile() {
       throw error;
     },
   });
-
   // Teaching request submission mutation
   const teachingRequestMutation = useMutation({
     mutationFn: async (data: any) => {
-      const res = await apiRequest(
-        "POST",
-        `/api/v1/tutors/teaching-requests`,
-        data
-      );
-      return res.json();
-    }, onSuccess: () => {
+      console.log("teachingRequestMutation được gọi với data:", data);
+
+      try {
+        const res = await apiRequest(
+          "POST",
+          `/api/v1/tutors/teaching-requests`,
+          data
+        );
+
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          console.error("API trả về lỗi:", errorData);
+          throw new Error(errorData.message || "Có lỗi xảy ra khi gửi yêu cầu");
+        }
+
+        return res.json();
+      } catch (error) {
+        console.error("Lỗi khi gọi API teaching-requests:", error);
+        throw error;
+      }
+    },
+    onSuccess: (data) => {
+      console.log("Gửi yêu cầu thành công, dữ liệu trả về:", data);
+
       setTeachingRequestDialogOpen(false);
       setRequestCertifications([]);
-      teachingRequestForm.reset();      // Invalidate các query liên quan để cập nhật dữ liệu
+      setCertificateUrls([]);
+      teachingRequestForm.reset();
+
+      // Invalidate các query liên quan để cập nhật dữ liệu
       queryClient.invalidateQueries({ queryKey: [`/api/v1/tutors/teaching-requests`] });
 
       // Đồng thời cập nhật thông tin profile của tutor nếu cần
@@ -354,11 +539,14 @@ export default function TutorDashboardProfile() {
 
       toast({
         title: "Yêu cầu đã gửi thành công",
-        description: "Yêu cầu giảng dạy của bạn đã được gửi và đang chờ duyệt",
+        description: data.certificationsCount > 0
+          ? `Yêu cầu giảng dạy của bạn với ${data.certificationsCount || 0} chứng chỉ đã được gửi và đang chờ duyệt`
+          : "Yêu cầu giảng dạy của bạn đã được gửi và đang chờ duyệt",
         variant: "default",
       });
     },
     onError: (error) => {
+      console.error("Lỗi onError:", error);
       toast({
         title: "Gửi yêu cầu thất bại",
         description: error instanceof Error ? error.message : "Có lỗi xảy ra",
@@ -375,33 +563,85 @@ export default function TutorDashboardProfile() {
     } catch (error) {
       console.error("Lỗi khi cập nhật hồ sơ:", error);
     }
-  };
-
-  // Submit teaching request handler
+  };  // Submit teaching request handler
   const onSubmitTeachingRequest = async (values: z.infer<typeof teachingRequestSchema>) => {
     try {
-      // First, upload certifications if any
-      let certificationUrls: string[] = [];
-      if (requestCertifications.length > 0) {
-        setUploadingCertifications(true);
+      // Nếu đang tải lên chứng chỉ, không cho phép gửi
+      if (uploadingCertifications) {
+        toast({
+          title: "Đang tải lên chứng chỉ",
+          description: "Vui lòng đợi quá trình tải lên hoàn tất trước khi gửi yêu cầu",
+          variant: "warning",
+        });
+        return;
+      }
+
+      // Kiểm tra certificateUrls từ state và localStorage
+      console.log("certificateUrls từ state trước khi gửi:", certificateUrls);
+
+      // Thử lấy từ localStorage nếu state trống
+      let currentCertificateUrls = [...certificateUrls];
+
+      if (currentCertificateUrls.length === 0) {
         try {
-          const result = await certificationsUploadMutation.mutateAsync(requestCertifications);
-          certificationUrls = result;
-        } finally {
-          setUploadingCertifications(false);
+          const savedUrls = localStorage.getItem('temp_certificate_urls');
+          if (savedUrls) {
+            const parsedUrls = JSON.parse(savedUrls);
+            console.log("Khôi phục certificateUrls từ localStorage:", parsedUrls);
+            currentCertificateUrls = parsedUrls;
+            // Cập nhật lại state
+            setCertificateUrls(parsedUrls);
+          }
+        } catch (e) {
+          console.error("Lỗi khi đọc từ localStorage:", e);
         }
       }
 
-      // Then submit the teaching request with the certification URLs
-      await teachingRequestMutation.mutateAsync({
+      // Tạo payload
+      const payload = {
         subject_id: parseInt(values.subject_id),
         level_id: parseInt(values.level_id),
         introduction: values.introduction,
         experience: values.experience,
-        certifications: certificationUrls.length > 0 ? JSON.stringify(certificationUrls) : null,
-      });
+        certifications: currentCertificateUrls.length > 0
+          ? JSON.stringify(currentCertificateUrls)
+          : JSON.stringify([]) // Luôn gửi mảng rỗng dưới dạng JSON, không gửi null
+      };
+
+      console.log("Payload gửi đi:", payload);
+      console.log("Các chứng chỉ gửi kèm:", currentCertificateUrls);
+
+      // Hiển thị xác nhận
+      if (currentCertificateUrls.length > 0) {
+        toast({
+          title: "Đang gửi yêu cầu",
+          description: `Gửi yêu cầu với ${currentCertificateUrls.length} chứng chỉ đã tải lên`,
+          variant: "default",
+        });
+      }
+
+      // Submit the teaching request with the certification URLs
+      const result = await teachingRequestMutation.mutateAsync(payload);
+      console.log("Kết quả gửi yêu cầu:", result);
+
+      // Xóa dữ liệu localStorage sau khi gửi thành công
+      localStorage.removeItem('temp_certificate_urls');
+
     } catch (error) {
       console.error("Lỗi khi gửi yêu cầu giảng dạy:", error);
+      if (error instanceof Error) {
+        toast({
+          title: "Lỗi khi gửi yêu cầu",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Lỗi khi gửi yêu cầu",
+          description: "Đã xảy ra lỗi không xác định",
+          variant: "destructive",
+        });
+      }
     }
   };
   // Tải profile và thiết lập form
@@ -423,6 +663,28 @@ export default function TutorDashboardProfile() {
     }
   }, [tutorProfile, profileForm, user]);
 
+  // Theo dõi thay đổi của certificateUrls
+  useEffect(() => {
+    console.log("certificateUrls đã thay đổi:", certificateUrls);
+  }, [certificateUrls]);
+
+  // Khôi phục certificateUrls từ localStorage khi component mount
+  useEffect(() => {
+    // Chỉ thực hiện khi dialog mở để tránh ghi đè state khi không cần thiết
+    if (teachingRequestDialogOpen) {
+      try {
+        const savedUrls = localStorage.getItem('temp_certificate_urls');
+        if (savedUrls) {
+          const parsedUrls = JSON.parse(savedUrls);
+          console.log("Khôi phục certificateUrls từ localStorage:", parsedUrls);
+          setCertificateUrls(parsedUrls);
+        }
+      } catch (e) {
+        console.error("Lỗi khi khôi phục certificateUrls từ localStorage:", e);
+      }
+    }
+  }, [teachingRequestDialogOpen]);
+
   // Cleanup avatar preview URL khi component unmount
   useEffect(() => {
     return () => {
@@ -431,6 +693,16 @@ export default function TutorDashboardProfile() {
       }
     };
   }, [avatarPreview]);
+
+  // Function to handle certificate removal
+  const handleRemoveCertificate = (urlToRemove: string) => {
+    setCertificateUrls(prev => prev.filter(url => url !== urlToRemove));
+    toast({
+      title: "Đã xóa chứng chỉ",
+      description: "Chứng chỉ đã được xóa khỏi danh sách",
+      variant: "default",
+    });
+  };
 
   if (profileLoading) {
     return (
@@ -812,10 +1084,8 @@ export default function TutorDashboardProfile() {
             </form>
           </Form>
         </DialogContent>
-      </Dialog>
-
-      {/* Teaching Request Dialog - New dialog for creating requests */}
-      <Dialog open={teachingRequestDialogOpen} onOpenChange={setTeachingRequestDialogOpen}>
+      </Dialog>      {/* Teaching Request Dialog - New dialog for creating requests */}
+      <Dialog open={teachingRequestDialogOpen} onOpenChange={handleTeachingRequestDialogChange}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Tạo yêu cầu dạy học</DialogTitle>
@@ -823,6 +1093,12 @@ export default function TutorDashboardProfile() {
               Điền thông tin chi tiết về yêu cầu dạy học của bạn
             </DialogDescription>
           </DialogHeader>
+          {teachingRequestDialogOpen && (
+            <div className="text-sm text-blue-600 bg-blue-50 p-2 rounded mb-4">
+              Trạng thái chứng chỉ: {certificateUrls.length} chứng chỉ đã tải lên.
+              {uploadingCertifications && " Đang tải lên..."}
+            </div>
+          )}
           <Form {...teachingRequestForm}>
             <form
               onSubmit={teachingRequestForm.handleSubmit(onSubmitTeachingRequest)}
@@ -946,50 +1222,95 @@ export default function TutorDashboardProfile() {
                         id="certification-upload"
                         multiple
                         onChange={handleCertificationsChange}
-                      />
-                      <label
+                      />                      <label
                         htmlFor="certification-upload"
-                        className="flex items-center px-3 py-2 text-sm border rounded cursor-pointer bg-background hover:bg-muted transition-colors"
+                        className={`flex items-center px-3 py-2 text-sm border rounded cursor-pointer bg-background hover:bg-muted transition-colors ${uploadingCertifications ? 'opacity-50 pointer-events-none' : ''}`}
                       >
-                        <FileCheck className="mr-2 h-4 w-4" />
-                        Chọn tệp chứng chỉ
+                        {uploadingCertifications ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <FileCheck className="mr-2 h-4 w-4" />
+                        )}
+                        {uploadingCertifications ? 'Đang tải lên...' : 'Chọn tệp chứng chỉ'}
                       </label>
 
                       {uploadingCertifications && (
-                        <div className="flex items-center">
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                          <span className="text-sm">Đang tải lên...</span>
+                        <div className="flex items-center text-amber-500">
+                          <span className="text-sm">Đang tải lên, vui lòng đợi...</span>
                         </div>
                       )}
-                    </div>
+                    </div>                    {(requestCertifications.length > 0 || certificateUrls.length > 0) && (
+                      <div className="space-y-3 mt-2">
+                        {requestCertifications.length > 0 && (
+                          <div>
+                            <p className="text-sm font-medium mb-1">
+                              Tệp đã chọn:
+                            </p>
+                            <ul className="space-y-1 text-sm text-muted-foreground">
+                              {requestCertifications.map((file, index) => (
+                                <li key={index} className="flex items-center justify-between">
+                                  <span className="flex items-center">
+                                    <FileCheck className="h-3 w-3 mr-1" />
+                                    {file.name} ({(file.size / 1024).toFixed(1)} KB)
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
 
-                    {requestCertifications.length > 0 && (
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium">
-                          {requestCertifications.length} tệp đã chọn:
-                        </p>
-                        <ul className="text-sm text-muted-foreground">
-                          {requestCertifications.map((file, index) => (
-                            <li key={index}>
-                              {file.name} ({(file.size / 1024).toFixed(1)} KB)
-                            </li>
-                          ))}
-                        </ul>
+                        {certificateUrls.length > 0 && (
+                          <div>
+                            <p className="text-sm font-medium mb-1">
+                              Đã tải lên thành công ({certificateUrls.length}):
+                            </p>
+                            <div className="flex flex-wrap gap-2">                              {certificateUrls.map((url, index) => {
+                              const fileName = getFileNameFromUrl(url);
+                              const isPdf = fileName.toLowerCase().endsWith('.pdf'); return (
+                                <div
+                                  key={index}
+                                  className="flex items-center gap-1"
+                                >
+                                  <a
+                                    href={url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center px-3 py-1 text-xs rounded bg-background hover:bg-accent transition-colors border"
+                                  >
+                                    {isPdf ? (
+                                      <FileText className="h-3 w-3 mr-1 text-blue-500" />
+                                    ) : (
+                                      <FileCheck className="h-3 w-3 mr-1 text-green-500" />
+                                    )}
+                                    {fileName.length > 20 ? fileName.substring(0, 17) + '...' : fileName}
+                                  </a>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveCertificate(url)}
+                                    className="p-1 rounded-full hover:bg-red-100 text-red-500"
+                                    title="Xóa chứng chỉ"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+                                  </button>
+                                </div>
+                              );
+                            })}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
                 </div>
-              </div>
-
-              <DialogFooter>
+              </div>              <DialogFooter>
                 <Button
                   type="submit"
-                  disabled={teachingRequestForm.formState.isSubmitting}
+                  disabled={teachingRequestForm.formState.isSubmitting || uploadingCertifications}
                 >
-                  {teachingRequestForm.formState.isSubmitting && (
+                  {(teachingRequestForm.formState.isSubmitting || uploadingCertifications) && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   )}
-                  Gửi yêu cầu
+                  {uploadingCertifications ? "Đang tải lên chứng chỉ..." : "Gửi yêu cầu"}
                 </Button>
               </DialogFooter>
             </form>
