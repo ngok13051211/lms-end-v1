@@ -1,4 +1,18 @@
-import { TutorProfile } from "@shared/schema";
+import { tutorProfiles } from "@shared/schema";
+
+// Định nghĩa kiểu TutorProfile dựa trên schema tutorProfiles
+type TutorProfile = {
+  id: number;
+  user_id: number;
+  bio?: string | null;
+  availability?: string | null;
+  is_verified?: boolean;
+  is_featured?: boolean;
+  rating?: number;
+  total_reviews?: number;
+  created_at: string;
+  updated_at: string;
+};
 
 // Create or update tutor profile
 const createUpdateProfile = async (profileData: any): Promise<TutorProfile> => {

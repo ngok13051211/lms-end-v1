@@ -21,7 +21,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Star, Calendar, Clock, HeartOff } from "lucide-react";
-import { TutorProfile } from "@shared/schema";
+import { tutorProfiles } from "@shared/schema";
 
 interface FeaturedTutorUser {
   id: number;

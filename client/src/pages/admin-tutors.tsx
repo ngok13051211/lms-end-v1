@@ -46,8 +46,9 @@ import {
   CheckCircle,
   XCircle,
   ExternalLink,
-  Clock
+  Clock,
 } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
 // Interface cho dữ liệu gia sư
 interface Tutor {
@@ -86,7 +87,9 @@ export default function AdminTutors() {
 
   // Truy vấn danh sách gia sư
   const { data, isLoading } = useQuery<TutorsResponse>({
-    queryKey: [`/api/v1/admin/tutors?search=${searchTerm}&status=${statusFilter}&page=${page}&pageSize=${pageSize}`],
+    queryKey: [
+      `/api/v1/admin/tutors?search=${searchTerm}&status=${statusFilter}&page=${page}&pageSize=${pageSize}`,
+    ],
     // Tắt API call để sử dụng dữ liệu mẫu
     enabled: false,
   });
@@ -110,14 +113,14 @@ export default function AdminTutors() {
       total_reviews: 24,
       subjects: [
         { id: 1, name: "Toán học" },
-        { id: 2, name: "Vật lý" }
+        { id: 2, name: "Vật lý" },
       ],
       education_levels: [
         { id: 1, name: "THCS" },
-        { id: 2, name: "THPT" }
+        { id: 2, name: "THPT" },
       ],
       avatar: "https://ui-avatars.com/api/?name=Nguyen+Van+A",
-      created_at: "2025-03-15T10:30:00Z"
+      created_at: "2025-03-15T10:30:00Z",
     },
     {
       id: 2,
@@ -127,22 +130,21 @@ export default function AdminTutors() {
       email: "tranthib@example.com",
       bio: "Tôi là giáo viên dạy Tiếng Anh với kinh nghiệm giảng dạy quốc tế. Phương pháp dạy của tôi tập trung vào giao tiếp và ngữ pháp thực hành.",
       education: "Cử nhân Ngôn ngữ Anh, Đại học Ngoại ngữ Hà Nội",
-      experience: "3 năm dạy tại Trung tâm Anh ngữ ILA\n2 năm dạy online qua Zoom",
+      experience:
+        "3 năm dạy tại Trung tâm Anh ngữ ILA\n2 năm dạy online qua Zoom",
       hourly_rate: 280000,
       is_verified: true,
       status: "active",
       teaching_mode: "online",
       average_rating: 4.9,
       total_reviews: 18,
-      subjects: [
-        { id: 3, name: "Tiếng Anh" }
-      ],
+      subjects: [{ id: 3, name: "Tiếng Anh" }],
       education_levels: [
         { id: 1, name: "THCS" },
-        { id: 2, name: "THPT" }
+        { id: 2, name: "THPT" },
       ],
       avatar: "https://ui-avatars.com/api/?name=Tran+Thi+B",
-      created_at: "2025-02-20T14:25:00Z"
+      created_at: "2025-02-20T14:25:00Z",
     },
     {
       id: 3,
@@ -152,7 +154,8 @@ export default function AdminTutors() {
       email: "levanc@example.com",
       bio: "Giảng viên đại học với chuyên môn về lập trình. Tôi có thể giúp học sinh từ cơ bản đến nâng cao về ngôn ngữ lập trình.",
       education: "Tiến sĩ Khoa học máy tính, Đại học Bách Khoa Hà Nội",
-      experience: "7 năm giảng dạy tại Đại học FPT\n5 năm làm việc tại các công ty phần mềm",
+      experience:
+        "7 năm giảng dạy tại Đại học FPT\n5 năm làm việc tại các công ty phần mềm",
       hourly_rate: 350000,
       is_verified: false,
       status: "pending",
@@ -161,14 +164,14 @@ export default function AdminTutors() {
       total_reviews: 0,
       subjects: [
         { id: 4, name: "Lập trình" },
-        { id: 5, name: "Tin học" }
+        { id: 5, name: "Tin học" },
       ],
       education_levels: [
         { id: 2, name: "THPT" },
-        { id: 3, name: "Đại học" }
+        { id: 3, name: "Đại học" },
       ],
       avatar: "https://ui-avatars.com/api/?name=Le+Van+C",
-      created_at: "2025-05-01T09:15:00Z"
+      created_at: "2025-05-01T09:15:00Z",
     },
     {
       id: 4,
@@ -178,21 +181,18 @@ export default function AdminTutors() {
       email: "phamthid@example.com",
       bio: "Giáo viên Hóa học với phương pháp giảng dạy dễ hiểu và thực tế. Tôi tập trung vào việc giúp học sinh hiểu sâu về các nguyên lý hóa học.",
       education: "Cử nhân Sư phạm Hóa học, Đại học Sư phạm Hà Nội",
-      experience: "4 năm dạy tại Trường THPT Phan Đình Phùng\n2 năm dạy kèm nhóm",
+      experience:
+        "4 năm dạy tại Trường THPT Phan Đình Phùng\n2 năm dạy kèm nhóm",
       hourly_rate: 220000,
       is_verified: true,
       status: "active",
       teaching_mode: "both",
       average_rating: 4.5,
       total_reviews: 12,
-      subjects: [
-        { id: 6, name: "Hóa học" }
-      ],
-      education_levels: [
-        { id: 2, name: "THPT" }
-      ],
+      subjects: [{ id: 6, name: "Hóa học" }],
+      education_levels: [{ id: 2, name: "THPT" }],
       avatar: "https://ui-avatars.com/api/?name=Pham+Thi+D",
-      created_at: "2025-01-15T11:20:00Z"
+      created_at: "2025-01-15T11:20:00Z",
     },
     {
       id: 5,
@@ -201,58 +201,60 @@ export default function AdminTutors() {
       last_name: "Văn E",
       email: "hoangvane@example.com",
       bio: "Chuyên gia về Ngữ văn với khả năng giúp học sinh phát triển tư duy phân tích và kỹ năng viết sáng tạo.",
-      education: "Thạc sĩ Văn học Việt Nam, Đại học Khoa học Xã hội và Nhân văn",
-      experience: "6 năm dạy tại Trường THPT Chu Văn An\n3 năm biên soạn tài liệu giáo khoa",
+      education:
+        "Thạc sĩ Văn học Việt Nam, Đại học Khoa học Xã hội và Nhân văn",
+      experience:
+        "6 năm dạy tại Trường THPT Chu Văn An\n3 năm biên soạn tài liệu giáo khoa",
       hourly_rate: 230000,
       is_verified: false,
       status: "rejected",
       teaching_mode: "offline",
       average_rating: 0,
       total_reviews: 0,
-      subjects: [
-        { id: 7, name: "Ngữ văn" }
-      ],
+      subjects: [{ id: 7, name: "Ngữ văn" }],
       education_levels: [
         { id: 1, name: "THCS" },
-        { id: 2, name: "THPT" }
+        { id: 2, name: "THPT" },
       ],
       avatar: "https://ui-avatars.com/api/?name=Hoang+Van+E",
-      created_at: "2025-04-20T16:45:00Z"
-    }
+      created_at: "2025-04-20T16:45:00Z",
+    },
   ];
 
   const mockResponse: TutorsResponse = {
     tutors: mockTutors,
-    totalPages: 1
+    totalPages: 1,
   };
 
   const tutorsData = data || mockResponse;
 
   // Lọc gia sư theo tab đang chọn
-  const filteredTutors = tutorsData.tutors.filter(tutor => {
+  const filteredTutors = tutorsData.tutors.filter((tutor) => {
     if (activeTab === "all") return true;
     if (activeTab === "verified") return tutor.is_verified;
-    if (activeTab === "pending") return !tutor.is_verified && tutor.status === "pending";
-    if (activeTab === "rejected") return !tutor.is_verified && tutor.status === "rejected";
+    if (activeTab === "pending")
+      return !tutor.is_verified && tutor.status === "pending";
+    if (activeTab === "rejected")
+      return !tutor.is_verified && tutor.status === "rejected";
     return true;
   });
 
   // Định dạng ngày giờ
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('vi-VN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
+    return date.toLocaleDateString("vi-VN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
     });
   };
 
   // Định dạng tiền tệ
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-      minimumFractionDigits: 0
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+      minimumFractionDigits: 0,
     }).format(amount);
   };
 
@@ -277,7 +279,9 @@ export default function AdminTutors() {
       <div className="p-6 max-w-7xl mx-auto space-y-6">
         <div className="flex flex-col md:flex-row justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Quản lý gia sư</h1>
+            <h1 className="text-3xl font-bold tracking-tight">
+              Quản lý gia sư
+            </h1>
             <p className="text-muted-foreground mt-1">
               Quản lý tất cả gia sư trong hệ thống HomiTutor
             </p>
@@ -296,11 +300,14 @@ export default function AdminTutors() {
             <CardHeader className="pb-3">
               <CardTitle>Danh sách gia sư</CardTitle>
               <CardDescription>
-                {filteredTutors.length} gia sư {
-                  activeTab === "all" ? "" :
-                    activeTab === "verified" ? "đã xác minh" :
-                      activeTab === "pending" ? "đang chờ xác minh" : "đã bị từ chối"
-                }
+                {filteredTutors.length} gia sư{" "}
+                {activeTab === "all"
+                  ? ""
+                  : activeTab === "verified"
+                  ? "đã xác minh"
+                  : activeTab === "pending"
+                  ? "đang chờ xác minh"
+                  : "đã bị từ chối"}
               </CardDescription>
               <div className="flex flex-col sm:flex-row gap-4 mt-4">
                 <div className="relative flex-1">
@@ -340,7 +347,9 @@ export default function AdminTutors() {
                         <th className="py-4 px-4 font-medium">Giá/giờ</th>
                         <th className="py-4 px-4 font-medium">Đánh giá</th>
                         <th className="py-4 px-4 font-medium">Trạng thái</th>
-                        <th className="py-4 px-4 font-medium text-right">Thao tác</th>
+                        <th className="py-4 px-4 font-medium text-right">
+                          Thao tác
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -349,27 +358,42 @@ export default function AdminTutors() {
                           <td className="py-4 px-4">
                             <div className="flex items-center">
                               <Avatar className="h-8 w-8 mr-3">
-                                <AvatarImage src={tutor.avatar} alt={`${tutor.first_name} ${tutor.last_name}`} />
+                                <AvatarImage
+                                  src={tutor.avatar}
+                                  alt={`${tutor.first_name} ${tutor.last_name}`}
+                                />
                                 <AvatarFallback>
                                   {tutor.first_name[0]}
                                   {tutor.last_name[0]}
                                 </AvatarFallback>
                               </Avatar>
                               <div>
-                                <span className="font-medium block">{tutor.first_name} {tutor.last_name}</span>
-                                <span className="text-xs text-muted-foreground">{tutor.email}</span>
+                                <span className="font-medium block">
+                                  {tutor.first_name} {tutor.last_name}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  {tutor.email}
+                                </span>
                               </div>
                             </div>
                           </td>
                           <td className="py-4 px-4">
                             <div className="flex flex-wrap gap-1">
-                              {tutor.subjects.slice(0, 2).map((subject, index) => (
-                                <Badge key={subject.id} variant="outline" className="mr-1">
-                                  {subject.name}
-                                </Badge>
-                              ))}
+                              {tutor.subjects
+                                .slice(0, 2)
+                                .map((subject, index) => (
+                                  <Badge
+                                    key={subject.id}
+                                    variant="outline"
+                                    className="mr-1"
+                                  >
+                                    {subject.name}
+                                  </Badge>
+                                ))}
                               {tutor.subjects.length > 2 && (
-                                <Badge variant="outline">+{tutor.subjects.length - 2}</Badge>
+                                <Badge variant="outline">
+                                  +{tutor.subjects.length - 2}
+                                </Badge>
                               )}
                             </div>
                           </td>
@@ -379,7 +403,9 @@ export default function AdminTutors() {
                           <td className="py-4 px-4">
                             {tutor.total_reviews > 0 ? (
                               <div className="flex items-center">
-                                <span className="font-medium mr-1">{tutor.average_rating}</span>
+                                <span className="font-medium mr-1">
+                                  {tutor.average_rating}
+                                </span>
                                 <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
                                 <span className="text-xs text-muted-foreground ml-1">
                                   ({tutor.total_reviews})
@@ -397,13 +423,14 @@ export default function AdminTutors() {
                                 Đã xác minh
                               </Badge>
                             ) : tutor.status === "pending" ? (
-                              <Badge variant="outline" className="bg-yellow-50 text-yellow-800 border-yellow-300">
+                              <Badge
+                                variant="outline"
+                                className="bg-yellow-50 text-yellow-800 border-yellow-300"
+                              >
                                 Chờ xác minh
                               </Badge>
                             ) : (
-                              <Badge variant="destructive">
-                                Đã từ chối
-                              </Badge>
+                              <Badge variant="destructive">Đã từ chối</Badge>
                             )}
                           </td>
                           <td className="py-4 px-4 text-right">
@@ -416,25 +443,32 @@ export default function AdminTutors() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Hành động</DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => handleViewTutorDetails(tutor)}>
+                                <DropdownMenuItem
+                                  onClick={() => handleViewTutorDetails(tutor)}
+                                >
                                   Xem chi tiết
                                 </DropdownMenuItem>
-                                {!tutor.is_verified && tutor.status === "pending" && (
-                                  <>
-                                    <DropdownMenuItem
-                                      onClick={() => handleVerifyTutor(tutor.id)}
-                                      className="text-green-600"
-                                    >
-                                      Xác minh
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onClick={() => handleRejectTutor(tutor.id)}
-                                      className="text-red-600"
-                                    >
-                                      Từ chối
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
+                                {!tutor.is_verified &&
+                                  tutor.status === "pending" && (
+                                    <>
+                                      <DropdownMenuItem
+                                        onClick={() =>
+                                          handleVerifyTutor(tutor.id)
+                                        }
+                                        className="text-green-600"
+                                      >
+                                        Xác minh
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        onClick={() =>
+                                          handleRejectTutor(tutor.id)
+                                        }
+                                        className="text-red-600"
+                                      >
+                                        Từ chối
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem>
                                   Xem hồ sơ công khai
@@ -482,7 +516,10 @@ export default function AdminTutors() {
 
         {/* Chi tiết gia sư */}
         {selectedTutor && (
-          <Dialog open={!!selectedTutor} onOpenChange={(open) => !open && setSelectedTutor(null)}>
+          <Dialog
+            open={!!selectedTutor}
+            onOpenChange={(open) => !open && setSelectedTutor(null)}
+          >
             <DialogContent className="max-w-4xl">
               <DialogHeader>
                 <DialogTitle>Chi tiết gia sư</DialogTitle>
@@ -494,7 +531,10 @@ export default function AdminTutors() {
                 <div>
                   <div className="flex flex-col items-center">
                     <Avatar className="h-24 w-24 mb-4">
-                      <AvatarImage src={selectedTutor.avatar} alt={`${selectedTutor.first_name} ${selectedTutor.last_name}`} />
+                      <AvatarImage
+                        src={selectedTutor.avatar}
+                        alt={`${selectedTutor.first_name} ${selectedTutor.last_name}`}
+                      />
                       <AvatarFallback className="text-2xl">
                         {selectedTutor.first_name[0]}
                         {selectedTutor.last_name[0]}
@@ -513,13 +553,14 @@ export default function AdminTutors() {
                           Đã xác minh
                         </Badge>
                       ) : selectedTutor.status === "pending" ? (
-                        <Badge variant="outline" className="bg-yellow-50 text-yellow-800">
+                        <Badge
+                          variant="outline"
+                          className="bg-yellow-50 text-yellow-800"
+                        >
                           Chờ xác minh
                         </Badge>
                       ) : (
-                        <Badge variant="destructive">
-                          Đã từ chối
-                        </Badge>
+                        <Badge variant="destructive">Đã từ chối</Badge>
                       )}
                     </div>
 
@@ -531,7 +572,9 @@ export default function AdminTutors() {
 
                     {selectedTutor.total_reviews > 0 && (
                       <div className="flex items-center mt-2">
-                        <span className="font-medium mr-1">{selectedTutor.average_rating}</span>
+                        <span className="font-medium mr-1">
+                          {selectedTutor.average_rating}
+                        </span>
                         <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
                         <span className="text-sm text-muted-foreground ml-1">
                           ({selectedTutor.total_reviews} đánh giá)
@@ -567,8 +610,11 @@ export default function AdminTutors() {
                   <div className="mt-4">
                     <h4 className="font-medium mb-2">Hình thức dạy</h4>
                     <Badge variant="outline">
-                      {selectedTutor.teaching_mode === "online" ? "Trực tuyến" :
-                        selectedTutor.teaching_mode === "offline" ? "Trực tiếp" : "Cả hai"}
+                      {selectedTutor.teaching_mode === "online"
+                        ? "Trực tuyến"
+                        : selectedTutor.teaching_mode === "offline"
+                        ? "Trực tiếp"
+                        : "Cả hai"}
                     </Badge>
                   </div>
 
@@ -615,31 +661,32 @@ export default function AdminTutors() {
                   Xem hồ sơ công khai
                 </Button>
 
-                {!selectedTutor.is_verified && selectedTutor.status === "pending" && (
-                  <>
-                    <Button
-                      variant="destructive"
-                      className="flex-1"
-                      onClick={() => {
-                        handleRejectTutor(selectedTutor.id);
-                        setSelectedTutor(null);
-                      }}
-                    >
-                      <XCircle className="h-4 w-4 mr-2" />
-                      Từ chối
-                    </Button>
-                    <Button
-                      className="flex-1"
-                      onClick={() => {
-                        handleVerifyTutor(selectedTutor.id);
-                        setSelectedTutor(null);
-                      }}
-                    >
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      Xác minh
-                    </Button>
-                  </>
-                )}
+                {!selectedTutor.is_verified &&
+                  selectedTutor.status === "pending" && (
+                    <>
+                      <Button
+                        variant="destructive"
+                        className="flex-1"
+                        onClick={() => {
+                          handleRejectTutor(selectedTutor.id);
+                          setSelectedTutor(null);
+                        }}
+                      >
+                        <XCircle className="h-4 w-4 mr-2" />
+                        Từ chối
+                      </Button>
+                      <Button
+                        className="flex-1"
+                        onClick={() => {
+                          handleVerifyTutor(selectedTutor.id);
+                          setSelectedTutor(null);
+                        }}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Xác minh
+                      </Button>
+                    </>
+                  )}
               </DialogFooter>
             </DialogContent>
           </Dialog>

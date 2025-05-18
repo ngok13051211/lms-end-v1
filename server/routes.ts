@@ -84,7 +84,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get(`${apiPrefix}/education-levels`, tutorController.getEducationLevels);
 
   // Testimonial routes
-  app.get(`${apiPrefix}/testimonials`, tutorController.getTestimonials);
+  // app.get(`${apiPrefix}/testimonials`, tutorController.getTestimonials);
 
   // Đăng ký các router
   app.use(`${apiPrefix}/auth`, authRoutes);

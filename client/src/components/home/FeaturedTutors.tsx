@@ -1,9 +1,22 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Subject } from "@shared/schema";
+import { subjects } from "@shared/schema";
 import SubjectCard from "@/components/ui/SubjectCard";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useRef } from "react";
+
+// Define the Subject type locally if it's not exported from the schema
+type Subject = {
+  id: number;
+  name: string;
+  description?: string | null;
+  icon?: string | null;
+  tutor_count?: number;
+  teaching_mode?: string;
+  hourly_rate?: number | string;
+  created_at?: string;
+  updated_at?: string;
+};
 
 // Extended type that aligns with our FeaturedSubject interface in SubjectCard
 interface FeaturedSubjectsProps {

@@ -1,4 +1,4 @@
-import { User } from "@shared/schema";
+import { users as User } from "@shared/schema";
 
 // Register user
 const register = async (userData: any): Promise<any> => {
@@ -46,14 +46,14 @@ const register = async (userData: any): Promise<any> => {
   return {
     success: data.success,
     message: data.message,
-    email: userData.email
+    email: userData.email,
   };
 };
 
 const login = async (userData: {
   email: string;
   password: string;
-}): Promise<User> => {
+}): Promise<typeof User> => {
   const response = await fetch("/api/v1/auth/login", {
     method: "POST",
     headers: {
@@ -67,8 +67,10 @@ const login = async (userData: {
     const errorData = await response.json();
 
     // Special handling for unverified accounts
-    if (errorData.error?.message.includes("not verified") ||
-      errorData.error?.message.includes("unverified")) {
+    if (
+      errorData.error?.message.includes("not verified") ||
+      errorData.error?.message.includes("unverified")
+    ) {
       throw new Error("Account unverified. Please verify your email address.");
     }
 
@@ -111,7 +113,7 @@ const login = async (userData: {
 };
 
 // Load user profile
-// const loadUser = async (): Promise<User> => {
+// const loadUser = async (): Promise<typeof User> => {
 //   // Get token from localStorage
 //   const token = localStorage.getItem("token");
 //   const headers: HeadersInit = {};
@@ -133,7 +135,7 @@ const login = async (userData: {
 //   const data = await response.json();
 //   return data.user;
 // };
-const loadUser = async (): Promise<User> => {
+const loadUser = async (): Promise<typeof User> => {
   const token = localStorage.getItem("token");
 
   if (!token) {

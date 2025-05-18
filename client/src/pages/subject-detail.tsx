@@ -1,8 +1,60 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "wouter";
-import { Course, Subject } from "@shared/schema";
+import { subjects, courses } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+
+// Định nghĩa kiểu Subject dựa trên schema subjects
+type Subject = {
+  id: number;
+  name: string;
+  description?: string | null;
+  icon?: string | null;
+  tutor_count?: number;
+  teaching_mode?: string;
+  hourly_rate?: number | string;
+  created_at?: string;
+  updated_at?: string;
+  education_levels?: Array<{
+    id: number;
+    name: string;
+  }>;
+};
+
+// Định nghĩa kiểu Course dựa trên schema courses
+type Course = {
+  id: number;
+  tutor_id: number;
+  subject_id: number;
+  level_id: number;
+  title: string;
+  description?: string | null;
+  hourly_rate: number;
+  teaching_mode: string;
+  status: string;
+  created_at?: string;
+  updated_at?: string;
+  tutor?: {
+    id: number;
+    user: {
+      id: number;
+      first_name: string;
+      last_name: string;
+      avatar: string | null;
+    };
+    rating: number | null;
+    is_verified: boolean;
+  };
+  subject?: {
+    name: string;
+  };
+  level?: {
+    name: string;
+  };
+  teachingMode?: string;
+  hourlyRate?: number;
+};
+
 import {
   Book,
   Calendar,

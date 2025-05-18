@@ -1,7 +1,32 @@
 import { useQuery } from "@tanstack/react-query";
-import { Subject, EducationLevel } from "@shared/schema";
+import { subjects, educationLevels } from "@shared/schema";
 import { Loader2, Search, ChevronRight, Book } from "lucide-react";
 import { useState } from "react";
+
+// Định nghĩa kiểu dữ liệu
+type Subject = {
+  id: number;
+  name: string;
+  description?: string | null;
+  icon?: string | null;
+  tutor_count?: number;
+  teaching_mode?: string;
+  hourly_rate?: number | string;
+  created_at?: string;
+  updated_at?: string;
+  education_levels?: Array<{
+    id: number;
+    name: string;
+  }>;
+};
+
+type EducationLevel = {
+  id: number;
+  name: string;
+  description?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";

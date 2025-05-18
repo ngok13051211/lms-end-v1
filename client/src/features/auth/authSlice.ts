@@ -1,6 +1,24 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import { User } from "@shared/schema";
 import authService from "./authService";
+
+// Định nghĩa type User dựa trên schema users
+type User = {
+  id: number;
+  username: string;
+  email: string;
+  password?: string; // Không nên lưu password trong state
+  first_name: string;
+  last_name: string;
+  date_of_birth?: string;
+  address?: string;
+  phone?: string;
+  avatar?: string;
+  role: string;
+  is_verified: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
 
 interface AuthState {
   user: User | null;
@@ -117,16 +135,16 @@ export const authSlice = createSlice({
       .addCase(registerUser.rejected, (state, action: PayloadAction<any>) => {
         state.isLoading = false;
         state.error = action.payload;
-      })
-      // Login
+      }) // Login
       .addCase(loginUser.pending, (state) => {
         state.isLoading = true;
         state.error = null;
       })
-      .addCase(loginUser.fulfilled, (state, action: PayloadAction<User>) => {
+      .addCase(loginUser.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isSuccess = true;
-        state.user = action.payload;
+        // Chuyển đổi dữ liệu từ API sang kiểu User
+        state.user = action.payload as unknown as User;
       })
       .addCase(loginUser.rejected, (state, action: PayloadAction<any>) => {
         state.isLoading = false;
@@ -137,9 +155,10 @@ export const authSlice = createSlice({
         state.isLoading = true;
         state.error = null;
       })
-      .addCase(loadUser.fulfilled, (state, action: PayloadAction<User>) => {
+      .addCase(loadUser.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.user = action.payload;
+        // Chuyển đổi dữ liệu từ API sang kiểu User
+        state.user = action.payload as unknown as User;
       })
       .addCase(loadUser.rejected, (state) => {
         state.isLoading = false;
@@ -156,6 +175,11 @@ export const authSlice = createSlice({
   },
 });
 
-export const { reset, updateAvatar, updateUserProfile, setUser, clearRegistration } =
-  authSlice.actions;
+export const {
+  reset,
+  updateAvatar,
+  updateUserProfile,
+  setUser,
+  clearRegistration,
+} = authSlice.actions;
 export default authSlice.reducer;

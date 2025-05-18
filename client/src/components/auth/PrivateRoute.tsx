@@ -29,11 +29,11 @@ export default function PrivateRoute({
       console.log("Token exists but no user, loading user data");
       dispatch(loadUser() as any)
         .unwrap()
-        .then((userData) => {
+        .then((userData: any) => {
           console.log("User loaded successfully:", userData);
           setAuthChecked(true);
         })
-        .catch((err) => {
+        .catch((err: unknown) => {
           console.error("Failed to load user:", err);
           // Nếu không thể tải user, xóa token và chuyển hướng đến trang đăng nhập
           localStorage.removeItem("token");

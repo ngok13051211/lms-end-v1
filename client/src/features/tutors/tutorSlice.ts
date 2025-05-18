@@ -1,6 +1,20 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import { TutorProfile } from "@shared/schema";
+import { tutorProfiles } from "@shared/schema";
 import tutorService from "./tutorService";
+
+// Định nghĩa kiểu TutorProfile dựa trên schema tutorProfiles
+type TutorProfile = {
+  id: number;
+  user_id: number;
+  bio?: string | null;
+  availability?: string | null;
+  is_verified?: boolean;
+  is_featured?: boolean;
+  rating?: number;
+  total_reviews?: number;
+  created_at: string;
+  updated_at: string;
+};
 
 interface TutorState {
   profile: TutorProfile | null;
@@ -86,10 +100,13 @@ export const tutorSlice = createSlice({
           state.profile = action.payload;
         }
       )
-      .addCase(getTutorProfile.rejected, (state, action: PayloadAction<any>) => {
-        state.isLoading = false;
-        state.error = action.payload;
-      });
+      .addCase(
+        getTutorProfile.rejected,
+        (state, action: PayloadAction<any>) => {
+          state.isLoading = false;
+          state.error = action.payload;
+        }
+      );
   },
 });
 

@@ -1,18 +1,35 @@
 import { Link } from "wouter";
-import { Subject } from "@shared/schema";
+import { subjects } from "@shared/schema";
 import SubjectCard from "@/components/ui/SubjectCard";
+
+// Define Subject type based on the imported subjects
+type Subject = {
+  id: number;
+  name: string;
+  description?: string | null;
+  icon?: string | null;
+  tutor_count?: number;
+  teaching_mode?: string;
+  hourly_rate?: number | string;
+  created_at?: string;
+  updated_at?: string;
+};
 
 // Extended type that aligns with our FeaturedSubject interface in SubjectCard
 interface SubjectCategoriesProps {
-  subjects: Array<Subject & {
-    education_levels?: Array<{
-      name: string;
-      id: number;
-    }>;
-  }>;
+  subjects: Array<
+    Subject & {
+      education_levels?: Array<{
+        name: string;
+        id: number;
+      }>;
+    }
+  >;
 }
 
-export default function SubjectCategories({ subjects }: SubjectCategoriesProps) {
+export default function SubjectCategories({
+  subjects,
+}: SubjectCategoriesProps) {
   return (
     <section className="py-12 md:py-16 bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -27,7 +44,11 @@ export default function SubjectCategories({ subjects }: SubjectCategoriesProps) 
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
           {subjects.map((subject) => (
-            <Link key={subject.id} href={`/subjects/${subject.id}`} className="block">
+            <Link
+              key={subject.id}
+              href={`/subjects/${subject.id}`}
+              className="block"
+            >
               <SubjectCard subject={subject} compact={true} />
             </Link>
           ))}

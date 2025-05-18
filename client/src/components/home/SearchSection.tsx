@@ -1,22 +1,46 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { Search } from "lucide-react";
-import { Subject, EducationLevel } from "@shared/schema";
+import { subjects, educationLevels } from "@shared/schema";
+
+// Định nghĩa các kiểu dữ liệu
+type Subject = {
+  id: number;
+  name: string;
+  description?: string | null;
+  icon?: string | null;
+  tutor_count?: number;
+  teaching_mode?: string;
+  hourly_rate?: number | string;
+  created_at?: string;
+  updated_at?: string;
+};
+
+type EducationLevel = {
+  id: number;
+  name: string;
+  description?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
 
 interface SearchSectionProps {
   subjects: Subject[];
   educationLevels: EducationLevel[];
 }
 
-export default function SearchSection({ subjects, educationLevels }: SearchSectionProps) {
+export default function SearchSection({
+  subjects,
+  educationLevels,
+}: SearchSectionProps) {
   const [, navigate] = useLocation();
   const [subject, setSubject] = useState("");
   const [level, setLevel] = useState("");
@@ -27,7 +51,7 @@ export default function SearchSection({ subjects, educationLevels }: SearchSecti
     if (subject) params.append("subject", subject);
     if (level) params.append("level", level);
     if (mode) params.append("mode", mode);
-    
+
     navigate(`/tutors?${params.toString()}`);
   };
 
@@ -38,7 +62,7 @@ export default function SearchSection({ subjects, educationLevels }: SearchSecti
           <h2 className="text-center text-2xl font-medium mb-6">
             Tìm gia sư phù hợp với nhu cầu của bạn
           </h2>
-          
+
           <div className="flex flex-wrap -mx-2">
             <div className="w-full md:w-1/4 px-2 mb-4 md:mb-0">
               <Select value={subject} onValueChange={setSubject}>
@@ -54,7 +78,7 @@ export default function SearchSection({ subjects, educationLevels }: SearchSecti
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div className="w-full md:w-1/4 px-2 mb-4 md:mb-0">
               <Select value={level} onValueChange={setLevel}>
                 <SelectTrigger className="w-full">
@@ -69,7 +93,7 @@ export default function SearchSection({ subjects, educationLevels }: SearchSecti
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div className="w-full md:w-1/4 px-2 mb-4 md:mb-0">
               <Select value={mode} onValueChange={setMode}>
                 <SelectTrigger className="w-full">
@@ -82,9 +106,9 @@ export default function SearchSection({ subjects, educationLevels }: SearchSecti
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div className="w-full md:w-1/4 px-2">
-              <Button 
+              <Button
                 className="w-full bg-primary hover:bg-primary-dark"
                 onClick={handleSearch}
               >

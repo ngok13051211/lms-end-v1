@@ -1,11 +1,24 @@
-import { Link } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Book, Users, MoveRight } from "lucide-react";
-import { Subject } from "@shared/schema";
+import { subjects } from "@shared/schema";
 
-interface FeaturedSubject extends Omit<Subject, 'hourly_rate' | 'teaching_mode'> {
+// Định nghĩa kiểu Subject từ schema của subjects
+type Subject = {
+  id: number;
+  name: string;
+  description?: string | null;
+  icon?: string | null;
+  tutor_count?: number;
+  teaching_mode?: string;
+  hourly_rate?: number | string;
+  created_at?: string;
+  updated_at?: string;
+};
+
+interface FeaturedSubject
+  extends Omit<Subject, "hourly_rate" | "teaching_mode"> {
   courses_count?: number;
   hourly_rate?: number | string | null;
   teaching_mode?: string | null;
@@ -20,7 +33,10 @@ interface SubjectCardProps {
   compact?: boolean;
 }
 
-export default function SubjectCard({ subject, compact = false }: SubjectCardProps) {
+export default function SubjectCard({
+  subject,
+  compact = false,
+}: SubjectCardProps) {
   const formatPrice = (price: number | string) => {
     if (!price) return "Thỏa thuận";
     return new Intl.NumberFormat("vi-VN", {
@@ -38,16 +54,16 @@ export default function SubjectCard({ subject, compact = false }: SubjectCardPro
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between">
-              <h3 className="font-medium truncate">
-                {subject.name}
-              </h3>
+              <h3 className="font-medium truncate">{subject.name}</h3>
               <div className="flex items-center ml-2 shrink-0">
                 <Users className="h-4 w-4 text-muted-foreground" />
-                <span className="ml-1 text-sm">{subject.tutor_count || 0} gia sư</span>
+                <span className="ml-1 text-sm">
+                  {subject.tutor_count || 0} gia sư
+                </span>
               </div>
             </div>
             <p className="text-sm text-muted-foreground truncate">
-              {subject.description || 'Các khóa học ' + subject.name}
+              {subject.description || "Các khóa học " + subject.name}
             </p>
             <div className="flex items-center justify-between mt-1">
               <Button
@@ -77,18 +93,19 @@ export default function SubjectCard({ subject, compact = false }: SubjectCardPro
       </div>
       <div className="p-4 flex-1 flex flex-col">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-medium text-lg">
-            {subject.name}
-          </h3>
+          <h3 className="font-medium text-lg">{subject.name}</h3>
           <div className="flex items-center">
             <Users className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm ml-1">{subject.tutor_count || 0} gia sư</span>
+            <span className="text-sm ml-1">
+              {subject.tutor_count || 0} gia sư
+            </span>
           </div>
         </div>
         <p className="text-muted-foreground text-sm mb-3">
-          {subject.description || `Các khóa học ${subject.name} do gia sư có chuyên môn giảng dạy`}
+          {subject.description ||
+            `Các khóa học ${subject.name} do gia sư có chuyên môn giảng dạy`}
         </p>
-        
+
         {subject.education_levels && subject.education_levels.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-4">
             {subject.education_levels.map((level) => (
@@ -101,18 +118,20 @@ export default function SubjectCard({ subject, compact = false }: SubjectCardPro
             ))}
           </div>
         )}
-        
+
         <div className="mt-auto flex items-center justify-between">
           <div>
             <span className="text-secondary font-medium">
               {formatPrice(subject.hourly_rate || 0)}
             </span>
-            <span className="text-muted-foreground text-sm">/giờ (Trung bình)</span>
+            <span className="text-muted-foreground text-sm">
+              /giờ (Trung bình)
+            </span>
           </div>
           <Button
             variant="default"
             className="bg-primary text-white hover:bg-primary-dark whitespace-nowrap"
-            onClick={() => window.location.href = `/subjects/${subject.id}`}
+            onClick={() => (window.location.href = `/subjects/${subject.id}`)}
           >
             Xem khóa học
           </Button>

@@ -71,8 +71,6 @@ export const subjectEducationLevels = pgTable("subject_education_levels", {
   created_at: timestamp("created_at").defaultNow().notNull(),
 });
 
-// --------------------------------------------------------------------------------
-
 // User Model
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -141,6 +139,8 @@ export const teachingRequests = pgTable("teaching_requests", {
   created_at: timestamp("created_at").defaultNow().notNull(),
   updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
+
+// --------------------------------------------------------------------------------
 
 // Tutor-Subject Many-to-Many Relationship
 export const tutorSubjects = pgTable("tutor_subjects", {
@@ -826,14 +826,16 @@ export const createScheduleSchema = z.union([
 // Schema cho tạo yêu cầu giảng dạy
 export const teachingRequestSchema = z.object({
   subject_id: z.number({
-    required_error: "Môn học là bắt buộc"
+    required_error: "Môn học là bắt buộc",
   }),
   level_id: z.number({
-    required_error: "Cấp độ giảng dạy là bắt buộc"
+    required_error: "Cấp độ giảng dạy là bắt buộc",
   }),
-  introduction: z.string({
-    required_error: "Giới thiệu là bắt buộc"
-  }).min(10, "Giới thiệu phải có ít nhất 10 ký tự"),
+  introduction: z
+    .string({
+      required_error: "Giới thiệu là bắt buộc",
+    })
+    .min(10, "Giới thiệu phải có ít nhất 10 ký tự"),
   experience: z.string().optional(),
   certifications: z.string().optional(), // JSON string chứa URLs
 });
@@ -855,4 +857,3 @@ export const schema = {
   bookingRequests,
   bookingSessions,
 };
-

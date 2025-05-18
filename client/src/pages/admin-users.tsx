@@ -36,7 +36,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Loader2, Search, Filter, MoreHorizontal, UserPlus } from "lucide-react";
+import {
+  Loader2,
+  Search,
+  Filter,
+  MoreHorizontal,
+  UserPlus,
+} from "lucide-react";
 
 // Interface cho dữ liệu người dùng
 interface User {
@@ -79,88 +85,29 @@ export default function AdminUsers() {
     queryKey: [`users-list-${searchTerm}-${roleFilter}-${page}`],
     queryFn: async () => {
       const response = await fetch(
-        `/api/v1/admin/users?search=${searchTerm}&role=${roleFilter === "all" ? "" : roleFilter}&page=${page}&limit=${pageSize}`,
+        `/api/v1/admin/users?search=${searchTerm}&role=${
+          roleFilter === "all" ? "" : roleFilter
+        }&page=${page}&limit=${pageSize}`,
         {
-          credentials: 'include'
+          credentials: "include",
         }
       );
       if (!response.ok) {
-        throw new Error('Không thể tải dữ liệu người dùng');
+        throw new Error("Không thể tải dữ liệu người dùng");
       }
       return response.json();
     },
   });
 
-  // Dữ liệu mẫu
-  const mockUsers: User[] = [
-    {
-      id: 1,
-      first_name: "Nguyễn",
-      last_name: "Văn A",
-      email: "nguyenvana@example.com",
-      role: "student",
-      is_active: true,
-      avatar: "https://ui-avatars.com/api/?name=Nguyen+Van+A",
-      created_at: "2025-04-15T10:30:00Z"
-    },
-    {
-      id: 2,
-      first_name: "Trần",
-      last_name: "Thị B",
-      email: "tranthib@example.com",
-      role: "tutor",
-      is_active: true,
-      avatar: "https://ui-avatars.com/api/?name=Tran+Thi+B",
-      created_at: "2025-04-10T14:25:00Z"
-    },
-    {
-      id: 3,
-      first_name: "Lê",
-      last_name: "Văn C",
-      email: "levanc@example.com",
-      role: "student",
-      is_active: false,
-      avatar: "https://ui-avatars.com/api/?name=Le+Van+C",
-      created_at: "2025-03-20T09:15:00Z"
-    },
-    {
-      id: 4,
-      first_name: "Phạm",
-      last_name: "Thị D",
-      email: "phamthid@example.com",
-      role: "tutor",
-      is_active: true,
-      avatar: "https://ui-avatars.com/api/?name=Pham+Thi+D",
-      created_at: "2025-02-05T11:20:00Z"
-    },
-    {
-      id: 5,
-      first_name: "Hoàng",
-      last_name: "Văn E",
-      email: "hoangvane@example.com",
-      role: "admin",
-      is_active: true,
-      avatar: "https://ui-avatars.com/api/?name=Hoang+Van+E",
-      created_at: "2025-01-10T16:45:00Z"
-    }
-  ];
-  const mockResponse = {
-    users: mockUsers,
-    count: mockUsers.length,
-    total_pages: 1,
-    current_page: 1,
-    success: true
-  };
-
-  const usersData = data || mockResponse;
+  const usersData = data || { users: [], total_pages: 1, count: 0 };
 
   // Định dạng ngày giờ
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('vi-VN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
+    return date.toLocaleDateString("vi-VN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
     });
   };
   // Xử lý xem chi tiết người dùng
@@ -168,47 +115,47 @@ export default function AdminUsers() {
     try {
       console.log("User ID FEEE", userId);
       const response = await fetch(`/api/v1/admin/users/${userId}`, {
-        credentials: 'include'
+        credentials: "include",
       });
 
       if (!response.ok) {
-        throw new Error('Không thể lấy thông tin chi tiết người dùng');
+        throw new Error("Không thể lấy thông tin chi tiết người dùng");
       }
 
       const data: UserDetailResponse = await response.json();
       setSelectedUser(data.user);
       setIsDetailModalOpen(true);
     } catch (error) {
-      console.error('Lỗi khi lấy thông tin chi tiết người dùng:', error);
+      console.error("Lỗi khi lấy thông tin chi tiết người dùng:", error);
     }
   };
 
   // Xử lý khóa tài khoản người dùng
   const deactivateUser = async (userId: number) => {
-    if (!window.confirm('Bạn có chắc chắn muốn khóa tài khoản này?')) {
+    if (!window.confirm("Bạn có chắc chắn muốn khóa tài khoản này?")) {
       return;
     }
 
     try {
       const response = await fetch(`/api/v1/admin/users/${userId}/deactivate`, {
-        method: 'PATCH',
-        credentials: 'include',
+        method: "PATCH",
+        credentials: "include",
         headers: {
-          'Content-Type': 'application/json',
-        }
+          "Content-Type": "application/json",
+        },
       });
 
       if (!response.ok) {
-        throw new Error('Không thể khóa tài khoản người dùng');
+        throw new Error("Không thể khóa tài khoản người dùng");
       }
 
       // Cập nhật lại danh sách sau khi khóa tài khoản
       await refetch();
 
-      alert('Đã khóa tài khoản người dùng thành công');
+      alert("Đã khóa tài khoản người dùng thành công");
     } catch (error) {
-      console.error('Lỗi khi khóa tài khoản người dùng:', error);
-      alert('Đã xảy ra lỗi khi khóa tài khoản người dùng');
+      console.error("Lỗi khi khóa tài khoản người dùng:", error);
+      alert("Đã xảy ra lỗi khi khóa tài khoản người dùng");
     }
   };
 
@@ -217,7 +164,9 @@ export default function AdminUsers() {
       <div className="p-6 max-w-7xl mx-auto space-y-6">
         <div className="flex flex-col md:flex-row justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Quản lý người dùng</h1>
+            <h1 className="text-3xl font-bold tracking-tight">
+              Quản lý người dùng
+            </h1>
             <p className="text-muted-foreground mt-1">
               Quản lý tất cả người dùng trong hệ thống HomiTutor
             </p>
@@ -241,7 +190,10 @@ export default function AdminUsers() {
                 <div className="grid gap-4 py-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label htmlFor="firstName" className="text-sm font-medium">
+                      <label
+                        htmlFor="firstName"
+                        className="text-sm font-medium"
+                      >
                         Họ
                       </label>
                       <Input id="firstName" className="mt-1" />
@@ -288,12 +240,11 @@ export default function AdminUsers() {
             </Dialog>
           </div>
         </div>
-
         <Card>
           <CardHeader className="pb-3">
             <CardTitle>Danh sách người dùng</CardTitle>
             <CardDescription>
-              Tổng cộng {usersData.users.length} người dùng
+              Tổng cộng {usersData.users?.length || 0} người dùng
             </CardDescription>
             <div className="flex flex-col sm:flex-row gap-4 mt-4">
               <div className="relative flex-1">
@@ -334,7 +285,9 @@ export default function AdminUsers() {
                       <th className="py-4 px-4 font-medium">Vai trò</th>
                       <th className="py-4 px-4 font-medium">Ngày tham gia</th>
                       <th className="py-4 px-4 font-medium">Trạng thái</th>
-                      <th className="py-4 px-4 font-medium text-right">Thao tác</th>
+                      <th className="py-4 px-4 font-medium text-right">
+                        Thao tác
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -343,13 +296,18 @@ export default function AdminUsers() {
                         <td className="py-4 px-4">
                           <div className="flex items-center">
                             <Avatar className="h-8 w-8 mr-3">
-                              <AvatarImage src={user.avatar} alt={`${user.first_name} ${user.last_name}`} />
+                              <AvatarImage
+                                src={user.avatar}
+                                alt={`${user.first_name} ${user.last_name}`}
+                              />
                               <AvatarFallback>
                                 {user.first_name[0]}
                                 {user.last_name[0]}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="font-medium">{user.first_name} {user.last_name}</span>
+                            <span className="font-medium">
+                              {user.first_name} {user.last_name}
+                            </span>
                           </div>
                         </td>
                         <td className="py-4 px-4">{user.email}</td>
@@ -359,12 +317,15 @@ export default function AdminUsers() {
                               user.role === "admin"
                                 ? "default"
                                 : user.role === "tutor"
-                                  ? "secondary"
-                                  : "outline"
+                                ? "secondary"
+                                : "outline"
                             }
                           >
-                            {user.role === "admin" ? "Quản trị viên" :
-                              user.role === "tutor" ? "Gia sư" : "Học viên"}
+                            {user.role === "admin"
+                              ? "Quản trị viên"
+                              : user.role === "tutor"
+                              ? "Gia sư"
+                              : "Học viên"}
                           </Badge>
                         </td>
                         <td className="py-4 px-4">
@@ -372,8 +333,12 @@ export default function AdminUsers() {
                         </td>
                         <td className="py-4 px-4">
                           <Badge
-                            variant={user.is_active ? "success" : "destructive"}
-                            className={user.is_active ? "bg-green-100 text-green-800 hover:bg-green-200" : ""}
+                            variant={user.is_active ? "outline" : "destructive"}
+                            className={
+                              user.is_active
+                                ? "bg-green-100 text-green-800 hover:bg-green-200"
+                                : ""
+                            }
                           >
                             {user.is_active ? "Đang hoạt động" : "Bị khóa"}
                           </Badge>
@@ -387,17 +352,28 @@ export default function AdminUsers() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>Hành động</DropdownMenuLabel>                              <DropdownMenuItem onClick={() => handleViewUserDetail(user.id)}>
+                              <DropdownMenuLabel>Hành động</DropdownMenuLabel>{" "}
+                              <DropdownMenuItem
+                                onClick={() => handleViewUserDetail(user.id)}
+                              >
                                 Xem chi tiết
                               </DropdownMenuItem>
                               <DropdownMenuItem>Chỉnh sửa</DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
-                                onClick={() => user.is_active && deactivateUser(user.id)}
-                                className={user.is_active ? "text-red-600" : "text-gray-400"}
+                                onClick={() =>
+                                  user.is_active && deactivateUser(user.id)
+                                }
+                                className={
+                                  user.is_active
+                                    ? "text-red-600"
+                                    : "text-gray-400"
+                                }
                                 disabled={!user.is_active}
                               >
-                                {user.is_active ? "Khóa tài khoản" : "Đã bị khóa"}
+                                {user.is_active
+                                  ? "Khóa tài khoản"
+                                  : "Đã bị khóa"}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -405,7 +381,8 @@ export default function AdminUsers() {
                       </tr>
                     ))}
                   </tbody>
-                </table>                {usersData.total_pages > 1 && (
+                </table>{" "}
+                {usersData.total_pages > 1 && (
                   <div className="flex justify-center mt-6">
                     <div className="flex items-center space-x-2">
                       <Button
@@ -421,9 +398,7 @@ export default function AdminUsers() {
                       <Button
                         variant="outline"
                         onClick={() =>
-                          setPage((p) =>
-                            Math.min(usersData.total_pages, p + 1)
-                          )
+                          setPage((p) => Math.min(usersData.total_pages, p + 1))
                         }
                         disabled={page === usersData.total_pages}
                       >
@@ -435,7 +410,8 @@ export default function AdminUsers() {
               </div>
             )}
           </CardContent>
-        </Card>      </div>
+        </Card>{" "}
+      </div>
 
       {/* Modal chi tiết người dùng */}
       <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
@@ -452,9 +428,13 @@ export default function AdminUsers() {
               <div className="flex flex-col md:flex-row gap-6 items-start">
                 <div className="flex-shrink-0">
                   <Avatar className="h-24 w-24">
-                    <AvatarImage src={selectedUser.avatar} alt={`${selectedUser.first_name} ${selectedUser.last_name}`} />
+                    <AvatarImage
+                      src={selectedUser.avatar}
+                      alt={`${selectedUser.first_name} ${selectedUser.last_name}`}
+                    />
                     <AvatarFallback className="text-2xl">
-                      {selectedUser.first_name[0]}{selectedUser.last_name[0]}
+                      {selectedUser.first_name[0]}
+                      {selectedUser.last_name[0]}
                     </AvatarFallback>
                   </Avatar>
                 </div>
@@ -462,55 +442,84 @@ export default function AdminUsers() {
                 <div className="space-y-4 flex-1">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <h4 className="text-sm font-medium text-muted-foreground">Họ tên</h4>
-                      <p className="text-base">{selectedUser.first_name} {selectedUser.last_name}</p>
+                      <h4 className="text-sm font-medium text-muted-foreground">
+                        Họ tên
+                      </h4>
+                      <p className="text-base">
+                        {selectedUser.first_name} {selectedUser.last_name}
+                      </p>
                     </div>
 
                     <div>
-                      <h4 className="text-sm font-medium text-muted-foreground">Tên đăng nhập</h4>
+                      <h4 className="text-sm font-medium text-muted-foreground">
+                        Tên đăng nhập
+                      </h4>
                       <p className="text-base">{selectedUser.username}</p>
                     </div>
 
                     <div>
-                      <h4 className="text-sm font-medium text-muted-foreground">Email</h4>
+                      <h4 className="text-sm font-medium text-muted-foreground">
+                        Email
+                      </h4>
                       <p className="text-base">{selectedUser.email}</p>
                     </div>
 
                     <div>
-                      <h4 className="text-sm font-medium text-muted-foreground">Vai trò</h4>
+                      <h4 className="text-sm font-medium text-muted-foreground">
+                        Vai trò
+                      </h4>
                       <Badge
                         variant={
                           selectedUser.role === "admin"
                             ? "default"
                             : selectedUser.role === "tutor"
-                              ? "secondary"
-                              : "outline"
+                            ? "secondary"
+                            : "outline"
                         }
                         className="mt-1"
                       >
-                        {selectedUser.role === "admin" ? "Quản trị viên" :
-                          selectedUser.role === "tutor" ? "Gia sư" : "Học viên"}
+                        {selectedUser.role === "admin"
+                          ? "Quản trị viên"
+                          : selectedUser.role === "tutor"
+                          ? "Gia sư"
+                          : "Học viên"}
                       </Badge>
                     </div>
 
                     <div>
-                      <h4 className="text-sm font-medium text-muted-foreground">Trạng thái</h4>
+                      <h4 className="text-sm font-medium text-muted-foreground">
+                        Trạng thái
+                      </h4>
                       <Badge
-                        variant={selectedUser.is_active ? "success" : "destructive"}
-                        className={selectedUser.is_active ? "mt-1 bg-green-100 text-green-800 hover:bg-green-200" : "mt-1"}
+                        variant={
+                          selectedUser.is_active ? "outline" : "destructive"
+                        }
+                        className={
+                          selectedUser.is_active
+                            ? "mt-1 bg-green-100 text-green-800 hover:bg-green-200"
+                            : "mt-1"
+                        }
                       >
                         {selectedUser.is_active ? "Đang hoạt động" : "Bị khóa"}
                       </Badge>
                     </div>
 
                     <div>
-                      <h4 className="text-sm font-medium text-muted-foreground">Ngày tham gia</h4>
-                      <p className="text-base">{formatDate(selectedUser.created_at)}</p>
+                      <h4 className="text-sm font-medium text-muted-foreground">
+                        Ngày tham gia
+                      </h4>
+                      <p className="text-base">
+                        {formatDate(selectedUser.created_at)}
+                      </p>
                     </div>
 
                     <div>
-                      <h4 className="text-sm font-medium text-muted-foreground">Cập nhật lần cuối</h4>
-                      <p className="text-base">{formatDate(selectedUser.updated_at)}</p>
+                      <h4 className="text-sm font-medium text-muted-foreground">
+                        Cập nhật lần cuối
+                      </h4>
+                      <p className="text-base">
+                        {formatDate(selectedUser.updated_at)}
+                      </p>
                     </div>
                   </div>
                 </div>

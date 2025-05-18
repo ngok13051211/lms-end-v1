@@ -24,7 +24,32 @@ import {
   Star,
   Clock,
 } from "lucide-react";
-import { Subject, EducationLevel } from "@shared/schema";
+import {
+  subjects as subjectsTable,
+  educationLevels as educationLevelsTable,
+} from "@shared/schema";
+
+// Define Subject and EducationLevel types based on schema
+type Subject = {
+  id: number;
+  name: string;
+  description?: string | null;
+  icon?: string | null;
+  tutor_count?: number;
+  teaching_mode?: string;
+  hourly_rate?: number | string;
+  created_at?: string;
+  updated_at?: string;
+};
+
+type EducationLevel = {
+  id: number;
+  name: string;
+  description?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
 import {
   Sheet,
   SheetContent,

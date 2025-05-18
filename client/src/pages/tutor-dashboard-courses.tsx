@@ -55,8 +55,32 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import TutorDashboardLayout from "@/components/layout/TutorDashboardLayout";
 import { useToast } from "@/hooks/use-toast";
-import { TutorProfile } from "@shared/schema";
 import React from "react";
+
+// Define the TutorProfile type based on the schema
+type TutorProfile = {
+  id: number;
+  user_id: number;
+  bio?: string;
+  availability?: string;
+  is_verified: boolean;
+  is_featured: boolean;
+  rating: number;
+  total_reviews: number;
+  created_at: string;
+  updated_at: string;
+  user?: {
+    id: number;
+    username: string;
+    email: string;
+    first_name: string;
+    last_name: string;
+    avatar?: string;
+    role: string;
+    is_verified: boolean;
+    is_active: boolean;
+  };
+};
 
 // Form schema for course
 const courseSchema = z.object({
