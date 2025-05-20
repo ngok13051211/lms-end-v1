@@ -4,6 +4,7 @@ import * as tutorController from "../controllers/tutorController";
 import { authMiddleware, roleMiddleware } from "../middlewares/authMiddleware";
 import { validateParams } from "../middlewares/validationMiddleware";
 import * as schema from "@shared/schema";
+import { getBookingsVolume, getCoursesBySubject } from "../controllers/adminSummaryController";
 
 const router = Router();
 
@@ -99,6 +100,22 @@ router.get(
   authMiddleware,
   roleMiddleware(["admin"]),
   adminController.getAdminStats
+);
+
+// Endpoint cho thống kê khối lượng đặt chỗ
+router.get(
+  "/statistics/bookings-volume",
+  authMiddleware,
+  roleMiddleware(["admin"]),
+  getBookingsVolume
+);
+
+// Endpoint cho thống kê khóa học theo môn học
+router.get(
+  "/statistics/courses-by-subject",
+  authMiddleware,
+  roleMiddleware(["admin"]),
+  getCoursesBySubject
 );
 
 export default router;

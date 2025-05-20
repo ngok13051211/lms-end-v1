@@ -11,6 +11,7 @@ import {
   not,
   sql,
   isNull,
+  ne,
 } from "drizzle-orm";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
@@ -1726,29 +1727,78 @@ export const getTeachingRequests = async (req: Request, res: Response) => {
  */
 export const handleTeachingRequest = async (req: Request, res: Response) => {
   try {
-    // Lấy thông tin từ JWT token
-    const userId = req.user?.id;
-    if (!userId) {
-      return res
-        .status(401)
-        .json({ message: "Bạn cần đăng nhập để thực hiện hành động này" });
+    // Truy vấn danh sách teaching_requests với trạng thái pending
+    const pendingRequests = await db.query.teachingRequests.findMany({
+      where: eq(schema.teachingRequests.status, "pending"),
+      with: {
+        tutor: {
+          with: {
+            user: true,
+          },
+        },
+        subject: true,
+        level: true,
+      },
+      orderBy: (requests, { desc }) => [desc(requests.created_at)],
+    });
+
+    // Chuyển đổi dữ liệu để phù hợp với cấu trúc mà frontend mong đợi
+    const formattedRequests = pendingRequests.map((request) => ({
+      id: request.id,
+      subject: request.subject,
+      level: request.level,
+      tutor_profile: {
+        id: request.tutor.id,
+        bio: request.tutor.bio,
+        date_of_birth: request.tutor.availability, // Sử dụng trường availability để lưu trữ ngày sinh
+        address: request.tutor.availability, // Sử dụng trường availability để lưu trữ địa chỉ
+        user: {
+          id: request.tutor.user.id,
+          first_name: request.tutor.user.first_name,
+          last_name: request.tutor.user.last_name,
+          email: request.tutor.user.email,
+          phone: request.tutor.user.phone,
+          avatar: request.tutor.user.avatar,
+        },
+      },
+      introduction: request.introduction,
+      experience: request.experience,
+      certifications: request.certifications,
+      status: request.status,
+      created_at: request.created_at,
+    }));
+
+    return res.status(200).json(formattedRequests);
+  } catch (error) {
+    console.error(
+      "Lỗi khi lấy danh sách yêu cầu dạy học đang chờ duyệt:",
+      error
+    );
+    return res.status(500).json({ message: "Lỗi máy chủ nội bộ" });
+  }
+};
+
+/**
+ * @desc    Phê duyệt yêu cầu đăng ký dạy học
+ * @route   PATCH /api/v1/admin/teaching-requests/:id/approve
+ * @access  Private (Admin only)
+ */
+export const approveTeachingRequest = async (req: Request, res: Response) => {
+  try {
+    const requestId = parseInt(req.params.id);
+    const adminId = req.user?.id;
+
+    if (!adminId) {
+      return res.status(401).json({ message: "Không được phép" });
     }
 
-    // Validate dữ liệu từ frontend
-    const validationResult = schema.teachingRequestSchema.safeParse(req.body);
-
-    if (!validationResult.success) {
-      const errorMessage = fromZodError(validationResult.error).message;
-      return res.status(400).json({ message: errorMessage });
+    if (isNaN(requestId)) {
+      return res.status(400).json({ message: "ID yêu cầu không hợp lệ" });
     }
 
-    // Lấy dữ liệu đã validate
-    const { subject_id, level_id, introduction, experience, certifications } =
-      validationResult.data;
-
-    // Lấy thông tin profile của gia sư
-    const tutorProfile = await db.query.tutorProfiles.findFirst({
-      where: eq(schema.tutorProfiles.user_id, userId),
+    // Kiểm tra yêu cầu có tồn tại không
+    const request = await db.query.teachingRequests.findFirst({
+      where: eq(schema.teachingRequests.id, requestId),
     });
 
     if (!tutorProfile) {
@@ -1767,28 +1817,66 @@ export const handleTeachingRequest = async (req: Request, res: Response) => {
       ),
     });
 
-    if (existingRequest) {
-      return res.status(400).json({
-        message:
-          "Bạn đã có yêu cầu giảng dạy đang chờ duyệt cho môn học và cấp độ này",
+    if (!existingLevel) {
+      await db.insert(schema.tutorEducationLevels).values({
+        tutor_id: request.tutor_id,
+        level_id: request.level_id,
+        created_at: new Date(),
       });
     }
 
-    // Tạo yêu cầu giảng dạy mới
-    const newRequest = await db
-      .insert(schema.teachingRequests)
-      .values({
-        tutor_id: tutorProfile.id,
-        subject_id,
-        level_id,
-        introduction,
-        experience: experience || null,
-        certifications: certifications || null,
-        status: "pending",
-        created_at: new Date(),
+    return res.status(200).json({
+      success: true,
+      message: "Yêu cầu đăng ký dạy học đã được phê duyệt thành công",
+    });
+  } catch (error) {
+    console.error("Lỗi phê duyệt yêu cầu đăng ký dạy học:", error);
+    return res.status(500).json({ message: "Lỗi máy chủ nội bộ" });
+  }
+};
+
+/**
+ * @desc    Từ chối yêu cầu đăng ký dạy học
+ * @route   PATCH /api/v1/admin/teaching-requests/:id/reject
+ * @access  Private (Admin only)
+ */
+export const rejectTeachingRequest = async (req: Request, res: Response) => {
+  try {
+    const requestId = parseInt(req.params.id);
+    const adminId = req.user?.id;
+    const { rejection_reason } = req.body;
+
+    if (!adminId) {
+      return res.status(401).json({ message: "Không được phép" });
+    }
+
+    if (isNaN(requestId)) {
+      return res.status(400).json({ message: "ID yêu cầu không hợp lệ" });
+    }
+
+    if (!rejection_reason) {
+      return res.status(400).json({ message: "Lý do từ chối là bắt buộc" });
+    }
+
+    // Kiểm tra yêu cầu có tồn tại không
+    const request = await db.query.teachingRequests.findFirst({
+      where: eq(schema.teachingRequests.id, requestId),
+    });
+
+    if (!request) {
+      return res.status(404).json({ message: "Không tìm thấy yêu cầu" });
+    }
+
+    // Cập nhật trạng thái yêu cầu thành đã từ chối
+    await db
+      .update(schema.teachingRequests)
+      .set({
+        status: "rejected",
+        rejection_reason: rejection_reason,
+        approved_by: adminId, // Lưu thông tin người từ chối
         updated_at: new Date(),
       })
-      .returning();
+      .where(eq(schema.teachingRequests.id, requestId));
 
     return res.status(201).json({
       success: true,
@@ -1908,242 +1996,6 @@ export const getOwnTeachingRequests = async (req: Request, res: Response) => {
       success: false,
       message: "Lỗi máy chủ nội bộ",
     });
-  }
-};
-
-/**
- * @desc    Từ chối yêu cầu đăng ký dạy học
- * @route   PATCH /api/v1/admin/teaching-requests/:id/reject
- * @access  Private (Admin only)
- */
-export const rejectTeachingRequest = async (req: Request, res: Response) => {
-  try {
-    const requestId = parseInt(req.params.id);
-    const adminId = req.user?.id;
-    const { rejection_reason } = req.body;
-
-    if (!adminId) {
-      return res.status(401).json({ message: "Không được phép" });
-    }
-
-    if (isNaN(requestId)) {
-      return res.status(400).json({ message: "ID yêu cầu không hợp lệ" });
-    }
-
-    if (!rejection_reason) {
-      return res.status(400).json({ message: "Lý do từ chối là bắt buộc" });
-    }
-
-    // Kiểm tra yêu cầu có tồn tại không
-    const request = await db.query.teachingRequests.findFirst({
-      where: eq(schema.teachingRequests.id, requestId),
-    });
-
-    if (!request) {
-      return res.status(404).json({ message: "Không tìm thấy yêu cầu" });
-    }
-
-    // Cập nhật trạng thái yêu cầu thành đã từ chối
-    await db
-      .update(schema.teachingRequests)
-      .set({
-        status: "rejected",
-        rejection_reason: rejection_reason,
-        approved_by: adminId, // Lưu thông tin người từ chối
-        updated_at: new Date(),
-      })
-      .where(eq(schema.teachingRequests.id, requestId));
-
-    return res.status(200).json({
-      success: true,
-      message: "Yêu cầu đăng ký dạy học đã bị từ chối",
-    });
-  } catch (error) {
-    console.error("Lỗi từ chối yêu cầu đăng ký dạy học:", error);
-    return res.status(500).json({ message: "Lỗi máy chủ nội bộ" });
-  }
-};
-
-/**
- * @desc    Phê duyệt yêu cầu đăng ký dạy học
- * @route   PATCH /api/v1/admin/teaching-requests/:id/approve
- * @access  Private (Admin only)
- */
-export const approveTeachingRequest = async (req: Request, res: Response) => {
-  try {
-    const requestId = parseInt(req.params.id);
-    const adminId = req.user?.id;
-
-    if (!adminId) {
-      return res.status(401).json({ message: "Không được phép" });
-    }
-
-    if (isNaN(requestId)) {
-      return res.status(400).json({ message: "ID yêu cầu không hợp lệ" });
-    }
-
-    // Kiểm tra yêu cầu có tồn tại không
-    const request = await db.query.teachingRequests.findFirst({
-      where: eq(schema.teachingRequests.id, requestId),
-    });
-
-    if (!request) {
-      return res.status(404).json({ message: "Không tìm thấy yêu cầu" });
-    }
-
-    // Cập nhật trạng thái yêu cầu thành đã phê duyệt
-    await db
-      .update(schema.teachingRequests)
-      .set({
-        status: "approved",
-        approved_by: adminId,
-        updated_at: new Date(),
-      })
-      .where(eq(schema.teachingRequests.id, requestId));
-
-    // Thêm subject vào tutorSubjects nếu chưa có
-    const existingSubject = await db.query.tutorSubjects.findFirst({
-      where: and(
-        eq(schema.tutorSubjects.tutor_id, request.tutor_id),
-        eq(schema.tutorSubjects.subject_id, request.subject_id)
-      ),
-    });
-
-    if (!existingSubject) {
-      await db.insert(schema.tutorSubjects).values({
-        tutor_id: request.tutor_id,
-        subject_id: request.subject_id,
-        created_at: new Date(),
-      });
-    } // Thêm level vào tutorEducationLevels nếu chưa có
-    const existingLevel = await db.query.tutorEducationLevels.findFirst({
-      where: and(
-        eq(schema.tutorEducationLevels.tutor_id, request.tutor_id),
-        eq(schema.tutorEducationLevels.level_id, request.level_id)
-      ),
-    });
-
-    if (!existingLevel) {
-      await db.insert(schema.tutorEducationLevels).values({
-        tutor_id: request.tutor_id,
-        level_id: request.level_id,
-        created_at: new Date(),
-      });
-    }
-
-    // Kiểm tra số lượng yêu cầu đã được phê duyệt của gia sư
-    const approvedCount = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(schema.teachingRequests)
-      .where(
-        and(
-          eq(schema.teachingRequests.tutor_id, request.tutor_id),
-          eq(schema.teachingRequests.status, "approved")
-        )
-      );
-    console.log("DEBUG tutor_id in teaching request:", request.tutor_id);
-
-    // Tìm profile của tutor để đảm bảo chúng ta có ID chính xác
-    // Đầu tiên, thử tìm theo ID trực tiếp (đúng với thiết kế schema hiện tại)
-    let tutorProfile = await db.query.tutorProfiles.findFirst({
-      where: eq(schema.tutorProfiles.id, request.tutor_id),
-    });
-
-    console.log("DEBUG matched tutor profile by ID:", tutorProfile);
-
-    // Nếu không tìm được bằng ID, nghĩa là teaching_request.tutor_id có thể đang lưu user_id
-    // thay vì tutor_profile.id, nên ta sẽ thử tìm theo user_id
-    if (!tutorProfile) {
-      console.log(
-        "Không tìm thấy tutorProfile qua ID trực tiếp, thử tìm qua user_id..."
-      );
-
-      // Đầu tiên, tìm user từ yêu cầu dạy học
-      const tutorUser = await db.query.teachingRequests.findFirst({
-        where: eq(schema.teachingRequests.id, requestId),
-        with: {
-          tutor: {
-            with: {
-              user: true,
-            },
-          },
-        },
-      });
-
-      if (tutorUser?.tutor?.user?.id) {
-        console.log(
-          `Tìm thấy user_id: ${tutorUser.tutor.user.id} từ yêu cầu dạy học`
-        );
-        tutorProfile = await db.query.tutorProfiles.findFirst({
-          where: eq(schema.tutorProfiles.user_id, tutorUser.tutor.user.id),
-        });
-        console.log("DEBUG matched tutor profile by user_id:", tutorProfile);
-      }
-    }
-
-    // Nếu không tìm thấy tutorProfile theo cả hai cách, log lỗi và thoát
-    if (!tutorProfile) {
-      console.error(
-        `❌ Không thể tìm thấy tutorProfile cho teaching request: ${requestId}`
-      );
-      throw new Error(
-        `Không thể tìm thấy hồ sơ gia sư cho yêu cầu ID: ${requestId}`
-      );
-    }
-
-    // Nếu đây là yêu cầu đầu tiên được phê duyệt, cập nhật is_verified = true    // Cập nhật is_verified = true bất kể đây là yêu cầu đầu tiên hay không
-    // Miễn là có ít nhất một yêu cầu được phê duyệt, thì tutorProfile nên được xác minh
-    console.log(
-      `Xác minh tutor profile với tutor_id=${tutorProfile.id}, số yêu cầu đã duyệt: ${approvedCount[0]?.count}`
-    );
-
-    // Ghi log trạng thái hiện tại của tutor profile
-    console.log(`Tutor profile trước khi cập nhật:`, tutorProfile);
-
-    try {
-      // Cập nhật trạng thái is_verified thành true
-      console.log(
-        `Thực hiện cập nhật is_verified=true cho tutor_id=${tutorProfile.id}`
-      );
-
-      // Sử dụng .execute() để đảm bảo câu lệnh được thực thi
-      const result = await db
-        .update(schema.tutorProfiles)
-        .set({
-          is_verified: true,
-          updated_at: new Date(),
-        })
-        .where(eq(schema.tutorProfiles.id, tutorProfile.id))
-        .execute();
-
-      console.log(`Kết quả cập nhật:`, result); // Xác nhận lại bằng cách truy vấn profile sau khi cập nhật
-      const tutorProfileAfter = await db.query.tutorProfiles.findFirst({
-        where: eq(schema.tutorProfiles.id, tutorProfile.id),
-      });
-      console.log(`Tutor profile sau khi cập nhật:`, tutorProfileAfter);
-
-      // Thêm kiểm tra để xác nhận việc cập nhật có thành công không
-      if (tutorProfileAfter && tutorProfileAfter.is_verified === true) {
-        console.log(`✅ Xác minh thành công cho tutor_id=${tutorProfile.id}`);
-      } else {
-        console.error(
-          `❌ Cập nhật không thành công: is_verified vẫn là ${tutorProfileAfter?.is_verified}`
-        );
-      }
-    } catch (error) {
-      console.error(
-        `❌ Lỗi khi cập nhật trạng thái xác minh cho tutor_id=${request.tutor_id}:`,
-        error
-      );
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: "Yêu cầu đăng ký dạy học đã được phê duyệt thành công",
-    });
-  } catch (error) {
-    console.error("Lỗi phê duyệt yêu cầu đăng ký dạy học:", error);
-    return res.status(500).json({ message: "Lỗi máy chủ nội bộ" });
   }
 };
 

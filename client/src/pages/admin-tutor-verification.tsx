@@ -52,8 +52,6 @@ interface TeachingRequest {
   tutor_profile: {
     id: number;
     bio?: string;
-    date_of_birth?: string;
-    address?: string;
     user: {
       id: number;
       first_name?: string;
@@ -61,12 +59,14 @@ interface TeachingRequest {
       email: string;
       phone?: string;
       avatar?: string;
+      date_of_birth?: string; // Chuyển vào đây
+      address?: string; // Chuyển vào đây
     };
   };
   introduction: string;
   experience: string;
-  certifications?: string; // JSON string chứa mảng các URL
-  status: string; // "pending", "approved", "rejected"
+  certifications?: string;
+  status: string;
   approved_by?: number;
   rejection_reason?: string;
   created_at: string;
@@ -217,6 +217,7 @@ export default function AdminTutorVerification() {
 
   // Hiển thị chi tiết yêu cầu giảng dạy
   const handleViewRequestDetail = (request: TeachingRequest) => {
+    console.log("Selected request:", request); // Debug log
     setSelectedRequest(request);
     setDetailsOpen(true);
   };
@@ -615,10 +616,19 @@ export default function AdminTutorVerification() {
                     </Badge>
                   </div>
                 </div>
-
+                {selectedRequest.tutor_profile.bio && (
+                  <div>
+                    <h4 className="font-medium text-sm mb-1 flex items-center">
+                      <Info className="h-4 w-4 mr-1" /> Giới thiệu bản thân
+                    </h4>
+                    <p className="text-sm text-muted-foreground">
+                      {selectedRequest.tutor_profile.bio}
+                    </p>
+                  </div>
+                )}
                 <div>
                   <h4 className="font-medium text-sm mb-1 flex items-center">
-                    <Info className="h-4 w-4 mr-1" /> Giới thiệu
+                    <Info className="h-4 w-4 mr-1" /> Giới thiệu trong lĩnh vực
                   </h4>
                   <p className="text-sm text-muted-foreground whitespace-pre-wrap">
                     {selectedRequest.introduction}
@@ -634,35 +644,24 @@ export default function AdminTutorVerification() {
                   </p>
                 </div>
 
-                {selectedRequest.tutor_profile.bio && (
-                  <div>
-                    <h4 className="font-medium text-sm mb-1 flex items-center">
-                      <Info className="h-4 w-4 mr-1" /> Giới thiệu bản thân
-                    </h4>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedRequest.tutor_profile.bio}
-                    </p>
-                  </div>
-                )}
-
-                {selectedRequest.tutor_profile.date_of_birth && (
+                {selectedRequest.tutor_profile.user.date_of_birth && (
                   <div>
                     <h4 className="font-medium text-sm mb-1 flex items-center">
                       <Calendar className="h-4 w-4 mr-1" /> Ngày sinh
                     </h4>
                     <p className="text-sm text-muted-foreground">
-                      {selectedRequest.tutor_profile.date_of_birth}
+                      {selectedRequest.tutor_profile.user.date_of_birth}
                     </p>
                   </div>
                 )}
 
-                {selectedRequest.tutor_profile.address && (
+                {selectedRequest.tutor_profile.user.address && (
                   <div>
                     <h4 className="font-medium text-sm mb-1 flex items-center">
                       <MapPin className="h-4 w-4 mr-1" /> Địa chỉ
                     </h4>
                     <p className="text-sm text-muted-foreground">
-                      {selectedRequest.tutor_profile.address}
+                      {selectedRequest.tutor_profile.user.address}
                     </p>
                   </div>
                 )}
