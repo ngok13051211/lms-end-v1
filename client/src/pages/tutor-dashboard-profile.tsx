@@ -89,13 +89,13 @@ const getFileNameFromUrl = (url: string): string => {
   try {
     // Extract the last part of the URL path
     const pathname = new URL(url).pathname;
-    let filename = pathname.split('/').pop() || '';
+    let filename = pathname.split("/").pop() || "";
 
     // Remove any query parameters
-    filename = filename.split('?')[0];
+    filename = filename.split("?")[0];
 
     // If filename has a weird format (like from Cloudinary), try to make it more readable
-    if (filename.includes('_') && filename.length > 20) {
+    if (filename.includes("_") && filename.length > 20) {
       return `Certificate ${Math.floor(Math.random() * 1000)}`;
     }
 
@@ -111,11 +111,14 @@ export default function TutorDashboardProfile() {
   const dispatch = useDispatch();
   const [avatar, setAvatar] = useState<File | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [profileDialogOpen, setProfileDialogOpen] = useState(false);  // Teaching request state
-  const [teachingRequestDialogOpen, setTeachingRequestDialogOpen] = useState(false);
-  const [requestCertifications, setRequestCertifications] = useState<File[]>([]);
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false); // Teaching request state
+  const [teachingRequestDialogOpen, setTeachingRequestDialogOpen] =
+    useState(false);
+  const [requestCertifications, setRequestCertifications] = useState<File[]>(
+    []
+  );
   const [uploadingCertifications, setUploadingCertifications] = useState(false);
-  const [certificateUrls, setCertificateUrls] = useState<string[]>([]);  // Reset certificate state when dialog closes
+  const [certificateUrls, setCertificateUrls] = useState<string[]>([]); // Reset certificate state when dialog closes
   const handleTeachingRequestDialogChange = (open: boolean) => {
     console.log("Dialog thay đổi trạng thái:", open);
 
@@ -124,7 +127,7 @@ export default function TutorDashboardProfile() {
       toast({
         title: "Đang tải lên chứng chỉ",
         description: "Vui lòng đợi quá trình tải lên hoàn tất trước khi đóng",
-        variant: "warning",
+        variant: "destructive",
       });
       return; // Không cho phép đóng dialog
     }
@@ -138,7 +141,7 @@ export default function TutorDashboardProfile() {
 
       // Xóa dữ liệu trong localStorage khi đóng dialog
       try {
-        localStorage.removeItem('temp_certificate_urls');
+        localStorage.removeItem("temp_certificate_urls");
       } catch (e) {
         console.error("Lỗi khi xóa certificateUrls từ localStorage:", e);
       }
@@ -205,14 +208,17 @@ export default function TutorDashboardProfile() {
       const previewUrl = URL.createObjectURL(file);
       setAvatarPreview(previewUrl);
     }
-  };  // Handle certificate file change for teaching request
+  }; // Handle certificate file change for teaching request
   const handleCertificationsChange = async (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
     if (e.target.files && e.target.files.length > 0) {
       const files = Array.from(e.target.files);
 
-      console.log("Files được chọn:", files.map(f => ({ name: f.name, size: f.size })));
+      console.log(
+        "Files được chọn:",
+        files.map((f) => ({ name: f.name, size: f.size }))
+      );
 
       // Check if we would exceed the maximum allowed files (5)
       if (certificateUrls.length + files.length > 5) {
@@ -226,7 +232,7 @@ export default function TutorDashboardProfile() {
 
       // Check file sizes
       const maxSizeInBytes = 5 * 1024 * 1024; // 5MB
-      const oversizedFiles = files.filter(file => file.size > maxSizeInBytes);
+      const oversizedFiles = files.filter((file) => file.size > maxSizeInBytes);
       if (oversizedFiles.length > 0) {
         toast({
           title: "Tệp quá lớn",
@@ -236,7 +242,7 @@ export default function TutorDashboardProfile() {
         return;
       }
 
-      setRequestCertifications(prev => [...prev, ...files]);
+      setRequestCertifications((prev) => [...prev, ...files]);
 
       // Start upload immediately
       setUploadingCertifications(true);
@@ -259,7 +265,8 @@ export default function TutorDashboardProfile() {
           const errorData = await res.json().catch(() => ({}));
           console.error("Upload lỗi:", errorData);
           throw new Error(errorData.message || "Không thể tải lên chứng chỉ");
-        } const data = await res.json();
+        }
+        const data = await res.json();
         console.log("Upload thành công, server trả về:", data);
         // Truy cập URLs một cách chính xác dựa trên cấu trúc response từ server
         let uploadedUrls = [];
@@ -268,20 +275,28 @@ export default function TutorDashboardProfile() {
           hasUrls: !!data.urls,
           hasCertifications: !!data.certifications,
           hasDataUrls: !!(data.data && data.data.urls),
-          dataKeys: Object.keys(data)
+          dataKeys: Object.keys(data),
         });
 
         if (data.urls && Array.isArray(data.urls)) {
           uploadedUrls = data.urls;
         } else if (data.certifications && Array.isArray(data.certifications)) {
           uploadedUrls = data.certifications;
-        } else if (data.data && data.data.urls && Array.isArray(data.data.urls)) {
+        } else if (
+          data.data &&
+          data.data.urls &&
+          Array.isArray(data.data.urls)
+        ) {
           uploadedUrls = data.data.urls;
         } else {
           // Nếu không tìm thấy theo cấu trúc dự đoán, tìm kiếm bất kỳ trường nào là mảng URL
           for (const key in data) {
-            if (Array.isArray(data[key]) && data[key].length > 0 &&
-              typeof data[key][0] === 'string' && data[key][0].startsWith('http')) {
+            if (
+              Array.isArray(data[key]) &&
+              data[key].length > 0 &&
+              typeof data[key][0] === "string" &&
+              data[key][0].startsWith("http")
+            ) {
               console.log(`Tìm thấy mảng URL trong trường: ${key}`);
               uploadedUrls = data[key];
               break;
@@ -293,12 +308,15 @@ export default function TutorDashboardProfile() {
 
         // Add the new URLs to the existing ones
         console.log("certificateUrls trước khi cập nhật:", certificateUrls);
-        setCertificateUrls(prev => {
+        setCertificateUrls((prev) => {
           const newUrls = [...prev, ...uploadedUrls];
           console.log("certificateUrls sau khi cập nhật:", newUrls);
           // Lưu vào localStorage để đảm bảo không mất dữ liệu
           try {
-            localStorage.setItem('temp_certificate_urls', JSON.stringify(newUrls));
+            localStorage.setItem(
+              "temp_certificate_urls",
+              JSON.stringify(newUrls)
+            );
           } catch (e) {
             console.error("Không thể lưu vào localStorage:", e);
           }
@@ -314,14 +332,23 @@ export default function TutorDashboardProfile() {
         console.error("Lỗi upload chi tiết:", error);
         toast({
           title: "Tải lên thất bại",
-          description: error instanceof Error ? error.message : "Không thể tải lên chứng chỉ",
+          description:
+            error instanceof Error
+              ? error.message
+              : "Không thể tải lên chứng chỉ",
           variant: "destructive",
         });
 
         // Remove the files that failed to upload
-        setRequestCertifications(prev => prev.filter(prevFile =>
-          !files.some(file => file.name === prevFile.name && file.size === prevFile.size)
-        ));
+        setRequestCertifications((prev) =>
+          prev.filter(
+            (prevFile) =>
+              !files.some(
+                (file) =>
+                  file.name === prevFile.name && file.size === prevFile.size
+              )
+          )
+        );
       } finally {
         setUploadingCertifications(false);
       }
@@ -353,7 +380,8 @@ export default function TutorDashboardProfile() {
       }
 
       return res.json();
-    }, onSuccess: (data) => {
+    },
+    onSuccess: (data) => {
       // Cập nhật avatar trong Redux store ngay lập tức
       if (data && data.data && data.data.user && data.data.user.avatar) {
         dispatch(updateAvatar(data.data.user.avatar));
@@ -425,17 +453,20 @@ export default function TutorDashboardProfile() {
         profileData
       );
       return res.json();
-    }, onSuccess: (data) => {
+    },
+    onSuccess: (data) => {
       // Invalidate cả hồ sơ gia sư và thông tin user
       queryClient.invalidateQueries({ queryKey: [`/api/v1/tutors/profile`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/v1/auth/me`] });      // Cập nhật Redux store với thông tin mới
+      queryClient.invalidateQueries({ queryKey: [`/api/v1/auth/me`] }); // Cập nhật Redux store với thông tin mới
       if (data.data) {
         // Cập nhật thông tin user trong Redux store
-        dispatch(updateUserProfile({
-          first_name: data.data.first_name,
-          last_name: data.data.last_name,
-          phone: data.data.phone
-        }));
+        dispatch(
+          updateUserProfile({
+            first_name: data.data.first_name,
+            last_name: data.data.last_name,
+            phone: data.data.phone,
+          })
+        );
       }
 
       // Đóng dialog
@@ -479,7 +510,7 @@ export default function TutorDashboardProfile() {
       const data = await res.json();
       // Update our certificate URLs state
       const newUrls = data.urls || [];
-      setCertificateUrls(prev => [...prev, ...newUrls]);
+      setCertificateUrls((prev) => [...prev, ...newUrls]);
       return newUrls;
     },
     onSuccess: (data) => {
@@ -532,16 +563,21 @@ export default function TutorDashboardProfile() {
       teachingRequestForm.reset();
 
       // Invalidate các query liên quan để cập nhật dữ liệu
-      queryClient.invalidateQueries({ queryKey: [`/api/v1/tutors/teaching-requests`] });
+      queryClient.invalidateQueries({
+        queryKey: [`/api/v1/tutors/teaching-requests`],
+      });
 
       // Đồng thời cập nhật thông tin profile của tutor nếu cần
       queryClient.invalidateQueries({ queryKey: [`/api/v1/tutors/profile`] });
 
       toast({
         title: "Yêu cầu đã gửi thành công",
-        description: data.certificationsCount > 0
-          ? `Yêu cầu giảng dạy của bạn với ${data.certificationsCount || 0} chứng chỉ đã được gửi và đang chờ duyệt`
-          : "Yêu cầu giảng dạy của bạn đã được gửi và đang chờ duyệt",
+        description:
+          data.certificationsCount > 0
+            ? `Yêu cầu giảng dạy của bạn với ${
+                data.certificationsCount || 0
+              } chứng chỉ đã được gửi và đang chờ duyệt`
+            : "Yêu cầu giảng dạy của bạn đã được gửi và đang chờ duyệt",
         variant: "default",
       });
     },
@@ -563,15 +599,18 @@ export default function TutorDashboardProfile() {
     } catch (error) {
       console.error("Lỗi khi cập nhật hồ sơ:", error);
     }
-  };  // Submit teaching request handler
-  const onSubmitTeachingRequest = async (values: z.infer<typeof teachingRequestSchema>) => {
+  }; // Submit teaching request handler
+  const onSubmitTeachingRequest = async (
+    values: z.infer<typeof teachingRequestSchema>
+  ) => {
     try {
       // Nếu đang tải lên chứng chỉ, không cho phép gửi
       if (uploadingCertifications) {
         toast({
           title: "Đang tải lên chứng chỉ",
-          description: "Vui lòng đợi quá trình tải lên hoàn tất trước khi gửi yêu cầu",
-          variant: "warning",
+          description:
+            "Vui lòng đợi quá trình tải lên hoàn tất trước khi gửi yêu cầu",
+          variant: "destructive",
         });
         return;
       }
@@ -584,10 +623,13 @@ export default function TutorDashboardProfile() {
 
       if (currentCertificateUrls.length === 0) {
         try {
-          const savedUrls = localStorage.getItem('temp_certificate_urls');
+          const savedUrls = localStorage.getItem("temp_certificate_urls");
           if (savedUrls) {
             const parsedUrls = JSON.parse(savedUrls);
-            console.log("Khôi phục certificateUrls từ localStorage:", parsedUrls);
+            console.log(
+              "Khôi phục certificateUrls từ localStorage:",
+              parsedUrls
+            );
             currentCertificateUrls = parsedUrls;
             // Cập nhật lại state
             setCertificateUrls(parsedUrls);
@@ -603,9 +645,10 @@ export default function TutorDashboardProfile() {
         level_id: parseInt(values.level_id),
         introduction: values.introduction,
         experience: values.experience,
-        certifications: currentCertificateUrls.length > 0
-          ? JSON.stringify(currentCertificateUrls)
-          : JSON.stringify([]) // Luôn gửi mảng rỗng dưới dạng JSON, không gửi null
+        certifications:
+          currentCertificateUrls.length > 0
+            ? JSON.stringify(currentCertificateUrls)
+            : JSON.stringify([]), // Luôn gửi mảng rỗng dưới dạng JSON, không gửi null
       };
 
       console.log("Payload gửi đi:", payload);
@@ -625,8 +668,7 @@ export default function TutorDashboardProfile() {
       console.log("Kết quả gửi yêu cầu:", result);
 
       // Xóa dữ liệu localStorage sau khi gửi thành công
-      localStorage.removeItem('temp_certificate_urls');
-
+      localStorage.removeItem("temp_certificate_urls");
     } catch (error) {
       console.error("Lỗi khi gửi yêu cầu giảng dạy:", error);
       if (error instanceof Error) {
@@ -673,7 +715,7 @@ export default function TutorDashboardProfile() {
     // Chỉ thực hiện khi dialog mở để tránh ghi đè state khi không cần thiết
     if (teachingRequestDialogOpen) {
       try {
-        const savedUrls = localStorage.getItem('temp_certificate_urls');
+        const savedUrls = localStorage.getItem("temp_certificate_urls");
         if (savedUrls) {
           const parsedUrls = JSON.parse(savedUrls);
           console.log("Khôi phục certificateUrls từ localStorage:", parsedUrls);
@@ -696,7 +738,7 @@ export default function TutorDashboardProfile() {
 
   // Function to handle certificate removal
   const handleRemoveCertificate = (urlToRemove: string) => {
-    setCertificateUrls(prev => prev.filter(url => url !== urlToRemove));
+    setCertificateUrls((prev) => prev.filter((url) => url !== urlToRemove));
     toast({
       title: "Đã xóa chứng chỉ",
       description: "Chứng chỉ đã được xóa khỏi danh sách",
@@ -729,81 +771,91 @@ export default function TutorDashboardProfile() {
 
           <CardContent>
             <div className="space-y-8">
-              <div className="flex flex-col md:flex-row gap-8">                <div className="flex-shrink-0">
-                <div className="relative">
-                  <Avatar className={`h-32 w-32 border-2 ${uploadingAvatar ? 'border-warning animate-pulse' : 'border-primary'}`}>
-                    <AvatarImage
-                      src={user?.avatar ?? undefined}
-                      alt={user?.first_name ?? ""}
-                      className={`transition-opacity duration-300 ${uploadingAvatar ? 'opacity-50' : ''}`}
-                    />
-                    {uploadingAvatar && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-background/40 z-10">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                      </div>
-                    )}
-                    <AvatarFallback className="text-3xl">
-                      {user?.first_name?.[0]}
-                      {user?.last_name?.[0]}
-                    </AvatarFallback>
-                  </Avatar>
-
-                  <div className="mt-4">
-                    <label className="block mb-2 text-sm font-medium">
-                      Cập nhật ảnh đại diện
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        id="avatar-upload"
-                        onChange={handleFileChange}
+              <div className="flex flex-col md:flex-row gap-8">
+                {" "}
+                <div className="flex-shrink-0">
+                  <div className="relative">
+                    <Avatar
+                      className={`h-32 w-32 border-2 ${
+                        uploadingAvatar
+                          ? "border-warning animate-pulse"
+                          : "border-primary"
+                      }`}
+                    >
+                      <AvatarImage
+                        src={user?.avatar ?? undefined}
+                        alt={user?.first_name ?? ""}
+                        className={`transition-opacity duration-300 ${
+                          uploadingAvatar ? "opacity-50" : ""
+                        }`}
                       />
-                      <label
-                        htmlFor="avatar-upload"
-                        className="flex items-center px-3 py-2 text-sm border rounded cursor-pointer bg-background hover:bg-muted transition-colors"
-                      >
-                        <Upload className="mr-2 h-4 w-4" />
-                        Chọn ảnh
-                      </label>
-
-                      {avatar && (
-                        <Button
-                          onClick={handleAvatarUpload}
-                          disabled={uploadingAvatar}
-                          size="sm"
-                        >
-                          {uploadingAvatar ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Đang tải lên...
-                            </>
-                          ) : (
-                            "Tải lên"
-                          )}
-                        </Button>
+                      {uploadingAvatar && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-background/40 z-10">
+                          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        </div>
                       )}
-                    </div>                      {avatar && (
-                      <div className="mt-2">
-                        <p className="text-sm text-muted-foreground mb-2">
-                          {avatar.name} ({(avatar.size / 1024).toFixed(1)} KB)
-                        </p>
-                        {avatarPreview && (
-                          <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-primary">
-                            <img
-                              src={avatarPreview}
-                              alt="Avatar preview"
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
+                      <AvatarFallback className="text-3xl">
+                        {user?.first_name?.[0]}
+                        {user?.last_name?.[0]}
+                      </AvatarFallback>
+                    </Avatar>
+
+                    <div className="mt-4">
+                      <label className="block mb-2 text-sm font-medium">
+                        Cập nhật ảnh đại diện
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          id="avatar-upload"
+                          onChange={handleFileChange}
+                        />
+                        <label
+                          htmlFor="avatar-upload"
+                          className="flex items-center px-3 py-2 text-sm border rounded cursor-pointer bg-background hover:bg-muted transition-colors"
+                        >
+                          <Upload className="mr-2 h-4 w-4" />
+                          Chọn ảnh
+                        </label>
+
+                        {avatar && (
+                          <Button
+                            onClick={handleAvatarUpload}
+                            disabled={uploadingAvatar}
+                            size="sm"
+                          >
+                            {uploadingAvatar ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Đang tải lên...
+                              </>
+                            ) : (
+                              "Tải lên"
+                            )}
+                          </Button>
                         )}
-                      </div>
-                    )}
+                      </div>{" "}
+                      {avatar && (
+                        <div className="mt-2">
+                          <p className="text-sm text-muted-foreground mb-2">
+                            {avatar.name} ({(avatar.size / 1024).toFixed(1)} KB)
+                          </p>
+                          {avatarPreview && (
+                            <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-primary">
+                              <img
+                                src={avatarPreview}
+                                alt="Avatar preview"
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-
                 <div className="flex-1">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                     <div>
@@ -847,7 +899,9 @@ export default function TutorDashboardProfile() {
                       <h3 className="text-sm font-medium text-muted-foreground mb-1">
                         Đánh giá
                       </h3>
-                      <div className="flex items-center">                        <Star className="h-4 w-4 text-warning fill-warning mr-1" />
+                      <div className="flex items-center">
+                        {" "}
+                        <Star className="h-4 w-4 text-warning fill-warning mr-1" />
                         <span>
                           {tutorProfile?.rating} ({tutorProfile?.total_reviews}{" "}
                           đánh giá)
@@ -862,8 +916,8 @@ export default function TutorDashboardProfile() {
                       <p className="text-base">
                         {tutorProfile?.date_of_birth
                           ? new Date(
-                            tutorProfile.date_of_birth
-                          ).toLocaleDateString("vi-VN")
+                              tutorProfile.date_of_birth
+                            ).toLocaleDateString("vi-VN")
                           : "Chưa cập nhật"}
                       </p>
                     </div>
@@ -913,7 +967,6 @@ export default function TutorDashboardProfile() {
             </div>
           </CardContent>
         </Card>
-
         {/* Profile Details - Only showing bio now */}
         {tutorProfile && (
           <Card>
@@ -924,7 +977,8 @@ export default function TutorDashboardProfile() {
               <p className="whitespace-pre-wrap">{tutorProfile.bio}</p>
             </CardContent>
           </Card>
-        )}        {/* Teaching Requests List */}
+        )}{" "}
+        {/* Teaching Requests List */}
         <Card>
           <CardHeader>
             <CardTitle>Yêu cầu giảng dạy</CardTitle>
@@ -939,7 +993,6 @@ export default function TutorDashboardProfile() {
           </CardContent>
         </Card>
       </div>
-
       {/* Profile Dialog - Simplified with only basic fields */}
       <Dialog open={profileDialogOpen} onOpenChange={setProfileDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
@@ -952,7 +1005,10 @@ export default function TutorDashboardProfile() {
             </DialogDescription>
           </DialogHeader>
           <Form {...profileForm}>
-            <form onSubmit={profileForm.handleSubmit(onSubmit)} className="space-y-6">
+            <form
+              onSubmit={profileForm.handleSubmit(onSubmit)}
+              className="space-y-6"
+            >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={profileForm.control}
@@ -961,10 +1017,7 @@ export default function TutorDashboardProfile() {
                     <FormItem>
                       <FormLabel>Tên</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="Tên của bạn"
-                          {...field}
-                        />
+                        <Input placeholder="Tên của bạn" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -978,10 +1031,7 @@ export default function TutorDashboardProfile() {
                     <FormItem>
                       <FormLabel>Họ</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="Họ của bạn"
-                          {...field}
-                        />
+                        <Input placeholder="Họ của bạn" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -996,10 +1046,7 @@ export default function TutorDashboardProfile() {
                   <FormItem>
                     <FormLabel>Số điện thoại</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="Số điện thoại của bạn"
-                        {...field}
-                      />
+                      <Input placeholder="Số điện thoại của bạn" {...field} />
                     </FormControl>
                     <FormDescription>
                       Số điện thoại để liên hệ khi cần thiết
@@ -1037,11 +1084,7 @@ export default function TutorDashboardProfile() {
                   <FormItem>
                     <FormLabel>Ngày sinh</FormLabel>
                     <FormControl>
-                      <Input
-                        type="date"
-                        placeholder="DD/MM/YYYY"
-                        {...field}
-                      />
+                      <Input type="date" placeholder="DD/MM/YYYY" {...field} />
                     </FormControl>
                     <FormDescription>Điền ngày sinh của bạn</FormDescription>
                     <FormMessage />
@@ -1084,8 +1127,12 @@ export default function TutorDashboardProfile() {
             </form>
           </Form>
         </DialogContent>
-      </Dialog>      {/* Teaching Request Dialog - New dialog for creating requests */}
-      <Dialog open={teachingRequestDialogOpen} onOpenChange={handleTeachingRequestDialogChange}>
+      </Dialog>{" "}
+      {/* Teaching Request Dialog - New dialog for creating requests */}
+      <Dialog
+        open={teachingRequestDialogOpen}
+        onOpenChange={handleTeachingRequestDialogChange}
+      >
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Tạo yêu cầu dạy học</DialogTitle>
@@ -1095,13 +1142,16 @@ export default function TutorDashboardProfile() {
           </DialogHeader>
           {teachingRequestDialogOpen && (
             <div className="text-sm text-blue-600 bg-blue-50 p-2 rounded mb-4">
-              Trạng thái chứng chỉ: {certificateUrls.length} chứng chỉ đã tải lên.
+              Trạng thái chứng chỉ: {certificateUrls.length} chứng chỉ đã tải
+              lên.
               {uploadingCertifications && " Đang tải lên..."}
             </div>
           )}
           <Form {...teachingRequestForm}>
             <form
-              onSubmit={teachingRequestForm.handleSubmit(onSubmitTeachingRequest)}
+              onSubmit={teachingRequestForm.handleSubmit(
+                onSubmitTeachingRequest
+              )}
               className="space-y-6"
             >
               <div className="grid grid-cols-1 gap-4">
@@ -1120,14 +1170,18 @@ export default function TutorDashboardProfile() {
                             <SelectTrigger>
                               <SelectValue placeholder="Chọn môn học" />
                             </SelectTrigger>
-                          </FormControl>                          <SelectContent>
+                          </FormControl>{" "}
+                          <SelectContent>
                             {subjects.length === 0 ? (
                               <SelectItem value="no_subjects" disabled>
                                 Không có môn học nào
                               </SelectItem>
                             ) : (
                               subjects.map((subject) => (
-                                <SelectItem key={subject.id} value={`${subject.id}`}>
+                                <SelectItem
+                                  key={subject.id}
+                                  value={`${subject.id}`}
+                                >
                                   {subject.name}
                                 </SelectItem>
                               ))
@@ -1155,14 +1209,18 @@ export default function TutorDashboardProfile() {
                             <SelectTrigger>
                               <SelectValue placeholder="Chọn cấp độ" />
                             </SelectTrigger>
-                          </FormControl>                          <SelectContent>
+                          </FormControl>{" "}
+                          <SelectContent>
                             {educationLevels.length === 0 ? (
                               <SelectItem value="no_levels" disabled>
                                 Không có cấp độ nào
                               </SelectItem>
                             ) : (
                               educationLevels.map((level) => (
-                                <SelectItem key={level.id} value={`${level.id}`}>
+                                <SelectItem
+                                  key={level.id}
+                                  value={`${level.id}`}
+                                >
                                   {level.name}
                                 </SelectItem>
                               ))
@@ -1222,24 +1280,34 @@ export default function TutorDashboardProfile() {
                         id="certification-upload"
                         multiple
                         onChange={handleCertificationsChange}
-                      />                      <label
+                      />{" "}
+                      <label
                         htmlFor="certification-upload"
-                        className={`flex items-center px-3 py-2 text-sm border rounded cursor-pointer bg-background hover:bg-muted transition-colors ${uploadingCertifications ? 'opacity-50 pointer-events-none' : ''}`}
+                        className={`flex items-center px-3 py-2 text-sm border rounded cursor-pointer bg-background hover:bg-muted transition-colors ${
+                          uploadingCertifications
+                            ? "opacity-50 pointer-events-none"
+                            : ""
+                        }`}
                       >
                         {uploadingCertifications ? (
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         ) : (
                           <FileCheck className="mr-2 h-4 w-4" />
                         )}
-                        {uploadingCertifications ? 'Đang tải lên...' : 'Chọn tệp chứng chỉ'}
+                        {uploadingCertifications
+                          ? "Đang tải lên..."
+                          : "Chọn tệp chứng chỉ"}
                       </label>
-
                       {uploadingCertifications && (
                         <div className="flex items-center text-amber-500">
-                          <span className="text-sm">Đang tải lên, vui lòng đợi...</span>
+                          <span className="text-sm">
+                            Đang tải lên, vui lòng đợi...
+                          </span>
                         </div>
                       )}
-                    </div>                    {(requestCertifications.length > 0 || certificateUrls.length > 0) && (
+                    </div>{" "}
+                    {(requestCertifications.length > 0 ||
+                      certificateUrls.length > 0) && (
                       <div className="space-y-3 mt-2">
                         {requestCertifications.length > 0 && (
                           <div>
@@ -1248,10 +1316,14 @@ export default function TutorDashboardProfile() {
                             </p>
                             <ul className="space-y-1 text-sm text-muted-foreground">
                               {requestCertifications.map((file, index) => (
-                                <li key={index} className="flex items-center justify-between">
+                                <li
+                                  key={index}
+                                  className="flex items-center justify-between"
+                                >
                                   <span className="flex items-center">
                                     <FileCheck className="h-3 w-3 mr-1" />
-                                    {file.name} ({(file.size / 1024).toFixed(1)} KB)
+                                    {file.name} ({(file.size / 1024).toFixed(1)}{" "}
+                                    KB)
                                   </span>
                                 </li>
                               ))}
@@ -1264,37 +1336,59 @@ export default function TutorDashboardProfile() {
                             <p className="text-sm font-medium mb-1">
                               Đã tải lên thành công ({certificateUrls.length}):
                             </p>
-                            <div className="flex flex-wrap gap-2">                              {certificateUrls.map((url, index) => {
-                              const fileName = getFileNameFromUrl(url);
-                              const isPdf = fileName.toLowerCase().endsWith('.pdf'); return (
-                                <div
-                                  key={index}
-                                  className="flex items-center gap-1"
-                                >
-                                  <a
-                                    href={url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-center px-3 py-1 text-xs rounded bg-background hover:bg-accent transition-colors border"
+                            <div className="flex flex-wrap gap-2">
+                              {" "}
+                              {certificateUrls.map((url, index) => {
+                                const fileName = getFileNameFromUrl(url);
+                                const isPdf = fileName
+                                  .toLowerCase()
+                                  .endsWith(".pdf");
+                                return (
+                                  <div
+                                    key={index}
+                                    className="flex items-center gap-1"
                                   >
-                                    {isPdf ? (
-                                      <FileText className="h-3 w-3 mr-1 text-blue-500" />
-                                    ) : (
-                                      <FileCheck className="h-3 w-3 mr-1 text-green-500" />
-                                    )}
-                                    {fileName.length > 20 ? fileName.substring(0, 17) + '...' : fileName}
-                                  </a>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRemoveCertificate(url)}
-                                    className="p-1 rounded-full hover:bg-red-100 text-red-500"
-                                    title="Xóa chứng chỉ"
-                                  >
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
-                                  </button>
-                                </div>
-                              );
-                            })}
+                                    <a
+                                      href={url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center px-3 py-1 text-xs rounded bg-background hover:bg-accent transition-colors border"
+                                    >
+                                      {isPdf ? (
+                                        <FileText className="h-3 w-3 mr-1 text-blue-500" />
+                                      ) : (
+                                        <FileCheck className="h-3 w-3 mr-1 text-green-500" />
+                                      )}
+                                      {fileName.length > 20
+                                        ? fileName.substring(0, 17) + "..."
+                                        : fileName}
+                                    </a>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleRemoveCertificate(url)
+                                      }
+                                      className="p-1 rounded-full hover:bg-red-100 text-red-500"
+                                      title="Xóa chứng chỉ"
+                                    >
+                                      <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="12"
+                                        height="12"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                      >
+                                        <path d="M18 6 6 18"></path>
+                                        <path d="m6 6 12 12"></path>
+                                      </svg>
+                                    </button>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
                         )}
@@ -1302,15 +1396,22 @@ export default function TutorDashboardProfile() {
                     )}
                   </div>
                 </div>
-              </div>              <DialogFooter>
+              </div>{" "}
+              <DialogFooter>
                 <Button
                   type="submit"
-                  disabled={teachingRequestForm.formState.isSubmitting || uploadingCertifications}
+                  disabled={
+                    teachingRequestForm.formState.isSubmitting ||
+                    uploadingCertifications
+                  }
                 >
-                  {(teachingRequestForm.formState.isSubmitting || uploadingCertifications) && (
+                  {(teachingRequestForm.formState.isSubmitting ||
+                    uploadingCertifications) && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   )}
-                  {uploadingCertifications ? "Đang tải lên chứng chỉ..." : "Gửi yêu cầu"}
+                  {uploadingCertifications
+                    ? "Đang tải lên chứng chỉ..."
+                    : "Gửi yêu cầu"}
                 </Button>
               </DialogFooter>
             </form>

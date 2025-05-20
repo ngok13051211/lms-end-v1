@@ -32,6 +32,23 @@ export const createCourse = async (req: Request, res: Response) => {
       tutor_id: tutorProfile.id,
     });
 
+    // Check if the tutor has an approved teaching request for this subject and level
+    const approvedTeachingRequest = await db.query.teachingRequests.findFirst({
+      where: and(
+        eq(schema.teachingRequests.tutor_id, tutorProfile.id),
+        eq(schema.teachingRequests.subject_id, courseData.subject_id),
+        eq(schema.teachingRequests.level_id, courseData.level_id),
+        eq(schema.teachingRequests.status, "approved")
+      ),
+    });
+
+    if (!approvedTeachingRequest) {
+      return res.status(403).json({
+        message:
+          "Bạn chưa được phê duyệt để tạo khóa học với môn học và cấp độ này",
+      });
+    }
+
     const [newCourse] = await db
       .insert(schema.courses)
       .values({

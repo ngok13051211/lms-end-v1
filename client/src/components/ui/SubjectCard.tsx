@@ -3,6 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Book, Users, MoveRight } from "lucide-react";
 import { subjects } from "@shared/schema";
+import { useState } from "react";
+import { getSubjectAvatarUrl } from "@/lib/utils";
 
 // Định nghĩa kiểu Subject từ schema của subjects
 type Subject = {
@@ -37,6 +39,8 @@ export default function SubjectCard({
   subject,
   compact = false,
 }: SubjectCardProps) {
+  const [imageError, setImageError] = useState(false);
+
   const formatPrice = (price: number | string) => {
     if (!price) return "Thỏa thuận";
     return new Intl.NumberFormat("vi-VN", {
@@ -45,12 +49,29 @@ export default function SubjectCard({
     }).format(Number(price));
   };
 
+  const avatarUrl = imageError
+    ? "/images/subjects/default.png"
+    : getSubjectAvatarUrl(subject.name);
+
+  const handleImageError = () => {
+    setImageError(true);
+  };
+
   if (compact) {
     return (
       <Card className="hover-rise h-full overflow-hidden">
         <div className="p-4 flex items-center gap-4 h-full w-full">
-          <div className="h-12 w-12 flex items-center justify-center bg-primary-light/20 rounded-full text-primary">
-            <Book className="h-6 w-6" />
+          <div className="h-12 w-12 flex items-center justify-center bg-primary-light/20 rounded-full text-primary overflow-hidden">
+            {imageError ? (
+              <Book className="h-6 w-6" />
+            ) : (
+              <img
+                src={avatarUrl}
+                alt={subject.name}
+                className="h-full w-full object-cover"
+                onError={handleImageError}
+              />
+            )}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between">
@@ -85,11 +106,19 @@ export default function SubjectCard({
   return (
     <Card className="hover-rise flex flex-col h-full">
       <div className="relative h-36 rounded-t-lg overflow-hidden bg-gradient-to-r from-primary-light to-primary flex items-center justify-center">
-        <div className="text-white text-center">
-          <div className="w-16 h-16 mx-auto bg-white/20 rounded-full flex items-center justify-center">
-            <Book className="h-8 w-8" />
+        <img
+          src={avatarUrl}
+          alt={subject.name}
+          className="w-full h-full object-cover"
+          onError={handleImageError}
+        />
+        {imageError && (
+          <div className="absolute inset-0 flex items-center justify-center text-white">
+            <div className="w-16 h-16 mx-auto bg-white/20 rounded-full flex items-center justify-center">
+              <Book className="h-8 w-8" />
+            </div>
           </div>
-        </div>
+        )}
       </div>
       <div className="p-4 flex-1 flex flex-col">
         <div className="flex items-center justify-between mb-3">

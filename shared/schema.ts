@@ -140,8 +140,6 @@ export const teachingRequests = pgTable("teaching_requests", {
   updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// --------------------------------------------------------------------------------
-
 // Tutor-Subject Many-to-Many Relationship
 export const tutorSubjects = pgTable("tutor_subjects", {
   id: serial("id").primaryKey(),
@@ -242,6 +240,26 @@ export const bookingSessions = pgTable("booking_sessions", {
   updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Teaching Schedules Model for tutor availability
+export const teachingSchedules = pgTable("teaching_schedules", {
+  id: serial("id").primaryKey(),
+  tutor_id: integer("tutor_id")
+    .notNull()
+    .references(() => tutorProfiles.id),
+  course_id: integer("course_id").references(() => courses.id),
+  date: date("date").notNull(),
+  start_time: time("start_time").notNull(),
+  end_time: time("end_time").notNull(),
+  mode: text("mode").notNull(), // "online", "offline"
+  location: text("location"),
+  is_recurring: boolean("is_recurring").default(false),
+  status: text("status").default("available"), // "available", "booked", "completed", "cancelled"
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// --------------------------------------------------------------------------------
+
 // Bảng thanh toán (payments)
 export const payments = pgTable("payments", {
   id: serial("id").primaryKey(),
@@ -294,24 +312,61 @@ export const sessionNotes = pgTable("session_notes", {
   updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// Teaching Schedules Model for tutor availability
-export const teachingSchedules = pgTable("teaching_schedules", {
+// Reviews Model
+export const reviews = pgTable("reviews", {
   id: serial("id").primaryKey(),
+  student_id: integer("student_id")
+    .notNull()
+    .references(() => users.id),
   tutor_id: integer("tutor_id")
     .notNull()
     .references(() => tutorProfiles.id),
-  course_id: integer("course_id").references(() => courses.id),
-  date: date("date").notNull(),
-  start_time: time("start_time").notNull(),
-  end_time: time("end_time").notNull(),
-  mode: text("mode").notNull(), // "online", "offline"
-  location: text("location"),
-  is_recurring: boolean("is_recurring").default(false),
-  status: text("status").default("available"), // "available", "booked", "completed", "cancelled"
+  rating: integer("rating").notNull(),
+  comment: text("comment"),
   created_at: timestamp("created_at").defaultNow().notNull(),
   updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Testimonials Model (Featured reviews to display on homepage)
+export const testimonials = pgTable("testimonials", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  role: text("role").notNull(),
+  rating: integer("rating").notNull(),
+  comment: text("comment").notNull(),
+  avatar: text("avatar"),
+  is_featured: boolean("is_featured").default(true),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Conversations Model
+export const conversations = pgTable("conversations", {
+  id: serial("id").primaryKey(),
+  student_id: integer("student_id")
+    .notNull()
+    .references(() => users.id),
+  tutor_id: integer("tutor_id")
+    .notNull()
+    .references(() => users.id),
+  last_message_at: timestamp("last_message_at").defaultNow().notNull(),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Messages Model
+export const messages = pgTable("messages", {
+  id: serial("id").primaryKey(),
+  conversation_id: integer("conversation_id")
+    .notNull()
+    .references(() => conversations.id),
+  sender_id: integer("sender_id")
+    .notNull()
+    .references(() => users.id),
+  content: text("content").notNull(),
+  read: boolean("read").default(false),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ------------------------------------------------------------------------------------------------
 // Relations for favorite tutors
 export const favoriteTutorsRelations = relations(favoriteTutors, ({ one }) => ({
   student: one(users, {
@@ -339,6 +394,18 @@ export const teachingSchedulesRelations = relations(
   })
 );
 
+export const usersRelations = relations(users, ({ one, many }) => ({
+  tutorProfile: one(tutorProfiles, {
+    fields: [users.id],
+    references: [tutorProfiles.user_id],
+  }),
+  sentMessages: many(messages),
+  studentConversations: many(conversations),
+  tutorConversations: many(conversations),
+  reviews: many(reviews),
+  favoriteTutors: many(favoriteTutors),
+}));
+
 export const tutorProfilesRelations = relations(
   tutorProfiles,
   ({ one, many }) => ({
@@ -351,6 +418,7 @@ export const tutorProfilesRelations = relations(
     courses: many(courses),
     favoritedBy: many(favoriteTutors),
     teachingSchedules: many(teachingSchedules), // Relation to teaching schedules
+    reviews: many(reviews),
   })
 );
 
@@ -460,6 +528,17 @@ export const bookingSessionsRelations = relations(
     }),
   })
 );
+
+export const reviewsRelations = relations(reviews, ({ one }) => ({
+  student: one(users, {
+    fields: [reviews.student_id],
+    references: [users.id],
+  }),
+  tutor: one(tutorProfiles, {
+    fields: [reviews.tutor_id],
+    references: [tutorProfiles.id],
+  }),
+}));
 
 export const paymentsRelations = relations(payments, ({ one }) => ({
   request: one(bookingRequests, {
@@ -592,6 +671,9 @@ export const subjectEducationLevelSelectSchema = createSelectSchema(
   subjectEducationLevels
 );
 
+export const reviewInsertSchema = createInsertSchema(reviews);
+export const reviewSelectSchema = createSelectSchema(reviews);
+
 export const bookingRequestInsertSchema = createInsertSchema(bookingRequests);
 export const bookingSessionInsertSchema = createInsertSchema(bookingSessions);
 
@@ -704,87 +786,6 @@ export const idSchema = z.object({
   id: z.string().regex(/^\d+$/, "ID phải là một số").transform(Number),
 });
 
-// Schema cho đặt lịch học (booking form)
-export const bookingSchema = z
-  .object({
-    courseId: z.string({
-      required_error: "Vui lòng chọn khóa học",
-    }),
-    tutorId: z.string({
-      required_error: "Vui lòng chọn gia sư",
-    }),
-    mode: z.enum(["online", "offline"], {
-      required_error: "Vui lòng chọn hình thức học",
-    }),
-    location: z.string().optional(),
-    note: z
-      .string()
-      .max(300, "Lời nhắn không được vượt quá 300 ký tự")
-      .optional(),
-    bookings: z
-      .array(
-        z
-          .object({
-            date: z
-              .string({
-                required_error: "Vui lòng chọn ngày học",
-              })
-              .regex(
-                /^\d{4}-\d{2}-\d{2}$/,
-                "Định dạng ngày phải là YYYY-MM-DD"
-              ),
-            startTime: z
-              .string({
-                required_error: "Vui lòng chọn giờ bắt đầu",
-              })
-              .regex(
-                /^([01]\d|2[0-3]):([0-5]\d)$/,
-                "Định dạng giờ phải là HH:mm"
-              ),
-            endTime: z
-              .string({
-                required_error: "Vui lòng chọn giờ kết thúc",
-              })
-              .regex(
-                /^([01]\d|2[0-3]):([0-5]\d)$/,
-                "Định dạng giờ phải là HH:mm"
-              ),
-          })
-          .refine(
-            (data) => {
-              // Convert time strings to comparable values
-              const [startHour, startMinute] = data.startTime
-                .split(":")
-                .map(Number);
-              const [endHour, endMinute] = data.endTime.split(":").map(Number);
-
-              // Compare times to ensure end time is after start time
-              if (endHour > startHour) return true;
-              if (endHour === startHour) return endMinute > startMinute;
-              return false;
-            },
-            {
-              message: "Thời gian kết thúc phải sau thời gian bắt đầu",
-              path: ["endTime"],
-            }
-          )
-      )
-      .min(1, { message: "Vui lòng chọn ít nhất một buổi học" }),
-  })
-  .refine(
-    (data) => {
-      // Validate that if mode is offline, location is provided
-      if (data.mode === "offline") {
-        return !!data.location && data.location.trim() !== "";
-      }
-      return true;
-    },
-    {
-      message: "Vui lòng nhập địa điểm học khi chọn hình thức học trực tiếp",
-      path: ["location"], // Path of the field where the error should be shown
-    }
-  );
-
 // Schema cho lịch một buổi (không định kỳ)
 const singleScheduleSchema = z.object({
   date: z.string({ required_error: "date is required" }),
@@ -856,4 +857,25 @@ export const schema = {
   courses,
   bookingRequests,
   bookingSessions,
+  payments,
+  sessionNotes,
+  reviews,
+  testimonials,
+  conversations,
+  messages,
+  teachingSchedules,
+  teachingRequests,
+  favoriteTutors,
+  subjectEducationLevels,
+  tutorSubjects,
+  tutorEducationLevels,
+  emailOtps,
+
+  // ✅ Export thêm các relations quan trọng
+  coursesRelations,
+  reviewsRelations,
+  tutorProfilesRelations,
+  usersRelations,
+  subjectsRelations,
+  educationLevelsRelations,
 };

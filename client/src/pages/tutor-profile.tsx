@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,21 @@ export default function TutorProfile() {
   // Get tutor details
   const { data: tutor, isLoading: tutorLoading } = useQuery<TutorProfile>({
     queryKey: [`/api/v1/tutors/${id}`],
+    queryFn: async ({ queryKey }) => {
+      const url = queryKey[0] as string;
+      const response = await fetch(url);
+      if (!response.ok) {
+        console.error(
+          "Error fetching tutor profile:",
+          response.status,
+          response.statusText
+        );
+        throw new Error(
+          `Failed to fetch tutor profile: ${response.statusText}`
+        );
+      }
+      return response.json();
+    },
   });
 
   // Get tutor's courses
@@ -76,14 +91,205 @@ export default function TutorProfile() {
     courses: TutorCourse[];
   }
 
-  const { data: coursesResponse, isLoading: coursesLoading } =
+  const {
+    data: coursesResponse,
+    isLoading: coursesLoading,
+    error: coursesError,
+  } = useQuery<CoursesResponse>({
+    queryKey: [`/api/v1/tutors/${id}/courses`],
+    queryFn: async ({ queryKey }) => {
+      const url = queryKey[0] as string;
+      console.log(`Fetching courses using URL param id: ${url}`);
+      const response = await fetch(url);
+      if (!response.ok) {
+        console.error(
+          "Error fetching tutor courses:",
+          response.status,
+          response.statusText
+        );
+        throw new Error(
+          `Failed to fetch tutor courses: ${response.statusText}`
+        );
+      }
+      const data = await response.json();
+      console.log("Courses by URL param response:", data);
+      return data;
+    },
+    enabled: !!id,
+    retry: 1,
+  });
+
+  // Fetch courses using tutor.id instead of URL param if available
+  const { data: coursesUsingTutorId, isLoading: coursesUsingTutorIdLoading } =
     useQuery<CoursesResponse>({
-      queryKey: [`/api/v1/tutors/${id}/courses`],
-      enabled: !!id,
+      queryKey: [`/api/v1/tutors/${tutor?.id}/courses`],
+      queryFn: async ({ queryKey }) => {
+        const url = queryKey[0] as string;
+        console.log(`Fetching courses using tutor.id: ${url}`);
+        const response = await fetch(url);
+        if (!response.ok) {
+          console.error(
+            "Error fetching tutor courses by tutor.id:",
+            response.status,
+            response.statusText
+          );
+          throw new Error(
+            `Failed to fetch tutor courses: ${response.statusText}`
+          );
+        }
+        const data = await response.json();
+        console.log("Courses by tutor.id response:", data);
+        return data;
+      },
+      enabled: !!tutor && !!tutor.id && tutor.id.toString() !== id,
+      retry: 2,
+      retryDelay: 1000,
     });
 
-  // Extract courses from response
-  const tutorCourses = coursesResponse?.courses || [];
+  // Extract courses from response, trying several sources to ensure we get courses
+  const tutorCourses = useMemo(() => {
+    // First check if we have courses from the direct tutor.id query
+    if (coursesUsingTutorId?.courses?.length > 0) {
+      console.log(
+        "Using courses from tutor.id query:",
+        coursesUsingTutorId.courses.length
+      );
+      return coursesUsingTutorId.courses;
+    }
+
+    // Then check if we have courses from the URL param id query
+    if (coursesResponse?.courses?.length > 0) {
+      console.log(
+        "Using courses from URL param query:",
+        coursesResponse.courses.length
+      );
+      return coursesResponse.courses;
+    }
+
+    // If nothing found, try to use courses from the tutor object itself
+    if (tutor?.courses?.length > 0) {
+      console.log("Using courses from tutor object:", tutor.courses.length);
+      return tutor.courses;
+    }
+
+    // Default to an empty array if no courses found
+    console.log("No courses found in any source, returning empty array");
+    return [];
+  }, [coursesUsingTutorId, coursesResponse, tutor]);
+
+  // If no courses found and not loading, try to fetch from API directly once
+  const [manuallyFetchedCourses, setManuallyFetchedCourses] = useState<
+    TutorCourse[]
+  >([]);
+
+  // Track whether we should be manually fetching courses
+  const shouldManuallyFetchCourses = useMemo(
+    () =>
+      tutor &&
+      !coursesLoading &&
+      !coursesUsingTutorIdLoading &&
+      tutorCourses.length === 0,
+    [tutor, coursesLoading, coursesUsingTutorIdLoading, tutorCourses.length]
+  );
+
+  useEffect(() => {
+    // Only try this as a last resort if we have a tutor but no courses
+    const shouldFetchManually =
+      shouldManuallyFetchCourses && manuallyFetchedCourses.length === 0;
+
+    if (shouldFetchManually) {
+      console.log("Attempting direct API fetch of courses as fallback");
+
+      // Try both possible URLs
+      const fetchFromBothSources = async () => {
+        try {
+          // Try by user_id
+          const userIdResponse = await fetch(
+            `/api/v1/tutors/${tutor.user?.id}/courses`
+          );
+          if (userIdResponse.ok) {
+            const data = await userIdResponse.json();
+            if (data?.courses?.length > 0) {
+              console.log(
+                "Successfully fetched courses using tutor user_id:",
+                data.courses
+              );
+              setManuallyFetchedCourses(data.courses);
+              return;
+            }
+          }
+
+          // Try by profile ID if different from initial ID
+          if (tutor.id && tutor.id !== id) {
+            const profileIdResponse = await fetch(
+              `/api/v1/tutors/${tutor.id}/courses`
+            );
+            if (profileIdResponse.ok) {
+              const data = await profileIdResponse.json();
+              if (data?.courses?.length > 0) {
+                console.log(
+                  "Successfully fetched courses using tutor profile ID:",
+                  data.courses
+                );
+                setManuallyFetchedCourses(data.courses);
+                return;
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Error during manual course fetch:", error);
+        }
+      };
+
+      fetchFromBothSources();
+    }
+  }, [
+    tutor,
+    coursesLoading,
+    coursesUsingTutorIdLoading,
+    tutorCourses,
+    manuallyFetchedCourses,
+    id,
+  ]);
+
+  // Combine all course sources
+  const allCourses =
+    tutorCourses.length > 0 ? tutorCourses : manuallyFetchedCourses;
+
+  // Debug logs
+  useEffect(() => {
+    if (tutor) {
+      console.log("Tutor profile loaded:", tutor);
+      console.log("URL param ID:", id);
+      console.log("Tutor profile ID:", tutor.id);
+      console.log("Tutor user ID:", tutor.user?.id);
+      if (tutor.courses) console.log("Courses in tutor object:", tutor.courses);
+    }
+
+    if (coursesResponse) {
+      console.log("Courses response using URL param ID:", coursesResponse);
+    }
+
+    if (coursesUsingTutorId) {
+      console.log(
+        "Courses response using tutor profile ID:",
+        coursesUsingTutorId
+      );
+    }
+
+    if (manuallyFetchedCourses.length > 0) {
+      console.log("Manually fetched courses:", manuallyFetchedCourses);
+    }
+
+    console.log("Final courses being displayed:", allCourses);
+  }, [
+    tutor,
+    id,
+    coursesResponse,
+    coursesUsingTutorId,
+    manuallyFetchedCourses,
+    allCourses,
+  ]);
 
   // Define type for reviews data
   interface Review {
@@ -260,7 +466,11 @@ export default function TutorProfile() {
     }
   };
 
-  const isLoading = tutorLoading || coursesLoading || reviewsLoading;
+  const isLoading =
+    tutorLoading ||
+    coursesLoading ||
+    coursesUsingTutorIdLoading ||
+    reviewsLoading;
 
   // Redirect if tutor not found
   useEffect(() => {
@@ -363,10 +573,10 @@ export default function TutorProfile() {
 
                     {/* Hiển thị các teaching modes từ courses */}
                     <div className="mt-2 flex flex-wrap gap-2">
-                      {tutorCourses && tutorCourses.length > 0 ? (
+                      {allCourses && allCourses.length > 0 ? (
                         Array.from(
                           new Set(
-                            tutorCourses.map(
+                            allCourses.map(
                               (course) => course?.teaching_mode || "online"
                             )
                           )
@@ -390,10 +600,10 @@ export default function TutorProfile() {
                     </div>
 
                     {/* Hiển thị giá tối thiểu từ courses */}
-                    {tutorCourses && tutorCourses.length > 0 && (
+                    {allCourses && allCourses.length > 0 && (
                       <div className="mt-2 text-xl font-semibold">
                         Học phí từ{" "}
-                        {formatPrice(getMinHourlyRate(tutorCourses) || 0)}
+                        {formatPrice(getMinHourlyRate(allCourses) || 0)}
                         <span className="text-sm text-muted-foreground">
                           /giờ
                         </span>
@@ -418,7 +628,7 @@ export default function TutorProfile() {
               <TabsList className="grid grid-cols-3 w-full">
                 <TabsTrigger value="about">Thông tin</TabsTrigger>
                 <TabsTrigger value="courses">
-                  Khóa học ({coursesResponse?.count || 0})
+                  Khóa học ({allCourses?.length || coursesResponse?.count || 0})
                 </TabsTrigger>
                 <TabsTrigger value="reviews">
                   Đánh giá ({tutor.total_reviews || 0})
@@ -439,11 +649,28 @@ export default function TutorProfile() {
               <TabsContent value="courses" className="pt-4">
                 <Card>
                   <CardContent className="p-6">
-                    {!coursesLoading &&
-                    tutorCourses &&
-                    tutorCourses.length > 0 ? (
+                    {coursesError || coursesUsingTutorIdLoading ? (
+                      <div className="text-center py-8">
+                        <div className="text-destructive mb-4">
+                          <p>Không thể tải khóa học của gia sư.</p>
+                          <p className="text-sm text-muted-foreground mt-2">
+                            {coursesError instanceof Error
+                              ? coursesError.message
+                              : "Đã xảy ra lỗi khi tải dữ liệu"}
+                          </p>
+                        </div>
+                        <Button
+                          onClick={() => window.location.reload()}
+                          variant="outline"
+                        >
+                          Tải lại trang
+                        </Button>
+                      </div>
+                    ) : !coursesLoading &&
+                      allCourses &&
+                      allCourses.length > 0 ? (
                       <div className="grid gap-6">
-                        {tutorCourses.map((course) => (
+                        {allCourses.map((course) => (
                           <div
                             key={course.id}
                             className="border rounded-lg p-4 hover:border-primary transition-colors"
@@ -539,14 +766,32 @@ export default function TutorProfile() {
                       </div>
                     ) : (
                       <div className="text-center py-8">
-                        {coursesLoading ? (
+                        {coursesLoading ||
+                        coursesUsingTutorIdLoading ||
+                        (shouldManuallyFetchCourses &&
+                          manuallyFetchedCourses.length === 0) ? (
                           <Loader2 className="h-12 w-12 mx-auto text-primary animate-spin" />
                         ) : (
                           <>
                             <Book className="h-12 w-12 mx-auto text-muted-foreground" />
                             <p className="mt-4 text-muted-foreground">
-                              Gia sư này chưa công bố khóa học nào.
+                              {tutor.courses && tutor.courses.length > 0
+                                ? "Đang tải khóa học..."
+                                : "Gia sư này chưa công bố khóa học nào."}
                             </p>
+                            <p className="mt-2 text-xs text-muted-foreground">
+                              {tutor.courses && tutor.courses.length > 0
+                                ? "Có vấn đề hiển thị khóa học, vui lòng tải lại trang"
+                                : "Vui lòng thử lại sau"}
+                            </p>
+                            {/* Add a reload button in case there's an issue with loading courses */}
+                            <Button
+                              onClick={() => window.location.reload()}
+                              variant="outline"
+                              className="mt-4"
+                            >
+                              Tải lại trang
+                            </Button>
                           </>
                         )}
                       </div>

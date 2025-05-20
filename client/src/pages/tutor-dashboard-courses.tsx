@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import {
@@ -117,6 +117,57 @@ export default function TutorDashboardCourses() {
     queryKey: [`/api/v1/education-levels`],
     enabled: true,
   });
+
+  // Fetch approved teaching requests when needed
+  const { data: approvedRequests = [], isLoading: requestsLoading } = useQuery<
+    any[]
+  >({
+    queryKey: [`/api/v1/tutors/teaching-requests?status=approved`],
+    queryFn: async () => {
+      const res = await apiRequest(
+        "GET",
+        `/api/v1/tutors/teaching-requests?status=approved`
+      );
+      const data = await res.json();
+      return data.requests || [];
+    },
+    enabled: courseDialogOpen, // Only fetch when the dialog is open
+  });
+
+  // Process the approved teaching requests to get unique subjects and levels
+  const approvedSubjects = useMemo(() => {
+    if (!approvedRequests.length) return [];
+
+    // Extract unique subjects from approved requests
+    const uniqueSubjects = Array.from(
+      new Map(
+        approvedRequests.map((request) => [request.subject.id, request.subject])
+      ).values()
+    );
+
+    return uniqueSubjects;
+  }, [approvedRequests]);
+
+  // Get levels for the selected subject
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string>("");
+
+  const approvedLevelsForSelectedSubject = useMemo(() => {
+    if (!approvedRequests.length || !selectedSubjectId) return [];
+
+    // Filter requests by the selected subject
+    const requestsForSubject = approvedRequests.filter(
+      (request) => request.subject.id.toString() === selectedSubjectId
+    );
+
+    // Extract unique levels from these requests
+    const uniqueLevels = Array.from(
+      new Map(
+        requestsForSubject.map((request) => [request.level.id, request.level])
+      ).values()
+    );
+
+    return uniqueLevels;
+  }, [approvedRequests, selectedSubjectId]);
 
   // Define the type for course response
   interface CourseResponse {
@@ -292,6 +343,37 @@ export default function TutorDashboardCourses() {
 
   const onSubmitCourse = async (data: z.infer<typeof courseSchema>) => {
     try {
+      // Validate that selected subject and level are approved
+      if (!editingCourseId) {
+        // Only check for new courses
+        const subjectApproved = approvedSubjects.some(
+          (s: any) => s.id.toString() === data.subject_id
+        );
+
+        if (!subjectApproved) {
+          toast({
+            title: "Môn học không hợp lệ",
+            description: "Vui lòng chọn một môn học đã được phê duyệt.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        const levelApproved = approvedLevelsForSelectedSubject.some(
+          (l: any) => l.id.toString() === data.level_id
+        );
+
+        if (!levelApproved) {
+          toast({
+            title: "Cấp độ không hợp lệ",
+            description:
+              "Vui lòng chọn một cấp độ đã được phê duyệt cho môn học này.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
       if (editingCourseId) {
         await updateCourseMutation.mutateAsync({ id: editingCourseId, data });
       } else {
@@ -304,6 +386,9 @@ export default function TutorDashboardCourses() {
 
   const handleEditCourse = (course: any) => {
     setEditingCourseId(course.id);
+
+    // Set selectedSubjectId so level dropdowns work correctly in edit mode
+    setSelectedSubjectId(course.subject.id.toString());
 
     courseForm.reset({
       title: course.title,
@@ -557,7 +642,16 @@ export default function TutorDashboardCourses() {
       )}
 
       {/* Course Create/Edit Dialog */}
-      <Dialog open={courseDialogOpen} onOpenChange={setCourseDialogOpen}>
+      <Dialog
+        open={courseDialogOpen}
+        onOpenChange={(open) => {
+          setCourseDialogOpen(open);
+          if (!open) {
+            // Reset state when dialog is closed
+            setSelectedSubjectId("");
+          }
+        }}
+      >
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
@@ -569,6 +663,16 @@ export default function TutorDashboardCourses() {
                 : "Tạo khóa học để học viên có thể tìm thấy bạn"}
             </DialogDescription>
           </DialogHeader>
+
+          {!editingCourseId && (
+            <Alert variant="default" className="bg-muted">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Bạn chỉ có thể tạo khóa học cho các môn học và cấp độ đã được
+                admin phê duyệt qua yêu cầu giảng dạy.
+              </AlertDescription>
+            </Alert>
+          )}
 
           <Form {...courseForm}>
             <form
@@ -622,8 +726,16 @@ export default function TutorDashboardCourses() {
                     <FormItem>
                       <FormLabel>Môn học</FormLabel>
                       <Select
-                        onValueChange={field.onChange}
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          setSelectedSubjectId(value);
+                          // Reset level when changing subject
+                          courseForm.setValue("level_id", "");
+                        }}
                         defaultValue={field.value}
+                        disabled={
+                          approvedSubjects.length === 0 || requestsLoading
+                        }
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -631,16 +743,32 @@ export default function TutorDashboardCourses() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {subjects?.map((subject: any) => (
-                            <SelectItem
-                              key={subject.id}
-                              value={subject.id.toString()}
-                            >
-                              {subject.name}
+                          {requestsLoading ? (
+                            <SelectItem value="loading" disabled>
+                              Đang tải...
                             </SelectItem>
-                          ))}
+                          ) : approvedSubjects.length === 0 ? (
+                            <SelectItem value="none" disabled>
+                              Không có môn học được phê duyệt
+                            </SelectItem>
+                          ) : (
+                            approvedSubjects.map((subject: any) => (
+                              <SelectItem
+                                key={subject.id}
+                                value={subject.id.toString()}
+                              >
+                                {subject.name}
+                              </SelectItem>
+                            ))
+                          )}
                         </SelectContent>
                       </Select>
+                      {approvedSubjects.length === 0 && !requestsLoading && (
+                        <FormDescription className="text-amber-500">
+                          Bạn chưa được phê duyệt để dạy bất kỳ môn học nào. Vui
+                          lòng gửi yêu cầu giảng dạy trước.
+                        </FormDescription>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}
@@ -655,6 +783,10 @@ export default function TutorDashboardCourses() {
                       <Select
                         onValueChange={field.onChange}
                         defaultValue={field.value}
+                        disabled={
+                          !selectedSubjectId ||
+                          approvedLevelsForSelectedSubject.length === 0
+                        }
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -662,16 +794,35 @@ export default function TutorDashboardCourses() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {educationLevels?.map((level: any) => (
-                            <SelectItem
-                              key={level.id}
-                              value={level.id.toString()}
-                            >
-                              {level.name}
+                          {!selectedSubjectId ? (
+                            <SelectItem value="none" disabled>
+                              Chọn môn học trước
                             </SelectItem>
-                          ))}
+                          ) : approvedLevelsForSelectedSubject.length === 0 ? (
+                            <SelectItem value="none" disabled>
+                              Không có cấp độ được phê duyệt cho môn học này
+                            </SelectItem>
+                          ) : (
+                            approvedLevelsForSelectedSubject.map(
+                              (level: any) => (
+                                <SelectItem
+                                  key={level.id}
+                                  value={level.id.toString()}
+                                >
+                                  {level.name}
+                                </SelectItem>
+                              )
+                            )
+                          )}
                         </SelectContent>
                       </Select>
+                      {selectedSubjectId &&
+                        approvedLevelsForSelectedSubject.length === 0 && (
+                          <FormDescription className="text-amber-500">
+                            Bạn chưa được phê duyệt để dạy cấp độ nào cho môn
+                            học này.
+                          </FormDescription>
+                        )}
                       <FormMessage />
                     </FormItem>
                   )}

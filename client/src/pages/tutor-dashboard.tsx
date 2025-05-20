@@ -884,7 +884,7 @@ export default function TutorDashboard() {
                       {tutorProfile.subjects &&
                       tutorProfile.subjects.length > 0 ? (
                         <div className="flex flex-wrap gap-2">
-                          {tutorProfile.subjects.map((subject: any) => (
+                          {tutorProfile.subjects.map((subject) => (
                             <Badge
                               key={subject.id}
                               variant="secondary"

@@ -23,6 +23,19 @@ import {
 import { Star, Calendar, Clock, HeartOff } from "lucide-react";
 import { tutorProfiles } from "@shared/schema";
 
+interface TutorProfile {
+  id: number;
+  user_id: number;
+  bio: string;
+  hourly_rate: string | number;
+  teaching_mode?: string;
+  rating?: number | string;
+  availability?: string;
+  education?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 interface FeaturedTutorUser {
   id: number;
   name?: string;
@@ -45,44 +58,20 @@ interface FeaturedTutor {
   id: number;
   user_id: number;
   bio: string;
+  hourly_rate: string;
+  teaching_mode: string;
   rating: string;
   user: FeaturedTutorUser;
   subjects: FeaturedTutorSubject[];
   is_featured?: boolean;
   education?: string;
   availability?: string;
-  courses?: {
-    id: number;
-    teaching_mode: string;
-    hourly_rate: number | string;
-  }[];
 }
 
-// Định nghĩa lại ExtendedTutorProfile để tương thích với TutorProfile nhưng bao gồm các trường cần thiết
-interface ExtendedTutorProfile {
-  id: number | string;
-  user_id?: number; // Optional để tương thích với TutorProfile
-  bio?: string;
-  rating: number | string;
-  is_verified?: boolean;
-  total_reviews?: number;
-  is_featured?: boolean;
-  education?: string;
-  availability?: string;
+interface ExtendedTutorProfile extends TutorProfile {
   subjects?: any[];
-  user?: {
-    id?: number;
-    name?: string;
-    first_name?: string;
-    last_name?: string;
-    avatar?: string | null;
-  };
-  courses?: {
-    id: number;
-    teaching_mode: string;
-    hourly_rate: number | string;
-  }[];
-  [key: string]: any; // Để tương thích với các property khác
+  user?: any;
+  is_featured?: boolean;
 }
 
 // Interface for favorite tutors from student dashboard
@@ -90,6 +79,8 @@ export interface FavoriteDashboardTutor {
   id: number;
   user_id: number;
   bio: string;
+  hourly_rate: string | number;
+  teaching_mode?: string;
   rating?: number | string;
   availability?: string;
   education?: string;
@@ -101,11 +92,6 @@ export interface FavoriteDashboardTutor {
   };
   subjects?: any[];
   is_featured?: boolean;
-  courses?: {
-    id: number;
-    teaching_mode: string;
-    hourly_rate: number | string;
-  }[];
   [key: string]: any;
 }
 
@@ -132,7 +118,7 @@ export default function TutorCard({
   // Helper function to determine tutor name
   const getTutorName = () => {
     if ("user" in tutor && tutor.user) {
-      if ("name" in tutor.user && tutor.user.name) {
+      if ("name" in tutor.user) {
         return tutor.user.name;
       } else if (tutor.user.first_name && tutor.user.last_name) {
         return `${tutor.user.first_name} ${tutor.user.last_name}`;
@@ -144,45 +130,15 @@ export default function TutorCard({
   // Helper function to get tutor avatar
   const getTutorAvatar = () => {
     if ("user" in tutor && tutor.user) {
-      return tutor.user.avatar ?? undefined;
+      return tutor.user.avatar;
     }
-    return undefined;
+    return "";
   };
 
   // Helper function to get avatar fallback
   const getAvatarFallback = () => {
     const name = getTutorName();
     return name ? name[0] : "T";
-  };
-
-  // Helper function to safely check if tutor has courses with teaching modes
-  const getTeachingModes = () => {
-    if (tutor.courses && tutor.courses.length > 0) {
-      return Array.from(new Set(tutor.courses.map((c) => c.teaching_mode)));
-    }
-    return [];
-  };
-
-  // Helper function to get minimum hourly rate from courses
-  const getMinHourlyRate = () => {
-    if (tutor.courses && tutor.courses.length > 0) {
-      // Chuyển đổi tất cả hourly_rate thành số để so sánh
-      const numericRates = tutor.courses.map((course) => {
-        const rate =
-          typeof course.hourly_rate === "string"
-            ? parseFloat(course.hourly_rate)
-            : course.hourly_rate;
-
-        return isNaN(rate as number) ? Infinity : rate;
-      });
-
-      // Lọc bỏ các giá trị Infinity và lấy giá trị nhỏ nhất
-      const validRates = numericRates.filter((rate) => rate !== Infinity);
-      return validRates.length > 0
-        ? Math.min(...(validRates as number[]))
-        : null;
-    }
-    return null;
   };
 
   if (compact) {
@@ -202,13 +158,11 @@ export default function TutorCard({
               </div>
             </div>
             <p className="text-sm text-muted-foreground truncate">
-              {/* {tutor.education || ""} */}
+              {tutor.education || ""}
             </p>
             <div className="flex items-center justify-between mt-1 flex-wrap">
               <p className="text-secondary font-medium text-sm mr-2">
-                {getMinHourlyRate()
-                  ? formatPrice(getMinHourlyRate() as number)
-                  : "Liên hệ"}
+                {formatPrice(tutor.hourly_rate)}
                 <span className="text-xs text-muted-foreground">/giờ</span>
               </p>
               <div className="flex items-center gap-1 flex-shrink-0 ml-auto">
@@ -237,9 +191,7 @@ export default function TutorCard({
                       <AlertDialogFooter>
                         <AlertDialogCancel>Hủy</AlertDialogCancel>
                         <AlertDialogAction
-                          onClick={() =>
-                            onRemoveFromFavorites(Number(tutor.id))
-                          }
+                          onClick={() => onRemoveFromFavorites(tutor.id)}
                           className="bg-red-600 hover:bg-red-700"
                         >
                           Xóa
@@ -294,8 +246,8 @@ export default function TutorCard({
             <span className="text-sm ml-1">{tutor.rating}</span>
           </div>
         </div>
-        <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
-          {tutor.bio || ""}
+        <p className="text-muted-foreground text-sm mb-3">
+          {tutor.bio || tutor.education || ""}
         </p>
         <div className="flex flex-wrap gap-2 mb-4">
           {tutor.subjects &&
@@ -308,20 +260,15 @@ export default function TutorCard({
                 {subject.name}
               </Badge>
             ))}
-
-          {/* Hiển thị các phương thức giảng dạy từ các khóa học */}
-          {getTeachingModes().map((mode) => (
-            <Badge
-              key={mode}
-              className="bg-primary-light/20 text-primary-dark hover:bg-primary-light/30"
-            >
-              {mode === "online"
+          {tutor.teaching_mode && (
+            <Badge className="bg-primary-light/20 text-primary-dark hover:bg-primary-light/30">
+              {tutor.teaching_mode === "online"
                 ? "Online"
-                : mode === "offline"
+                : tutor.teaching_mode === "offline"
                 ? "Tại nhà"
-                : "Online & Tại nhà"}
+                : "Online/Offline"}
             </Badge>
-          ))}
+          )}
         </div>
 
         {tutor.availability && (
@@ -339,15 +286,10 @@ export default function TutorCard({
         )}
         <div className="mt-auto flex items-center justify-between">
           <div>
-            {/* Hiển thị giá thấp nhất từ các khóa học (nếu có) */}
-            {getMinHourlyRate() ? (
-              <span className="text-secondary font-medium">
-                {`Từ ${formatPrice(getMinHourlyRate() as number)}`}
-                <span className="text-xs text-muted-foreground">/giờ</span>
-              </span>
-            ) : (
-              <span className="text-muted-foreground">Liên hệ để biết giá</span>
-            )}
+            <span className="text-secondary font-medium">
+              {formatPrice(tutor.hourly_rate)}
+            </span>
+            <span className="text-muted-foreground text-sm">/giờ</span>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             {isFavorite && onRemoveFromFavorites && (
@@ -374,7 +316,7 @@ export default function TutorCard({
                   <AlertDialogFooter>
                     <AlertDialogCancel>Hủy</AlertDialogCancel>
                     <AlertDialogAction
-                      onClick={() => onRemoveFromFavorites(Number(tutor.id))}
+                      onClick={() => onRemoveFromFavorites(tutor.id)}
                       className="bg-red-600 hover:bg-red-700"
                     >
                       Xóa
