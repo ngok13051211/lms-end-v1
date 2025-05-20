@@ -17,6 +17,7 @@ import paymentRoutes from "./routes/payments";
 import scheduleRoutes from "./routes/schedules";
 import subjectRoutes from "./routes/subjects";
 import adminRoutes from "./routes/admin";
+import adminSummaryRoutes from "./routes/adminSummary";
 import docsRoutes from "./routes/docs";
 import verificationRoutes from "./routes/verification";
 
@@ -98,6 +99,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use(`${apiPrefix}/schedules`, scheduleRoutes);
   app.use(`${apiPrefix}/subjects`, subjectRoutes);
   app.use(`${apiPrefix}/admin`, adminRoutes);
+  app.use(`${apiPrefix}/admin/summary`, adminSummaryRoutes); // Admin dashboard summary routes
   app.use(`${apiPrefix}/verify`, verificationRoutes); // Route xác thực email
   app.use(`${apiPrefix}`, docsRoutes); // Route tài liệu API
 

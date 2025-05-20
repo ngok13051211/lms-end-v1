@@ -40,8 +40,6 @@ interface TeachingRequest {
   tutor_profile: {
     id: number;
     bio?: string;
-    date_of_birth?: string;
-    address?: string;
     user: {
       id: number;
       first_name?: string;
@@ -49,12 +47,14 @@ interface TeachingRequest {
       email: string;
       phone?: string;
       avatar?: string;
+      date_of_birth?: string; // Chuyển vào đây
+      address?: string;       // Chuyển vào đây
     };
   };
   introduction: string;
   experience: string;
-  certifications?: string; // JSON string chứa mảng các URL
-  status: string; // "pending", "approved", "rejected"
+  certifications?: string;
+  status: string;
   approved_by?: number;
   rejection_reason?: string;
   created_at: string;
@@ -171,6 +171,7 @@ export default function AdminTutorVerification() {
 
   // Hiển thị chi tiết yêu cầu giảng dạy
   const handleViewRequestDetail = (request: TeachingRequest) => {
+    console.log("Selected request:", request); // Debug log
     setSelectedRequest(request);
     setDetailsOpen(true);
   };
@@ -292,91 +293,7 @@ export default function AdminTutorVerification() {
       ]),
       status: "pending",
       created_at: "2025-05-10T10:30:00Z"
-    },
-    {
-      id: 2,
-      subject: {
-        id: 2,
-        name: "Tiếng Anh"
-      },
-      level: {
-        id: 3,
-        name: "Đại học"
-      },
-      tutor_profile: {
-        id: 2,
-        bio: "Giảng viên đại học với chuyên môn ngôn ngữ Anh",
-        date_of_birth: "1985-08-20",
-        address: "Quận 3, TP HCM",
-        user: {
-          id: 102,
-          first_name: "Trần",
-          last_name: "Thị B",
-          email: "tranthib@example.com",
-          avatar: "https://ui-avatars.com/api/?name=Tran+Thi+B",
-          phone: "0987654321"
-        }
-      },
-      introduction: "Tôi là giảng viên đại học chuyên ngành Ngôn ngữ Anh với hơn 10 năm kinh nghiệm. Tôi đã hướng dẫn nhiều sinh viên đạt chứng chỉ IELTS và TOEFL.",
-      experience: "10 năm giảng dạy tại đại học, 5 năm làm việc tại trung tâm ngoại ngữ.",
-      certifications: JSON.stringify([
-        "https://example.com/cert3.pdf",
-        "https://example.com/cert4.jpg"
-      ]),
-      status: "pending",
-      created_at: "2025-05-12T14:25:00Z"
-    },
-    {
-      id: 3,
-      subject: {
-        id: 3,
-        name: "Vật lý"
-      },
-      level: {
-        id: 2,
-        name: "Trung học phổ thông"
-      },
-      tutor_profile: {
-        id: 3,
-        user: {
-          id: 103,
-          first_name: "Lê",
-          last_name: "Văn C",
-          email: "levanc@example.com",
-          avatar: "https://ui-avatars.com/api/?name=Le+Van+C",
-        }
-      },
-      introduction: "Tôi là giáo viên vật lý với kinh nghiệm 3 năm giảng dạy tại các trường THPT.",
-      experience: "3 năm giảng dạy tại trường THPT, thường xuyên tham gia các hoạt động bồi dưỡng học sinh giỏi.",
-      status: "pending",
-      created_at: "2025-05-13T09:15:00Z"
-    },
-    {
-      id: 4,
-      subject: {
-        id: 4,
-        name: "Hóa học"
-      },
-      level: {
-        id: 2,
-        name: "Trung học phổ thông"
-      },
-      tutor_profile: {
-        id: 4,
-        user: {
-          id: 104,
-          first_name: "Phạm",
-          last_name: "Thị D",
-          email: "phamthid@example.com",
-          avatar: "https://ui-avatars.com/api/?name=Pham+Thi+D",
-        }
-      },
-      introduction: "Chuyên gia hóa học với kinh nghiệm giảng dạy phong phú.",
-      experience: "4 năm giảng dạy tại các trung tâm luyện thi đại học.",
-      status: "pending",
-      created_at: "2025-05-14T11:20:00Z"
-    }
-  ];
+    }];
   // Sử dụng dữ liệu API trong production hoặc dữ liệu mẫu trong development
   const displayPendingRequests = pendingRequests.length > 0 ? pendingRequests : mockPendingRequests; return (
     <DashboardLayout>
@@ -601,10 +518,17 @@ export default function AdminTutorVerification() {
                     </Badge>
                   </div>
                 </div>
-
+                {selectedRequest.tutor_profile.bio && (
+                  <div>
+                    <h4 className="font-medium text-sm mb-1 flex items-center">
+                      <Info className="h-4 w-4 mr-1" /> Giới thiệu bản thân
+                    </h4>
+                    <p className="text-sm text-muted-foreground">{selectedRequest.tutor_profile.bio}</p>
+                  </div>
+                )}
                 <div>
                   <h4 className="font-medium text-sm mb-1 flex items-center">
-                    <Info className="h-4 w-4 mr-1" /> Giới thiệu
+                    <Info className="h-4 w-4 mr-1" /> Giới thiệu trong lĩnh vực
                   </h4>
                   <p className="text-sm text-muted-foreground whitespace-pre-wrap">{selectedRequest.introduction}</p>
                 </div>
@@ -616,30 +540,23 @@ export default function AdminTutorVerification() {
                   <p className="text-sm text-muted-foreground whitespace-pre-wrap">{selectedRequest.experience}</p>
                 </div>
 
-                {selectedRequest.tutor_profile.bio && (
-                  <div>
-                    <h4 className="font-medium text-sm mb-1 flex items-center">
-                      <Info className="h-4 w-4 mr-1" /> Giới thiệu bản thân
-                    </h4>
-                    <p className="text-sm text-muted-foreground">{selectedRequest.tutor_profile.bio}</p>
-                  </div>
-                )}
 
-                {selectedRequest.tutor_profile.date_of_birth && (
+
+                {selectedRequest.tutor_profile.user.date_of_birth && (
                   <div>
                     <h4 className="font-medium text-sm mb-1 flex items-center">
                       <Calendar className="h-4 w-4 mr-1" /> Ngày sinh
                     </h4>
-                    <p className="text-sm text-muted-foreground">{selectedRequest.tutor_profile.date_of_birth}</p>
+                    <p className="text-sm text-muted-foreground">{selectedRequest.tutor_profile.user.date_of_birth}</p>
                   </div>
                 )}
 
-                {selectedRequest.tutor_profile.address && (
+                {selectedRequest.tutor_profile.user.address && (
                   <div>
                     <h4 className="font-medium text-sm mb-1 flex items-center">
                       <MapPin className="h-4 w-4 mr-1" /> Địa chỉ
                     </h4>
-                    <p className="text-sm text-muted-foreground">{selectedRequest.tutor_profile.address}</p>
+                    <p className="text-sm text-muted-foreground">{selectedRequest.tutor_profile.user.address}</p>
                   </div>
                 )}
 

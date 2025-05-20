@@ -17,97 +17,89 @@ import {
   ChevronRight,
   TrendingUp,
   ArrowUpRight,
+  AlertCircle,
 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import UserGrowthChart from "@/components/admin/UserGrowthChart";
 
-// Interface cho thống kê quản trị
-interface AdminStats {
-  total_users: number;
-  active_tutors: number;
-  total_courses: number;
-  total_bookings: number;
+// Interface cho thống kê tổng quan
+interface DashboardOverview {
+  totalUsers: number;
+  activeTutors: number;
+  totalCourses: number;
+  totalBookings: number;
 }
 
 // Interface cho hoạt động gần đây
 interface RecentActivity {
   id: number;
   type: string;
+  title?: string;
   description: string;
-  created_at: string;
-  user?: {
-    id: number;
-    first_name: string;
-    last_name: string;
-    avatar?: string;
-  };
+  createdAt: string;
+  updatedAt?: string;
+  tutorId?: number;
+  studentId?: number;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  username?: string;
+}
+
+interface GroupedActivities {
+  tutorVerifications: RecentActivity[];
+  newUsers: RecentActivity[];
+  newCourses: RecentActivity[];
+  newBookings: RecentActivity[];
+}
+
+interface RecentActivitiesResponse {
+  groupedActivities: GroupedActivities;
+  recentActivities: RecentActivity[];
 }
 
 export default function AdminDashboard() {
   const { user } = useSelector((state: RootState) => state.auth);
+  const [error, setError] = useState<string | null>(null);
 
-  // Truy vấn thống kê
-  const { data: stats, isLoading: statsLoading } = useQuery<AdminStats>({
-    queryKey: ["/api/v1/admin/stats"],
-    enabled: false, // Disable API call for now
+  // Truy vấn thống kê tổng quan
+  const {
+    data: dashboardStats,
+    isLoading: statsLoading,
+    isError: statsError
+  } = useQuery<DashboardOverview>({
+    queryKey: ["adminDashboardOverview"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", '/api/v1/admin/summary/overview');
+      return await response.json();
+    },
+    onError: (error: Error) => {
+      console.error("Lỗi khi lấy thống kê tổng quan:", error);
+      setError("Không thể tải thông tin thống kê. Vui lòng thử lại sau.");
+    },
+    refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000, // 5 phút
   });
 
   // Truy vấn hoạt động gần đây
-  const { data: recentActivity, isLoading: activityLoading } = useQuery<RecentActivity[]>({
-    queryKey: ["/api/v1/admin/recent-activity"],
-    enabled: false, // Disable API call for now
+  const {
+    data: recentActivitiesData,
+    isLoading: activitiesLoading,
+    isError: activitiesError
+  } = useQuery<RecentActivitiesResponse>({
+    queryKey: ["adminRecentActivities"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", '/api/v1/admin/summary/recent-activities');
+      return await response.json();
+    },
+    onError: (error: Error) => {
+      console.error("Lỗi khi lấy hoạt động gần đây:", error);
+      setError("Không thể tải hoạt động gần đây. Vui lòng thử lại sau.");
+    },
+    refetchOnWindowFocus: false,
+    staleTime: 60 * 1000, // 1 phút
   });
-
-  // Dữ liệu mẫu
-  const mockStats: AdminStats = {
-    total_users: 1205,
-    active_tutors: 87,
-    total_courses: 156,
-    total_bookings: 358
-  };
-
-  const mockRecentActivity: RecentActivity[] = [
-    {
-      id: 1,
-      type: "verification",
-      description: "Chấp nhận yêu cầu xác minh gia sư",
-      created_at: "2025-05-15T10:30:00Z",
-      user: {
-        id: 101,
-        first_name: "Nguyễn",
-        last_name: "Văn A",
-        avatar: "https://ui-avatars.com/api/?name=Nguyen+Van+A",
-      }
-    },
-    {
-      id: 2,
-      type: "user",
-      description: "Người dùng mới đăng ký",
-      created_at: "2025-05-15T09:20:00Z",
-      user: {
-        id: 104,
-        first_name: "Phạm",
-        last_name: "Minh D",
-        avatar: "https://ui-avatars.com/api/?name=Pham+Minh+D",
-      }
-    },
-    {
-      id: 3,
-      type: "booking",
-      description: "Đặt lịch mới được tạo",
-      created_at: "2025-05-14T16:45:00Z"
-    },
-    {
-      id: 4,
-      type: "course",
-      description: "Khóa học mới được tạo",
-      created_at: "2025-05-14T14:30:00Z",
-      user: {
-        id: 102,
-        first_name: "Trần",
-        last_name: "Thị B",
-        avatar: "https://ui-avatars.com/api/?name=Tran+Thi+B",
-      }
-    }
-  ];
 
   // Định dạng ngày giờ
   const formatDate = (dateString: string) => {
@@ -121,11 +113,25 @@ export default function AdminDashboard() {
     });
   };
 
-  // Sử dụng dữ liệu API hoặc dữ liệu mẫu
-  const displayStats = stats || mockStats;
-  const displayRecentActivity = recentActivity || mockRecentActivity;
+  // Kiểm tra lỗi và hiển thị thông báo
+  if ((statsError || activitiesError) && error) {
+    return (
+      <DashboardLayout>
+        <div className="p-6 max-w-7xl mx-auto">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Lỗi</AlertTitle>
+            <AlertDescription>
+              {error}
+            </AlertDescription>
+          </Alert>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
-  if (statsLoading || activityLoading) {
+  // Hiển thị màn hình loading khi đang tải dữ liệu
+  if (statsLoading && activitiesLoading) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center min-h-[60vh]">
@@ -148,6 +154,7 @@ export default function AdminDashboard() {
 
         {/* Thống kê tổng quan */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Tổng người dùng */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -155,19 +162,30 @@ export default function AdminDashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <Users className="h-5 w-5 text-primary mr-2" />
-                  <span className="text-2xl font-bold">{displayStats.total_users}</span>
+              {statsLoading ? (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <Users className="h-5 w-5 text-gray-300 mr-2" />
+                    <Skeleton className="h-8 w-16" />
+                  </div>
+                  <Skeleton className="h-6 w-12" />
                 </div>
-                <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full flex items-center">
-                  <ArrowUpRight className="h-3 w-3 mr-1" />
-                  12%
-                </span>
-              </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <Users className="h-5 w-5 text-primary mr-2" />
+                    <span className="text-2xl font-bold">{dashboardStats?.totalUsers || 0}</span>
+                  </div>
+                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full flex items-center">
+                    <ArrowUpRight className="h-3 w-3 mr-1" />
+                    12%
+                  </span>
+                </div>
+              )}
             </CardContent>
           </Card>
 
+          {/* Gia sư đang hoạt động */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -175,19 +193,30 @@ export default function AdminDashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <UserCheck className="h-5 w-5 text-primary mr-2" />
-                  <span className="text-2xl font-bold">{displayStats.active_tutors}</span>
+              {statsLoading ? (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <UserCheck className="h-5 w-5 text-gray-300 mr-2" />
+                    <Skeleton className="h-8 w-16" />
+                  </div>
+                  <Skeleton className="h-6 w-12" />
                 </div>
-                <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full flex items-center">
-                  <ArrowUpRight className="h-3 w-3 mr-1" />
-                  8%
-                </span>
-              </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <UserCheck className="h-5 w-5 text-primary mr-2" />
+                    <span className="text-2xl font-bold">{dashboardStats?.activeTutors || 0}</span>
+                  </div>
+                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full flex items-center">
+                    <ArrowUpRight className="h-3 w-3 mr-1" />
+                    8%
+                  </span>
+                </div>
+              )}
             </CardContent>
           </Card>
 
+          {/* Khóa học */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -195,19 +224,30 @@ export default function AdminDashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <BookOpen className="h-5 w-5 text-primary mr-2" />
-                  <span className="text-2xl font-bold">{displayStats.total_courses}</span>
+              {statsLoading ? (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <BookOpen className="h-5 w-5 text-gray-300 mr-2" />
+                    <Skeleton className="h-8 w-16" />
+                  </div>
+                  <Skeleton className="h-6 w-12" />
                 </div>
-                <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full flex items-center">
-                  <ArrowUpRight className="h-3 w-3 mr-1" />
-                  15%
-                </span>
-              </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <BookOpen className="h-5 w-5 text-primary mr-2" />
+                    <span className="text-2xl font-bold">{dashboardStats?.totalCourses || 0}</span>
+                  </div>
+                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full flex items-center">
+                    <ArrowUpRight className="h-3 w-3 mr-1" />
+                    15%
+                  </span>
+                </div>
+              )}
             </CardContent>
           </Card>
 
+          {/* Đặt lịch */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -215,37 +255,32 @@ export default function AdminDashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <CalendarCheck className="h-5 w-5 text-primary mr-2" />
-                  <span className="text-2xl font-bold">{displayStats.total_bookings}</span>
+              {statsLoading ? (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <CalendarCheck className="h-5 w-5 text-gray-300 mr-2" />
+                    <Skeleton className="h-8 w-16" />
+                  </div>
+                  <Skeleton className="h-6 w-12" />
                 </div>
-                <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full flex items-center">
-                  <ArrowUpRight className="h-3 w-3 mr-1" />
-                  20%
-                </span>
-              </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <CalendarCheck className="h-5 w-5 text-primary mr-2" />
+                    <span className="text-2xl font-bold">{dashboardStats?.totalBookings || 0}</span>
+                  </div>
+                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full flex items-center">
+                    <ArrowUpRight className="h-3 w-3 mr-1" />
+                    20%
+                  </span>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
 
         {/* Biểu đồ tăng trưởng */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Tăng trưởng nền tảng</CardTitle>
-            <CardDescription>
-              Tổng quan về tăng trưởng người dùng và hoạt động trong 30 ngày qua
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="h-80 flex items-center justify-center">
-            <div className="text-center">
-              <TrendingUp className="h-16 w-16 mx-auto text-muted-foreground" />
-              <p className="mt-4 text-muted-foreground">
-                Biểu đồ tăng trưởng sẽ được hiển thị ở đây
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <UserGrowthChart />
 
         {/* Hoạt động gần đây */}
         <Card>
@@ -256,40 +291,47 @@ export default function AdminDashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {displayRecentActivity.length === 0 ? (
-              <div className="text-center py-8">
-                <Clock className="h-12 w-12 mx-auto text-muted-foreground" />
-                <p className="mt-2 text-muted-foreground">Không có hoạt động gần đây</p>
-              </div>
-            ) : (
+            {activitiesLoading ? (
               <div className="space-y-3">
-                {displayRecentActivity.map((activity) => (
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div key={index} className="flex items-center py-2 border-b last:border-b-0">
+                    <Skeleton className="h-10 w-10 rounded-full" />
+                    <div className="ml-4 flex-1">
+                      <Skeleton className="h-5 w-3/4 mb-2" />
+                      <Skeleton className="h-3 w-1/3" />
+                    </div>
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                ))}
+              </div>
+            ) : recentActivitiesData && recentActivitiesData.recentActivities.length > 0 ? (
+              <div className="space-y-3">
+                {recentActivitiesData.recentActivities.slice(0, 10).map((activity) => (
                   <div key={activity.id} className="flex items-center py-2 border-b last:border-b-0">
                     <div className="h-10 w-10 rounded-full flex items-center justify-center bg-muted">
-                      {activity.type === "verification" && <UserCheck className="h-5 w-5 text-primary" />}
-                      {activity.type === "user" && <Users className="h-5 w-5 text-blue-500" />}
-                      {activity.type === "booking" && <CalendarCheck className="h-5 w-5 text-green-500" />}
-                      {activity.type === "course" && <BookOpen className="h-5 w-5 text-orange-500" />}
+                      {activity.type === "tutor_verification" && <UserCheck className="h-5 w-5 text-primary" />}
+                      {activity.type === "new_user" && <Users className="h-5 w-5 text-blue-500" />}
+                      {activity.type === "new_booking" && <CalendarCheck className="h-5 w-5 text-green-500" />}
+                      {activity.type === "new_course" && <BookOpen className="h-5 w-5 text-orange-500" />}
                     </div>
                     <div className="ml-4 flex-1">
                       <p className="text-sm font-medium">{activity.description}</p>
-                      {activity.user && (
+                      {activity.firstName && activity.lastName && (
                         <div className="flex items-center mt-1">
                           <Avatar className="h-5 w-5 mr-1">
-                            <AvatarImage src={activity.user.avatar} alt={`${activity.user.first_name} ${activity.user.last_name}`} />
                             <AvatarFallback className="text-xs">
-                              {activity.user.first_name[0]}
-                              {activity.user.last_name[0]}
+                              {activity.firstName[0]}
+                              {activity.lastName[0]}
                             </AvatarFallback>
                           </Avatar>
                           <span className="text-xs text-muted-foreground">
-                            {activity.user.first_name} {activity.user.last_name}
+                            {activity.firstName} {activity.lastName}
                           </span>
                         </div>
                       )}
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      {formatDate(activity.created_at)}
+                      {formatDate(activity.createdAt)}
                     </div>
                   </div>
                 ))}
@@ -300,6 +342,11 @@ export default function AdminDashboard() {
                     <ChevronRight className="ml-2 h-4 w-4" />
                   </Button>
                 </div>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Clock className="h-12 w-12 mx-auto text-muted-foreground" />
+                <p className="mt-2 text-muted-foreground">Không có hoạt động gần đây</p>
               </div>
             )}
           </CardContent>

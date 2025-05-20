@@ -11,6 +11,7 @@ import {
   not,
   sql,
   isNull,
+  ne,
 } from "drizzle-orm";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
@@ -1726,6 +1727,7 @@ export const getTeachingRequests = async (req: Request, res: Response) => {
 export const getPendingTeachingRequests = async (req: Request, res: Response) => {
   try {
     // Truy vấn danh sách teaching_requests với trạng thái pending
+    console.log("Fetching pending teaching requests...");
     const pendingRequests = await db.query.teachingRequests.findMany({
       where: eq(schema.teachingRequests.status, "pending"),
       with: {
@@ -1739,6 +1741,20 @@ export const getPendingTeachingRequests = async (req: Request, res: Response) =>
       },
       orderBy: (requests, { desc }) => [desc(requests.created_at)],
     });
+    console.log("Pending requests:", pendingRequests);
+
+    // Log dữ liệu gốc để dễ debug
+    console.log("Sample tutor info (first request):",
+      pendingRequests.length > 0 ? {
+        tutor_id: pendingRequests[0].tutor.id,
+        user_id: pendingRequests[0].tutor.user.id,
+        bio: pendingRequests[0].tutor.bio,
+        user: {
+          date_of_birth: pendingRequests[0].tutor.user.date_of_birth,
+          address: pendingRequests[0].tutor.user.address
+        }
+      } : "No pending requests"
+    );
 
     // Chuyển đổi dữ liệu để phù hợp với cấu trúc mà frontend mong đợi
     const formattedRequests = pendingRequests.map(request => ({
@@ -1748,15 +1764,16 @@ export const getPendingTeachingRequests = async (req: Request, res: Response) =>
       tutor_profile: {
         id: request.tutor.id,
         bio: request.tutor.bio,
-        date_of_birth: request.tutor.availability, // Sử dụng trường availability để lưu trữ ngày sinh
-        address: request.tutor.availability, // Sử dụng trường availability để lưu trữ địa chỉ
+
         user: {
           id: request.tutor.user.id,
           first_name: request.tutor.user.first_name,
           last_name: request.tutor.user.last_name,
           email: request.tutor.user.email,
           phone: request.tutor.user.phone,
-          avatar: request.tutor.user.avatar
+          avatar: request.tutor.user.avatar,
+          date_of_birth: request.tutor.user.date_of_birth, // Lấy date_of_birth từ user, không phải từ availability
+          address: request.tutor.user.address // Lấy address từ user, không phải từ availability
         }
       },
       introduction: request.introduction,
@@ -1765,6 +1782,7 @@ export const getPendingTeachingRequests = async (req: Request, res: Response) =>
       status: request.status,
       created_at: request.created_at
     }));
+    console.log("Pending requests:", formattedRequests);
 
     return res.status(200).json(formattedRequests);
   } catch (error) {
@@ -1837,6 +1855,26 @@ export const approveTeachingRequest = async (req: Request, res: Response) => {
         level_id: request.level_id,
         created_at: new Date(),
       });
+    }
+
+    // Kiểm tra xem đây có phải là lần đầu tiên gia sư này được chấp nhận yêu cầu giảng dạy không
+    // Lấy tổng số yêu cầu đã được chấp nhận của gia sư (không bao gồm yêu cầu hiện tại)
+    const previousApprovedRequests = await db.query.teachingRequests.findMany({
+      where: and(
+        eq(schema.teachingRequests.tutor_id, request.tutor_id),
+        eq(schema.teachingRequests.status, "approved"),
+        ne(schema.teachingRequests.id, requestId)
+      ),
+    });
+
+    // Nếu không có yêu cầu nào được chấp nhận trước đó, thì đây là lần đầu tiên
+    // Cập nhật trạng thái is_verified của gia sư thành true
+    if (previousApprovedRequests.length === 0) {
+      console.log(`Đây là lần đầu tiên gia sư (id: ${request.tutor_id}) được chấp nhận yêu cầu giảng dạy. Cập nhật is_verified = true.`);
+      await db.update(schema.tutorProfiles).set({
+        is_verified: true,
+        updated_at: new Date(),
+      }).where(eq(schema.tutorProfiles.id, request.tutor_id));
     }
 
     return res.status(200).json({
@@ -2038,9 +2076,8 @@ export const handleTeachingRequest = async (req: Request, res: Response) => {
     if (!tutorProfile) {
       return res.status(404).json({ message: "Không tìm thấy hồ sơ gia sư của bạn" });
     }
-
     // Kiểm tra xem đã có yêu cầu đang chờ duyệt với môn học và cấp độ này chưa
-    const existingRequest = await db.query.teachingRequests.findFirst({
+    const existingPendingRequest = await db.query.teachingRequests.findFirst({
       where: and(
         eq(schema.teachingRequests.tutor_id, tutorProfile.id),
         eq(schema.teachingRequests.subject_id, subject_id),
@@ -2049,9 +2086,47 @@ export const handleTeachingRequest = async (req: Request, res: Response) => {
       )
     });
 
-    if (existingRequest) {
-      return res.status(400).json({
-        message: "Bạn đã có yêu cầu giảng dạy đang chờ duyệt cho môn học và cấp độ này"
+    // Kiểm tra xem đã có yêu cầu được chấp thuận với môn học và cấp độ này chưa
+    const existingApprovedRequest = await db.query.teachingRequests.findFirst({
+      where: and(
+        eq(schema.teachingRequests.tutor_id, tutorProfile.id),
+        eq(schema.teachingRequests.subject_id, subject_id),
+        eq(schema.teachingRequests.level_id, level_id),
+        eq(schema.teachingRequests.status, "approved")
+      )
+    });
+
+    // Đặt các cờ cảnh báo nếu đã có yêu cầu đang chờ duyệt hoặc đã được duyệt
+    let warnings = [];
+
+    if (existingPendingRequest) {
+      warnings.push("Bạn đã có yêu cầu giảng dạy đang chờ duyệt cho môn học và cấp độ này");
+    }
+
+    if (existingApprovedRequest) {
+      warnings.push("Bạn đã được phê duyệt giảng dạy cho môn học và cấp độ này");
+    }
+
+    // Nếu đã có yêu cầu được duyệt, không cần tạo yêu cầu mới
+    if (existingApprovedRequest) {
+      return res.status(200).json({
+        success: true,
+        message: "Bạn đã được giảng dạy cho môn học và cấp độ này",
+        warnings,
+        requestExists: true,
+        data: existingApprovedRequest
+      });
+    }
+
+    // Kiểm tra xem có yêu cầu đang chờ xử lý không
+    if (existingPendingRequest) {
+      // Nếu có yêu cầu đang chờ xử lý, trả về thông tin yêu cầu đó kèm cảnh báo
+      return res.status(200).json({
+        success: true,
+        message: "Yêu cầu của bạn đã tồn tại và đang chờ duyệt",
+        warnings,
+        requestExists: true,
+        data: existingPendingRequest
       });
     }
 
@@ -2071,6 +2146,7 @@ export const handleTeachingRequest = async (req: Request, res: Response) => {
     return res.status(201).json({
       success: true,
       message: "Yêu cầu giảng dạy của bạn đã được gửi và đang chờ duyệt",
+      warnings: warnings.length > 0 ? warnings : undefined,
       data: newRequest[0]
     });
   } catch (error) {
