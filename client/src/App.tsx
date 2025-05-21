@@ -1,4 +1,4 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
@@ -14,13 +14,11 @@ import Subjects from "@/pages/subjects";
 import TutorDashboard from "@/pages/tutor-dashboard";
 import TutorDashboardProfile from "@/pages/tutor-dashboard-profile";
 import TutorDashboardCourses from "@/pages/tutor-dashboard-courses";
-import TutorDashboardMessages from "@/pages/tutor-dashboard-messages";
 import TutorDashboardStats from "@/pages/tutor-dashboard-stats";
 import TutorDashboardSchedule from "@/pages/tutor-dashboard-schedule";
 import StudentDashboard from "@/pages/student-dashboard";
 import StudentDashboardProfile from "@/pages/student-dashboard-profile";
 import StudentDashboardTutors from "@/pages/student-dashboard-tutors";
-import StudentDashboardMessages from "@/pages/student-dashboard-messages";
 import StudentDashboardBookings from "@/pages/student-dashboard-bookings";
 import AdminDashboard from "@/pages/admin-dashboard";
 import AdminTutorVerification from "@/pages/admin-tutor-verification";
@@ -31,6 +29,7 @@ import BecomeTutor from "@/pages/become-tutor";
 import BookingForm from "@/pages/booking-form";
 import Payment from "@/pages/payment";
 import StudentBookingDetail from "@/pages/student-booking-detail";
+import DashboardMessages from "@/pages/dashboard-messages";
 import PrivateRoute from "@/components/auth/PrivateRoute";
 import MainLayout from "@/components/layout/MainLayout";
 import { useEffect, useState, ReactNode } from "react";
@@ -90,11 +89,25 @@ function Router() {
       <Route path="/tutor-dashboard/ads">
         <PrivateRoute role="tutor" component={TutorDashboardCourses} />
       </Route>
+
       <Route path="/tutor-dashboard/messages">
-        <PrivateRoute role="tutor" component={TutorDashboardMessages} />
+        <PrivateRoute role="tutor" component={() => {
+          const [, navigate] = useLocation();
+          useEffect(() => {
+            navigate("/dashboard/messages");
+          }, [navigate]);
+          return null;
+        }} />
       </Route>
       <Route path="/tutor-dashboard/messages/:id">
-        <PrivateRoute role="tutor" component={TutorDashboardMessages} />
+        <PrivateRoute role="tutor" component={() => {
+          const [, navigate] = useLocation();
+          const id = window.location.pathname.split('/').pop();
+          useEffect(() => {
+            navigate(`/dashboard/messages/${id}`);
+          }, [navigate, id]);
+          return null;
+        }} />
       </Route>
       <Route path="/tutor-dashboard/stats">
         <PrivateRoute role="tutor" component={TutorDashboardStats} />
@@ -113,11 +126,26 @@ function Router() {
       <Route path="/dashboard/tutor/courses">
         <PrivateRoute role="tutor" component={TutorDashboardCourses} />
       </Route>
+
+
       <Route path="/dashboard/tutor/messages">
-        <PrivateRoute role="tutor" component={TutorDashboardMessages} />
+        <PrivateRoute role="tutor" component={() => {
+          const [, navigate] = useLocation();
+          useEffect(() => {
+            navigate("/dashboard/messages");
+          }, [navigate]);
+          return null;
+        }} />
       </Route>
       <Route path="/dashboard/tutor/messages/:id">
-        <PrivateRoute role="tutor" component={TutorDashboardMessages} />
+        <PrivateRoute role="tutor" component={() => {
+          const [, navigate] = useLocation();
+          const id = window.location.pathname.split('/').pop();
+          useEffect(() => {
+            navigate(`/dashboard/messages/${id}`);
+          }, [navigate, id]);
+          return null;
+        }} />
       </Route>
       <Route path="/dashboard/tutor/stats">
         <PrivateRoute role="tutor" component={TutorDashboardStats} />
@@ -135,11 +163,27 @@ function Router() {
       <Route path="/dashboard/student/tutors">
         <PrivateRoute role="student" component={StudentDashboardTutors} />
       </Route>
+      {/* Redirect old student messages routes to the new unified route */}
       <Route path="/dashboard/student/messages">
-        <PrivateRoute role="student" component={StudentDashboardMessages} />
-      </Route>{" "}
+        <PrivateRoute role="student" component={() => {
+          const [, navigate] = useLocation();
+          useEffect(() => {
+            navigate("/dashboard/messages");
+          }, [navigate]);
+          return null;
+        }} />
+      </Route>
+
+
       <Route path="/dashboard/student/messages/:id">
-        <PrivateRoute role="student" component={StudentDashboardMessages} />
+        <PrivateRoute role="student" component={() => {
+          const [, navigate] = useLocation();
+          const id = window.location.pathname.split('/').pop();
+          useEffect(() => {
+            navigate(`/dashboard/messages/${id}`);
+          }, [navigate, id]);
+          return null;
+        }} />
       </Route>
       <Route path="/dashboard/student/bookings">
         <PrivateRoute role="student" component={StudentDashboardBookings} />
@@ -171,6 +215,27 @@ function Router() {
       {/* Booking detail route */}
       <Route path="/bookings/:id">
         <PrivateRoute role="student" component={StudentBookingDetail} />
+      </Route>
+
+
+      {/* Unified messages page */}
+      <Route path="/dashboard/messages">
+        <PrivateRoute component={DashboardMessages} />
+      </Route>
+
+      <Route path="/dashboard/messages/:id">
+        <PrivateRoute component={DashboardMessages} />
+      </Route>
+
+      {/* Redirect old messages routes to the new unified route */}
+      <Route path="/messages">
+        <PrivateRoute component={() => {
+          const [, navigate] = useLocation();
+          useEffect(() => {
+            navigate("/dashboard/messages");
+          }, [navigate]);
+          return null;
+        }} />
       </Route>
       <Route component={NotFound} />
     </Switch>

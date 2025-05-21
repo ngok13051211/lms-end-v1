@@ -32,7 +32,7 @@ export default function TutorDashboardLayout({
     {
       title: "Tin nhắn",
       icon: <MessageSquare className="mr-2 h-4 w-4" />,
-      href: "/dashboard/tutor/messages",
+      href: "/dashboard/messages",
       active: activePage === "messages",
     },
     {

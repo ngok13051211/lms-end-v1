@@ -120,6 +120,7 @@ export const login = async (
     const user = await db.query.users.findFirst({
       where: eq(schema.users.email, loginData.email),
     });
+    
 
     if (!user) {
       throw new ApiError(

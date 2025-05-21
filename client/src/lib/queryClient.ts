@@ -19,7 +19,14 @@ export async function apiRequest(
 ): Promise<Response> {
   // Get token from localStorage
   const token = localStorage.getItem("token");
-  const headers: HeadersInit = data
+
+  // Check if data exists and is not an empty object
+  const hasData = data !== undefined &&
+    (typeof data !== 'object' ||
+      data === null ||
+      Object.keys(data).length > 0);
+
+  const headers: HeadersInit = hasData
     ? { "Content-Type": "application/json" }
     : {};
 
@@ -29,12 +36,12 @@ export async function apiRequest(
   }
 
   console.log(`API Request: ${method} ${url}`);
-  if (data) console.log("Request data:", JSON.stringify(data, null, 2));
+  if (hasData) console.log("Request data:", JSON.stringify(data, null, 2));
 
   const res = await fetch(url, {
     method,
     headers,
-    body: data ? JSON.stringify(data) : undefined,
+    body: hasData ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
 
@@ -90,61 +97,61 @@ export const getQueryFn: <T>(options: {
   params?: Record<string, any>;
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior, params }) =>
-  async ({ queryKey }) => {
-    // Get token from localStorage
-    const token = localStorage.getItem("token");
-    const headers: HeadersInit = {};
+    async ({ queryKey }) => {
+      // Get token from localStorage
+      const token = localStorage.getItem("token");
+      const headers: HeadersInit = {};
 
-    // Add Authorization header if token exists
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
+      // Add Authorization header if token exists
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
 
-    // Build URL with query parameters if provided
-    let url = queryKey[0] as string;
-    if (params) {
-      const queryParams = new URLSearchParams();
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined) {
-          queryParams.append(key, String(value));
+      // Build URL with query parameters if provided
+      let url = queryKey[0] as string;
+      if (params) {
+        const queryParams = new URLSearchParams();
+        Object.entries(params).forEach(([key, value]) => {
+          if (value !== undefined) {
+            queryParams.append(key, String(value));
+          }
+        });
+        const queryString = queryParams.toString();
+        if (queryString) {
+          url = `${url}?${queryString}`;
         }
-      });
-      const queryString = queryParams.toString();
-      if (queryString) {
-        url = `${url}?${queryString}`;
-      }
-    }
-
-
-    try {
-      const res = await fetch(url, {
-        credentials: "include",
-        headers,
-      });
-      if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-        return null;
       }
 
-      if (!res.ok) {
-        const errorText = await res.text();
-        let errorMessage;
 
-        try {
-          const errorJson = JSON.parse(errorText);
-          errorMessage = errorJson.message || errorJson.error || res.statusText;
-        } catch {
-          errorMessage = errorText || res.statusText;
+      try {
+        const res = await fetch(url, {
+          credentials: "include",
+          headers,
+        });
+        if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+          return null;
         }
 
-        throw new Error(`${res.status}: ${errorMessage}`);
-      }
+        if (!res.ok) {
+          const errorText = await res.text();
+          let errorMessage;
 
-      return await res.json();
-    } catch (error) {
-      console.error(`Error fetching ${url}:`, error);
-      throw error;
-    }
-  };
+          try {
+            const errorJson = JSON.parse(errorText);
+            errorMessage = errorJson.message || errorJson.error || res.statusText;
+          } catch {
+            errorMessage = errorText || res.statusText;
+          }
+
+          throw new Error(`${res.status}: ${errorMessage}`);
+        }
+
+        return await res.json();
+      } catch (error) {
+        console.error(`Error fetching ${url}:`, error);
+        throw error;
+      }
+    };
 
 export const queryClient = new QueryClient({
   defaultOptions: {

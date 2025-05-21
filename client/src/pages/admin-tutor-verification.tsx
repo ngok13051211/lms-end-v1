@@ -232,14 +232,31 @@ export default function AdminTutorVerification() {
   const isPdfUrl = (url: string): boolean => {
     return url.toLowerCase().endsWith(".pdf");
   };
-
   // Hiển thị chứng chỉ với các loại file khác nhau
   const renderCertifications = (certificationsString?: string) => {
     if (!certificationsString) return "Không có chứng chỉ";
 
+    let certifications: string[] = [];
+
     try {
-      const certifications = JSON.parse(certificationsString);
-      if (Array.isArray(certifications) && certifications.length > 0) {
+      // Kiểm tra nếu đã là mảng
+      if (Array.isArray(certificationsString)) {
+        certifications = certificationsString;
+      } else {
+        // Cố gắng parse JSON
+        const parsed = JSON.parse(certificationsString);
+        if (Array.isArray(parsed)) {
+          certifications = parsed;
+        } else if (typeof parsed === 'string') {
+          // Nếu parse ra chuỗi đơn lẻ
+          certifications = [parsed];
+        } else {
+          console.log("Định dạng chứng chỉ không phải mảng:", parsed);
+          return "Định dạng chứng chỉ không hợp lệ";
+        }
+      }
+
+      if (certifications.length > 0) {
         return (
           <div className="flex flex-wrap gap-3">
             {certifications.map((cert: string, index: number) => {
@@ -442,11 +459,9 @@ export default function AdminTutorVerification() {
                                 onClick={() => handleViewRequestDetail(request)}
                                 className="font-medium text-left hover:underline hover:text-primary cursor-pointer"
                               >
-                                {`${
-                                  request.tutor_profile.user.first_name || ""
-                                } ${
-                                  request.tutor_profile.user.last_name || ""
-                                }`}
+                                {`${request.tutor_profile.user.first_name || ""
+                                  } ${request.tutor_profile.user.last_name || ""
+                                  }`}
                               </button>
                               <div className="text-xs text-muted-foreground mt-1">
                                 {request.tutor_profile.user.email}
@@ -501,7 +516,7 @@ export default function AdminTutorVerification() {
                               }
                             >
                               {approveMutation.isPending &&
-                              approveMutation.variables === request.id ? (
+                                approveMutation.variables === request.id ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
                                 <CheckCircle className="h-4 w-4 mr-1" />
@@ -573,9 +588,8 @@ export default function AdminTutorVerification() {
                 </Avatar>
                 <div>
                   <h3 className="text-lg font-semibold">
-                    {`${selectedRequest.tutor_profile.user.first_name || ""} ${
-                      selectedRequest.tutor_profile.user.last_name || ""
-                    }`}
+                    {`${selectedRequest.tutor_profile.user.first_name || ""} ${selectedRequest.tutor_profile.user.last_name || ""
+                      }`}
                   </h3>
                   <div className="flex items-center text-muted-foreground mt-1">
                     <Mail className="h-4 w-4 mr-1" />

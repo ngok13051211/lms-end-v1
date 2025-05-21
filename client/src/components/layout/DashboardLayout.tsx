@@ -72,7 +72,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         {
           label: "Messages",
           icon: <MessageSquare className="h-5 w-5" />,
-          href: "/dashboard/tutor/messages",
+          href: "/dashboard/messages",
         },
         {
           label: "Statistics",
@@ -110,7 +110,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         {
           label: "Messages",
           icon: <MessageSquare className="h-5 w-5" />,
-          href: "/dashboard/student/messages",
+          href: "/dashboard/messages",
         },
       ];
     } else if (user.role === "admin") {
@@ -186,11 +186,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             return (
               <div
                 key={item.href}
-                className={`flex items-center px-4 py-3 text-sm rounded-md transition-colors cursor-pointer ${
-                  isActive
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                }`}
+                className={`flex items-center px-4 py-3 text-sm rounded-md transition-colors cursor-pointer ${isActive
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
                 onClick={() => {
                   if (isMobile) setSidebarOpen(false);
                   window.location.href = item.href;

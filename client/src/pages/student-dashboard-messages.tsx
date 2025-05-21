@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { queryClient } from "@/lib/queryClient";
 import {
   Card,
   CardContent,
@@ -10,14 +9,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store";
-import { apiRequest } from "@/lib/queryClient";
-import { Loader2, MessageSquare, Send, ArrowLeft, User } from "lucide-react";
+import { useMessageGrouping } from "@/hooks/use-message-grouping";
+import { Loader2, MessageSquare, ArrowLeft } from "lucide-react";
+import { MessageInput } from "@/components/messages/MessageInput";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import DashboardLayout from "@/components/layout/TutorDashboardLayout";
+import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -50,13 +48,47 @@ interface Conversation {
   unread_count?: number;
 }
 
-export default function TutorDashboardMessages() {
+// MessageSkeleton component for loading state
+function MessageSkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-start">
+        <div className="h-8 w-8 rounded-full bg-muted mr-2"></div>
+        <div className="space-y-2">
+          <div className="h-16 w-64 bg-muted rounded-lg animate-pulse"></div>
+        </div>
+      </div>
+
+      <div className="flex items-start justify-end">
+        <div className="space-y-2">
+          <div className="h-12 w-48 bg-primary/30 rounded-lg animate-pulse"></div>
+        </div>
+        <div className="h-8 w-8 rounded-full bg-muted ml-2"></div>
+      </div>
+
+      <div className="flex items-start">
+        <div className="h-8 w-8 rounded-full bg-muted mr-2"></div>
+        <div className="space-y-2">
+          <div className="h-10 w-52 bg-muted rounded-lg animate-pulse"></div>
+        </div>
+      </div>
+
+      <div className="flex items-start justify-end">
+        <div className="space-y-2">
+          <div className="h-20 w-72 bg-primary/30 rounded-lg animate-pulse"></div>
+        </div>
+        <div className="h-8 w-8 rounded-full bg-muted ml-2"></div>
+      </div>
+    </div>
+  );
+}
+
+export default function StudentDashboardMessages() {
   const { user } = useSelector((state: RootState) => state.auth);
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [conversation, setConversation] = useState<Conversation | null>(null);
-  const [message, setMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Get tutor profile
@@ -70,14 +102,15 @@ export default function TutorDashboardMessages() {
     Conversation[]
   >({
     queryKey: [`/api/v1/conversations`],
-    enabled: !!tutorProfile,
+    enabled: !!user,
   });
 
   // Get a specific conversation if ID is provided
   const { data: conversationData, isLoading: conversationLoading } =
     useQuery<Conversation>({
       queryKey: [`/api/v1/conversations/${conversationId}`],
-      enabled: !!conversationId && !!tutorProfile,
+      enabled: !!conversationId && !!user, // Only need user to be logged in
+      refetchInterval: 15000, // Auto-refresh every 15 seconds to get new messages
     });
 
   // Sử dụng useEffect để cập nhật state khi data từ API thay đổi
@@ -88,63 +121,36 @@ export default function TutorDashboardMessages() {
     }
   }, [conversationData]);
 
-  // Send a message mutation
-  const sendMessageMutation = useMutation({
-    mutationFn: async ({
-      conversationId,
-      content,
-    }: {
-      conversationId: string;
-      content: string;
-    }) => {
-      const res = await apiRequest(
-        "POST",
-        `/api/v1/conversations/${conversationId}/messages`,
-        { content }
-      );
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [`/api/v1/conversations/${conversationId}`],
-      });
-      queryClient.invalidateQueries({ queryKey: [`/api/v1/conversations`] });
-      setMessage("");
-    },
-    onError: (error) => {
-      toast({
-        title: "Lỗi",
-        description: "Không thể gửi tin nhắn. Vui lòng thử lại sau.",
-        variant: "destructive",
-      });
-    },
-  });
+  // Group messages by sender for a better chat UI
+  const groupedMessages = useMessageGrouping(conversation?.messages || []);
 
-  // Scroll to bottom of messages
+  // Scroll to bottom of messages whenever messages change or when conversation loads
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [conversation?.messages]);
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!message.trim() || !conversationId) return;
+  // Also scroll to bottom on initial load and window resize
+  useEffect(() => {
+    const scrollToBottom = () => {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView();
+      }
+    };
 
-    try {
-      await sendMessageMutation.mutateAsync({
-        conversationId,
-        content: message,
-      });
-    } catch (error) {
-      console.error("Error sending message:", error);
-      toast({
-        title: "Lỗi",
-        description: "Không thể gửi tin nhắn",
-        variant: "destructive",
-      });
-    }
-  };
+    // Scroll on load
+    scrollToBottom();
+
+    // Scroll on window resize
+    window.addEventListener('resize', scrollToBottom);
+
+    return () => {
+      window.removeEventListener('resize', scrollToBottom);
+    };
+  }, [conversationId]);
+
+  // Removed handleSendMessage since we're using the MessageInput component
 
   const isLoading = profileLoading || (conversationId && conversationLoading);
 
@@ -195,7 +201,7 @@ export default function TutorDashboardMessages() {
           <Card className="h-full">
             <CardHeader>
               <CardTitle>Hội thoại</CardTitle>
-              <CardDescription>Tin nhắn từ học viên của bạn</CardDescription>
+              <CardDescription>Tin nhắn với giáo viên của bạn</CardDescription>
             </CardHeader>
 
             <CardContent>
@@ -208,14 +214,13 @@ export default function TutorDashboardMessages() {
                   {conversations.map((conv) => (
                     <Link
                       key={conv.id}
-                      href={`/dashboard/tutor/messages/${conv.id}`}
+                      href={`/dashboard/student/messages/${conv.id}`}
                     >
                       <a
-                        className={`flex items-center p-4 border rounded-lg transition-colors hover:border-primary ${
-                          conversationId === String(conv.id)
-                            ? "border-primary bg-primary/5"
-                            : ""
-                        }`}
+                        className={`flex items-center p-4 border rounded-lg transition-colors hover:border-primary ${conversationId === String(conv.id)
+                          ? "border-primary bg-primary/5"
+                          : ""
+                          }`}
                       >
                         <Avatar className="h-10 w-10">
                           <AvatarImage
@@ -273,134 +278,116 @@ export default function TutorDashboardMessages() {
 
         {/* Message content */}
         <div className="lg:col-span-2">
-          {conversationId && conversation ? (
+          {conversationId && conversationLoading ? (
             <Card className="h-full flex flex-col">
               <CardHeader className="pb-3 border-b">
                 <div className="flex items-center">
-                  <Link href="/dashboard/tutor/messages">
+                  <div className="h-10 w-10 rounded-full bg-muted animate-pulse"></div>
+                  <div className="ml-3">
+                    <div className="h-5 w-40 bg-muted animate-pulse rounded"></div>
+                    <div className="h-4 w-24 bg-muted animate-pulse rounded mt-2"></div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="flex-1 overflow-y-auto p-4 space-y-4" style={{ maxHeight: "calc(70vh - 140px)" }}>
+                <div className="space-y-4">
+                  <div className="flex items-start">
+                    <div className="h-8 w-8 rounded-full bg-muted mr-2"></div>
+                    <div className="space-y-2">
+                      <div className="h-16 w-64 bg-muted rounded-lg animate-pulse"></div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start justify-end">
+                    <div className="space-y-2">
+                      <div className="h-12 w-48 bg-primary/30 rounded-lg animate-pulse"></div>
+                    </div>
+                    <div className="h-8 w-8 rounded-full bg-muted ml-2"></div>
+                  </div>
+
+                  <div className="flex items-start">
+                    <div className="h-8 w-8 rounded-full bg-muted mr-2"></div>
+                    <div className="space-y-2">
+                      <div className="h-10 w-52 bg-muted rounded-lg animate-pulse"></div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start justify-end">
+                    <div className="space-y-2">
+                      <div className="h-20 w-72 bg-primary/30 rounded-lg animate-pulse"></div>
+                    </div>
+                    <div className="h-8 w-8 rounded-full bg-muted ml-2"></div>
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter className="p-4 border-t">
+                <div className="flex w-full gap-2">
+                  <div className="h-10 flex-1 bg-muted animate-pulse rounded"></div>
+                  <div className="h-10 w-20 bg-muted animate-pulse rounded"></div>
+                </div>
+              </CardFooter>
+            </Card>
+          ) : conversationId && conversation ? (
+            <Card className="h-full flex flex-col">
+              <CardHeader className="pb-3 border-b">
+                <div className="flex items-center">
+                  <Link href="/dashboard/student/messages">
                     <a className="mr-2 lg:hidden">
                       <ArrowLeft className="h-5 w-5" />
                     </a>
                   </Link>
 
-                  <Avatar className="h-10 w-10">
+                  <Avatar className="h-10 w-10 ring-2 ring-primary/20 ring-offset-2">
                     <AvatarImage
-                      src={conversation.student?.avatar || undefined}
-                      alt={conversation.student?.firstName || "Student"}
+                      src={conversation.tutor?.avatar || undefined}
+                      alt={conversation.tutor?.firstName || "Tutor"}
                     />
-                    <AvatarFallback>
-                      {(conversation.student?.firstName?.[0] || "") +
-                        (conversation.student?.lastName?.[0] || "")}
+                    <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                      {(conversation.tutor?.firstName?.[0] || "") +
+                        (conversation.tutor?.lastName?.[0] || "")}
                     </AvatarFallback>
                   </Avatar>
 
                   <div className="ml-3">
-                    <CardTitle className="text-base">
-                      {conversation.student
-                        ? `${conversation.student.firstName || ""} ${
-                            conversation.student.lastName || ""
-                          }`
-                        : "Học viên"}
+                    <CardTitle className="text-base font-medium">
+                      {conversation.tutor
+                        ? `${conversation.tutor.firstName || ""} ${conversation.tutor.lastName || ""
+                        }`
+                        : "Giáo viên"}
                     </CardTitle>
-                    <p className="text-xs text-muted-foreground">
-                      {conversation.student?.email || ""}
-                    </p>
+                    <div className="flex items-center">
+                      <p className="text-xs text-muted-foreground mr-2">
+                        {conversation.tutor?.email || ""}
+                      </p>
+                      <Badge variant="outline" className="text-xs px-1 py-0 h-5">Giáo viên</Badge>
+                    </div>
                   </div>
                 </div>
               </CardHeader>
 
-              <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
-                {conversation.messages && conversation.messages.length > 0 ? (
-                  conversation.messages.map((msg) => (
-                    <div
-                      key={msg.id}
-                      className={`flex ${
-                        msg.sender_id === user?.id
-                          ? "justify-end"
-                          : "justify-start"
-                      }`}
-                    >
-                      {msg.sender_id !== user?.id && (
-                        <Avatar className="h-8 w-8 mr-2 mt-1">
-                          <AvatarImage
-                            src={conversation.student?.avatar || undefined}
-                            alt="Avatar"
-                          />
-                          <AvatarFallback>
-                            <User className="h-4 w-4" />
-                          </AvatarFallback>
-                        </Avatar>
-                      )}
-
-                      <div
-                        className={`max-w-[75%] ${
-                          msg.sender_id === user?.id
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted"
-                        } rounded-lg p-3`}
-                      >
-                        <p>{msg.content}</p>
-                        <p
-                          className={`text-xs mt-1 ${
-                            msg.sender_id === user?.id
-                              ? "text-primary-foreground/70"
-                              : "text-muted-foreground"
-                          }`}
-                        >
-                          {formatDate(msg.created_at)}
-                        </p>
-                      </div>
-
-                      {msg.sender_id === user?.id && (
-                        <Avatar className="h-8 w-8 ml-2 mt-1">
-                          <AvatarImage
-                            src={user?.avatar || undefined}
-                            alt="Your avatar"
-                          />
-                          <AvatarFallback>
-                            <User className="h-4 w-4" />
-                          </AvatarFallback>
-                        </Avatar>
-                      )}
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-12">
-                    <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground" />
-                    <h2 className="mt-4 text-lg font-medium">
-                      Không có tin nhắn
-                    </h2>
-                    <p className="mt-2 text-muted-foreground max-w-md mx-auto">
-                      Bắt đầu cuộc trò chuyện với học viên
-                    </p>
-                  </div>
-                )}
+              <CardContent className="flex-1 overflow-y-auto p-4 space-y-4" style={{ maxHeight: "calc(70vh - 140px)" }}>
+                <MessageList
+                  groupedMessages={groupedMessages}
+                  user={user}
+                  conversation={conversation}
+                  formatDate={formatDate}
+                />
                 <div ref={messagesEndRef} />
               </CardContent>
 
               <CardFooter className="p-4 border-t">
-                <form
-                  onSubmit={handleSendMessage}
-                  className="flex w-full gap-2"
-                >
-                  <Input
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    placeholder="Nhập tin nhắn..."
-                    className="flex-1"
-                  />
-                  <Button
-                    type="submit"
-                    disabled={!message.trim() || sendMessageMutation.isPending}
-                  >
-                    {sendMessageMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
-                    <span className="ml-2 sr-only md:not-sr-only">Gửi</span>
-                  </Button>
-                </form>
+                <MessageInput
+                  conversationId={conversationId || ''}
+                  onMessageSent={() => {
+                    // Scroll to bottom after sending
+                    setTimeout(() => {
+                      if (messagesEndRef.current) {
+                        messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+                      }
+                    }, 100);
+                  }}
+                  placeholder="Nhập tin nhắn..."
+                />
               </CardFooter>
             </Card>
           ) : (
