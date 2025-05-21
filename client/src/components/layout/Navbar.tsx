@@ -65,8 +65,8 @@ export default function Navbar() {
   return (
     <header
       className={`sticky top-0 z-50 ${isScrolled
-          ? "bg-white shadow-md"
-          : "bg-white"
+        ? "bg-white shadow-md"
+        : "bg-white"
         } transition-shadow duration-300`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
@@ -135,6 +135,12 @@ export default function Navbar() {
                     <span>Profile</span>
                   </Link>
                 </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard/messages" className="w-full flex items-center">
+                    <MessageSquare className="mr-2 h-4 w-4" />
+                    <span>Tin nhắn</span>
+                  </Link>
+                </DropdownMenuItem>
                 {user.role === "tutor" && (
                   <>
                     <DropdownMenuItem asChild>
@@ -144,7 +150,7 @@ export default function Navbar() {
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link href="/dashboard/tutor/messages" className="w-full flex items-center">
+                      <Link href="/dashboard/messages" className="w-full flex items-center">
                         <MessageSquare className="mr-2 h-4 w-4" />
                         <span>Messages</span>
                       </Link>

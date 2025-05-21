@@ -31,6 +31,7 @@ export default function TutorProfile() {
   const { user } = useSelector((state: RootState) => state.auth);
   const { toast } = useToast();
   const [isFavorite, setIsFavorite] = useState(false);
+  const [isStartingConversation, setIsStartingConversation] = useState(false);
 
   // Get tutor details
   const { data: tutor, isLoading: tutorLoading } = useQuery<TutorProfile>({
@@ -500,22 +501,85 @@ export default function TutorProfile() {
       return;
     }
 
+    if (isStartingConversation) {
+      return; // Prevent duplicate requests
+    }
+
     try {
-      // Create or retrieve conversation
-      const response = await fetch(`/api/v1/conversations/tutor/${id}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
+      setIsStartingConversation(true);
+
+      toast({
+        title: "Đang kết nối...",
+        description: "Đang thiết lập cuộc trò chuyện với gia sư",
+        variant: "default",
       });
+
+      // Ensure id is not null or undefined before making the request
+      if (!id) {
+        throw new Error("Tutor ID is missing");
+      }
+
+      console.log(`Starting conversation with tutor ID: ${id}`); // Debug log
+
+      console.log(`Sending request to create conversation with tutor ID: ${id}`);
+      // Create or retrieve conversation with no body data
+      const response = await apiRequest(
+        "POST",
+        `/api/v1/conversations/tutor/${id}`
+      );
 
       if (response.ok) {
         const data = await response.json();
-        navigate(`/dashboard/student/messages/${data.conversationId}`);
+
+        console.log("Conversation response:", data); // Log the response for debugging
+
+        // Extract the conversation ID from the response
+        // The API returns data.conversation for both new and existing conversations
+        const conversationId = data.conversation?.id;
+
+        if (!conversationId) {
+          console.error("Missing conversation ID in response:", data);
+          throw new Error("No conversation ID returned from the server");
+        }
+
+        // Invalidate the conversations query to ensure the list is updated
+        queryClient.invalidateQueries({
+          queryKey: [`/api/v1/conversations`],
+        });
+
+        // Show success message
+        toast({
+          title: "Kết nối thành công",
+          description: "Cuộc trò chuyện đã được thiết lập với gia sư",
+          variant: "default",
+        });
+
+        // Navigate to the student messages with this conversation open
+        navigate(`/dashboard/messages/${conversationId}`);
+      } else {
+        // Handle error response
+        const errorData = await response.json().catch(() => ({}));
+        console.error("API Error Response:", errorData);
+        throw new Error(errorData.message || "Failed to start conversation");
       }
     } catch (error) {
       console.error("Error starting conversation:", error);
+
+      // More detailed error logging
+      if (error instanceof Error) {
+        console.error("Error message:", error.message);
+        console.error("Error stack:", error.stack);
+      }
+
+      toast({
+        title: "Lỗi kết nối",
+        description: error instanceof Error && error.message
+          ? `Lỗi: ${error.message}`
+          : "Không thể bắt đầu cuộc trò chuyện với gia sư. Vui lòng thử lại sau.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsStartingConversation(false);
     }
   };
 
@@ -542,10 +606,9 @@ export default function TutorProfile() {
                       {tutor.user?.name
                         ? tutor.user.name[0]
                         : tutor.user?.first_name
-                        ? `${tutor.user.first_name[0]}${
-                            tutor.user.last_name?.[0] || ""
+                          ? `${tutor.user.first_name[0]}${tutor.user.last_name?.[0] || ""
                           }`
-                        : "T"}
+                          : "T"}
                     </AvatarFallback>
                   </Avatar>
 
@@ -589,8 +652,8 @@ export default function TutorProfile() {
                             {mode === "online"
                               ? "Online"
                               : mode === "offline"
-                              ? "Tại nhà"
-                              : "Online & Tại nhà"}
+                                ? "Tại nhà"
+                                : "Online & Tại nhà"}
                           </Badge>
                         ))
                       ) : (
@@ -722,8 +785,8 @@ export default function TutorProfile() {
                                 {course.teaching_mode === "online"
                                   ? "Online"
                                   : course.teaching_mode === "offline"
-                                  ? "Tại nhà"
-                                  : "Online & Tại nhà"}
+                                    ? "Tại nhà"
+                                    : "Online & Tại nhà"}
                               </Badge>
                             </div>
 
@@ -770,9 +833,9 @@ export default function TutorProfile() {
                     ) : (
                       <div className="text-center py-8">
                         {coursesLoading ||
-                        coursesUsingTutorIdLoading ||
-                        (shouldManuallyFetchCourses &&
-                          manuallyFetchedCourses.length === 0) ? (
+                          coursesUsingTutorIdLoading ||
+                          (shouldManuallyFetchCourses &&
+                            manuallyFetchedCourses.length === 0) ? (
                           <Loader2 className="h-12 w-12 mx-auto text-primary animate-spin" />
                         ) : (
                           <>
@@ -829,10 +892,9 @@ export default function TutorProfile() {
                                   {review.student?.name
                                     ? review.student.name[0]
                                     : review.student?.first_name
-                                    ? `${review.student.first_name[0]}${
-                                        review.student.last_name?.[0] || ""
+                                      ? `${review.student.first_name[0]}${review.student.last_name?.[0] || ""
                                       }`
-                                    : "S"}
+                                      : "S"}
                                 </AvatarFallback>
                               </Avatar>
 
@@ -914,18 +976,30 @@ export default function TutorProfile() {
                   onClick={startConversation}
                   className="w-full mb-3"
                   variant="secondary"
+                  disabled={!user || !id || isStartingConversation}
                 >
-                  <Mail className="mr-2 h-4 w-4" /> Nhắn tin với gia sư
+                  {!user ? (
+                    <>
+                      <Mail className="mr-2 h-4 w-4" /> Đăng nhập để nhắn tin
+                    </>
+                  ) : isStartingConversation ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang kết nối...
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="mr-2 h-4 w-4" /> Nhắn tin với gia sư
+                    </>
+                  )}
                 </Button>
 
                 {user && user.role === "student" && (
                   <Button
                     variant={isFavorite ? "outline" : "secondary"}
-                    className={`w-full mb-3 ${
-                      isFavorite
-                        ? "border-primary text-primary hover:bg-primary/5"
-                        : ""
-                    }`}
+                    className={`w-full mb-3 ${isFavorite
+                      ? "border-primary text-primary hover:bg-primary/5"
+                      : ""
+                      }`}
                     onClick={toggleFavorite}
                     disabled={
                       addToFavoritesMutation.isPending ||
@@ -933,9 +1007,8 @@ export default function TutorProfile() {
                     }
                   >
                     <Heart
-                      className={`mr-2 h-4 w-4 ${
-                        isFavorite ? "fill-primary" : ""
-                      }`}
+                      className={`mr-2 h-4 w-4 ${isFavorite ? "fill-primary" : ""
+                        }`}
                     />
                     {isFavorite
                       ? "Đã thêm vào yêu thích"

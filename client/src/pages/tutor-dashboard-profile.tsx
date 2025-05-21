@@ -285,16 +285,10 @@ export default function TutorDashboardProfile() {
           throw new Error(errorData.message || "Không thể tải lên chứng chỉ");
         }
         const data = await res.json();
-        console.log("Upload thành công, server trả về:", data);
         // Truy cập URLs một cách chính xác dựa trên cấu trúc response từ server
         let uploadedUrls = [];
 
-        console.log("Phân tích cấu trúc response:", {
-          hasUrls: !!data.urls,
-          hasCertifications: !!data.certifications,
-          hasDataUrls: !!(data.data && data.data.urls),
-          dataKeys: Object.keys(data),
-        });
+
 
         if (data.urls && Array.isArray(data.urls)) {
           uploadedUrls = data.urls;
@@ -324,10 +318,8 @@ export default function TutorDashboardProfile() {
         console.log("URLs trích xuất từ response:", uploadedUrls);
 
         // Add the new URLs to the existing ones
-        console.log("certificateUrls trước khi cập nhật:", certificateUrls);
         setCertificateUrls((prev) => {
           const newUrls = [...prev, ...uploadedUrls];
-          console.log("certificateUrls sau khi cập nhật:", newUrls);
 
           // Cập nhật giá trị vào form control
           teachingRequestForm.setValue("certifications", newUrls);
@@ -640,9 +632,8 @@ export default function TutorDashboardProfile() {
         title: "Yêu cầu đã gửi thành công",
         description:
           data.certificationsCount > 0
-            ? `Yêu cầu giảng dạy của bạn với ${
-                data.certificationsCount || 0
-              } chứng chỉ đã được gửi và đang chờ duyệt`
+            ? `Yêu cầu giảng dạy của bạn với ${data.certificationsCount || 0
+            } chứng chỉ đã được gửi và đang chờ duyệt`
             : "Yêu cầu giảng dạy của bạn đã được gửi và đang chờ duyệt",
         variant: "default",
       });
@@ -931,18 +922,16 @@ export default function TutorDashboardProfile() {
                 <div className="flex-shrink-0">
                   <div className="relative">
                     <Avatar
-                      className={`h-32 w-32 border-2 ${
-                        uploadingAvatar
-                          ? "border-warning animate-pulse"
-                          : "border-primary"
-                      }`}
+                      className={`h-32 w-32 border-2 ${uploadingAvatar
+                        ? "border-warning animate-pulse"
+                        : "border-primary"
+                        }`}
                     >
                       <AvatarImage
                         src={user?.avatar ?? undefined}
                         alt={user?.first_name ?? ""}
-                        className={`transition-opacity duration-300 ${
-                          uploadingAvatar ? "opacity-50" : ""
-                        }`}
+                        className={`transition-opacity duration-300 ${uploadingAvatar ? "opacity-50" : ""
+                          }`}
                       />
                       {uploadingAvatar && (
                         <div className="absolute inset-0 flex items-center justify-center bg-background/40 z-10">
@@ -1071,8 +1060,8 @@ export default function TutorDashboardProfile() {
                       <p className="text-base">
                         {tutorProfile?.date_of_birth
                           ? new Date(
-                              tutorProfile.date_of_birth
-                            ).toLocaleDateString("vi-VN")
+                            tutorProfile.date_of_birth
+                          ).toLocaleDateString("vi-VN")
                           : "Chưa cập nhật"}
                       </p>
                     </div>
@@ -1448,10 +1437,9 @@ export default function TutorDashboardProfile() {
                               <label
                                 htmlFor="certification-upload"
                                 className={`flex items-center px-4 py-2.5 text-sm border-2 rounded-md cursor-pointer transition-all duration-200 
-                                  ${
-                                    uploadingCertifications
-                                      ? "opacity-50 pointer-events-none bg-muted"
-                                      : "border-primary bg-primary/5 hover:bg-primary/10 text-primary hover:shadow-sm"
+                                  ${uploadingCertifications
+                                    ? "opacity-50 pointer-events-none bg-muted"
+                                    : "border-primary bg-primary/5 hover:bg-primary/10 text-primary hover:shadow-sm"
                                   }`}
                               >
                                 {uploadingCertifications ? (
@@ -1462,8 +1450,8 @@ export default function TutorDashboardProfile() {
                                 {uploadingCertifications
                                   ? "Đang tải lên..."
                                   : certificateUrls.length === 0
-                                  ? "Tải lên chứng chỉ"
-                                  : "Thêm chứng chỉ khác"}
+                                    ? "Tải lên chứng chỉ"
+                                    : "Thêm chứng chỉ khác"}
                               </label>
 
                               {uploadingCertifications && (
@@ -1477,98 +1465,98 @@ export default function TutorDashboardProfile() {
 
                             {(requestCertifications.length > 0 ||
                               certificateUrls.length > 0) && (
-                              <div className="space-y-3 mt-2">
-                                {requestCertifications.length > 0 && (
-                                  <div>
-                                    <p className="text-sm font-medium mb-1">
-                                      Tệp đã chọn:
-                                    </p>
-                                    <ul className="space-y-1 text-sm text-muted-foreground">
-                                      {requestCertifications.map(
-                                        (file, index) => (
-                                          <li
-                                            key={index}
-                                            className="flex items-center justify-between"
-                                          >
-                                            <span className="flex items-center">
-                                              <FileCheck className="h-3 w-3 mr-1" />
-                                              {file.name} (
-                                              {(file.size / 1024).toFixed(1)}{" "}
-                                              KB)
-                                            </span>
-                                          </li>
-                                        )
-                                      )}
-                                    </ul>
-                                  </div>
-                                )}
-
-                                {certificateUrls.length > 0 && (
-                                  <div>
-                                    <p className="text-sm font-medium mb-1 flex items-center">
-                                      <BadgeCheck className="h-4 w-4 text-green-600 mr-1" />
-                                      Đã tải lên thành công (
-                                      {certificateUrls.length}):
-                                    </p>
-                                    <div className="flex flex-wrap gap-2">
-                                      {certificateUrls.map((url, index) => {
-                                        const fileName =
-                                          getFileNameFromUrl(url);
-                                        const isPdf = fileName
-                                          .toLowerCase()
-                                          .endsWith(".pdf");
-                                        return (
-                                          <div
-                                            key={index}
-                                            className="flex items-center gap-1"
-                                          >
-                                            <a
-                                              href={url}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="flex items-center px-3 py-1 text-xs rounded bg-background hover:bg-accent transition-colors border"
+                                <div className="space-y-3 mt-2">
+                                  {requestCertifications.length > 0 && (
+                                    <div>
+                                      <p className="text-sm font-medium mb-1">
+                                        Tệp đã chọn:
+                                      </p>
+                                      <ul className="space-y-1 text-sm text-muted-foreground">
+                                        {requestCertifications.map(
+                                          (file, index) => (
+                                            <li
+                                              key={index}
+                                              className="flex items-center justify-between"
                                             >
-                                              {isPdf ? (
-                                                <FileText className="h-3 w-3 mr-1 text-blue-500" />
-                                              ) : (
-                                                <FileCheck className="h-3 w-3 mr-1 text-green-500" />
-                                              )}
-                                              {fileName.length > 20
-                                                ? fileName.substring(0, 17) +
-                                                  "..."
-                                                : fileName}
-                                            </a>
-                                            <button
-                                              type="button"
-                                              onClick={() =>
-                                                handleRemoveCertificate(url)
-                                              }
-                                              className="p-1 rounded-full hover:bg-red-100 text-red-500"
-                                              title="Xóa chứng chỉ"
-                                            >
-                                              <svg
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                width="12"
-                                                height="12"
-                                                viewBox="0 0 24 24"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                strokeWidth="2"
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                              >
-                                                <path d="M18 6 6 18"></path>
-                                                <path d="m6 6 12 12"></path>
-                                              </svg>
-                                            </button>
-                                          </div>
-                                        );
-                                      })}
+                                              <span className="flex items-center">
+                                                <FileCheck className="h-3 w-3 mr-1" />
+                                                {file.name} (
+                                                {(file.size / 1024).toFixed(1)}{" "}
+                                                KB)
+                                              </span>
+                                            </li>
+                                          )
+                                        )}
+                                      </ul>
                                     </div>
-                                  </div>
-                                )}
-                              </div>
-                            )}
+                                  )}
+
+                                  {certificateUrls.length > 0 && (
+                                    <div>
+                                      <p className="text-sm font-medium mb-1 flex items-center">
+                                        <BadgeCheck className="h-4 w-4 text-green-600 mr-1" />
+                                        Đã tải lên thành công (
+                                        {certificateUrls.length}):
+                                      </p>
+                                      <div className="flex flex-wrap gap-2">
+                                        {certificateUrls.map((url, index) => {
+                                          const fileName =
+                                            getFileNameFromUrl(url);
+                                          const isPdf = fileName
+                                            .toLowerCase()
+                                            .endsWith(".pdf");
+                                          return (
+                                            <div
+                                              key={index}
+                                              className="flex items-center gap-1"
+                                            >
+                                              <a
+                                                href={url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center px-3 py-1 text-xs rounded bg-background hover:bg-accent transition-colors border"
+                                              >
+                                                {isPdf ? (
+                                                  <FileText className="h-3 w-3 mr-1 text-blue-500" />
+                                                ) : (
+                                                  <FileCheck className="h-3 w-3 mr-1 text-green-500" />
+                                                )}
+                                                {fileName.length > 20
+                                                  ? fileName.substring(0, 17) +
+                                                  "..."
+                                                  : fileName}
+                                              </a>
+                                              <button
+                                                type="button"
+                                                onClick={() =>
+                                                  handleRemoveCertificate(url)
+                                                }
+                                                className="p-1 rounded-full hover:bg-red-100 text-red-500"
+                                                title="Xóa chứng chỉ"
+                                              >
+                                                <svg
+                                                  xmlns="http://www.w3.org/2000/svg"
+                                                  width="12"
+                                                  height="12"
+                                                  viewBox="0 0 24 24"
+                                                  fill="none"
+                                                  stroke="currentColor"
+                                                  strokeWidth="2"
+                                                  strokeLinecap="round"
+                                                  strokeLinejoin="round"
+                                                >
+                                                  <path d="M18 6 6 18"></path>
+                                                  <path d="m6 6 12 12"></path>
+                                                </svg>
+                                              </button>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                           </div>
                         </div>
                       </FormControl>
@@ -1617,13 +1605,13 @@ export default function TutorDashboardProfile() {
                 >
                   {(teachingRequestForm.formState.isSubmitting ||
                     uploadingCertifications) && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
                   {uploadingCertifications
                     ? "Đang tải lên chứng chỉ..."
                     : requestExists
-                    ? "Gửi lại yêu cầu"
-                    : "Gửi yêu cầu"}
+                      ? "Gửi lại yêu cầu"
+                      : "Gửi yêu cầu"}
                 </Button>
               </DialogFooter>
             </form>

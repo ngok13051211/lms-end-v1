@@ -10,6 +10,7 @@ import {
   date,
   time,
   varchar,
+  unique
 } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -340,17 +341,31 @@ export const testimonials = pgTable("testimonials", {
 });
 
 // Conversations Model
-export const conversations = pgTable("conversations", {
-  id: serial("id").primaryKey(),
-  student_id: integer("student_id")
-    .notNull()
-    .references(() => users.id),
-  tutor_id: integer("tutor_id")
-    .notNull()
-    .references(() => users.id),
-  last_message_at: timestamp("last_message_at").defaultNow().notNull(),
-  created_at: timestamp("created_at").defaultNow().notNull(),
-});
+// export const conversations = pgTable("conversations", {
+//   id: serial("id").primaryKey(),
+//   student_id: integer("student_id")
+//     .notNull()
+//     .references(() => users.id),
+//   tutor_id: integer("tutor_id")
+//     .notNull()
+//     .references(() => users.id),
+//   last_message_at: timestamp("last_message_at").defaultNow().notNull(),
+//   created_at: timestamp("created_at").defaultNow().notNull(),
+// });
+export const conversations = pgTable(
+  "conversations",
+  {
+    id: serial("id").primaryKey(),
+    student_id: integer("student_id").notNull().references(() => users.id),
+    tutor_id: integer("tutor_id").notNull().references(() => users.id),
+    last_message_at: timestamp("last_message_at").defaultNow().notNull(),
+    created_at: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    uniqueStudentTutor: unique("unique_student_tutor").on(table.student_id, table.tutor_id),
+  })
+);
+
 
 // Messages Model
 export const messages = pgTable("messages", {
@@ -362,9 +377,35 @@ export const messages = pgTable("messages", {
     .notNull()
     .references(() => users.id),
   content: text("content").notNull(),
+  attachment_url: text("attachment_url"),
   read: boolean("read").default(false),
   created_at: timestamp("created_at").defaultNow().notNull(),
 });
+
+// Định nghĩa mối quan hệ cho conversations
+export const conversationsRelations = relations(conversations, ({ one, many }) => ({
+  student: one(users, {
+    fields: [conversations.student_id],
+    references: [users.id],
+  }),
+  tutor: one(users, {
+    fields: [conversations.tutor_id],
+    references: [users.id],
+  }),
+  messages: many(messages),
+}));
+
+// Định nghĩa mối quan hệ cho messages
+export const messagesRelations = relations(messages, ({ one }) => ({
+  conversation: one(conversations, {
+    fields: [messages.conversation_id],
+    references: [conversations.id],
+  }),
+  sender: one(users, {
+    fields: [messages.sender_id],
+    references: [users.id],
+  }),
+}));
 
 // ------------------------------------------------------------------------------------------------
 // Relations for favorite tutors
@@ -659,6 +700,19 @@ export const educationLevelSelectSchema = createSelectSchema(educationLevels);
 // Schema cho việc gửi tin nhắn mới
 export const messageSchema = z.object({
   content: z.string().min(1, "Nội dung tin nhắn không được để trống"),
+  attachment_url: z.string().url("Đường dẫn tệp đính kèm không hợp lệ").optional(),
+});
+
+// Schema cho việc gửi tin nhắn trực tiếp (tự động tạo conversation)
+export const directMessageSchema = z.object({
+  recipient_id: z.number().int().positive("ID người nhận không hợp lệ"),
+  content: z.string().min(1, "Nội dung tin nhắn không được để trống"),
+  attachment_url: z.string().url("Đường dẫn tệp đính kèm không hợp lệ").optional(),
+});
+
+// Custom schema for route params that have a tutorId parameter
+export const tutorIdParamSchema = z.object({
+  tutorId: z.string().regex(/^\d+$/, "ID phải là một số").transform(Number),
 });
 
 export const favoriteTutorInsertSchema = createInsertSchema(favoriteTutors);
@@ -857,13 +911,13 @@ export const schema = {
   educationLevels,
   courses,
   bookingRequests,
+  conversations,
+  messages,
   bookingSessions,
   payments,
   sessionNotes,
   reviews,
   testimonials,
-  conversations,
-  messages,
   teachingSchedules,
   teachingRequests,
   favoriteTutors,
@@ -882,4 +936,6 @@ export const schema = {
   usersRelations,
   subjectsRelations,
   educationLevelsRelations,
+  conversationsRelations,
+  messagesRelations,
 };

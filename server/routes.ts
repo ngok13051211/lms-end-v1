@@ -12,6 +12,7 @@ import tutorRoutes from "./routes/tutors";
 import studentRoutes from "./routes/students";
 import courseRoutes from "./routes/courses";
 import conversationRoutes from "./routes/conversations";
+import messageRoutes from "./routes/messages";
 import bookingRoutes from "./routes/bookings";
 import paymentRoutes from "./routes/payments";
 import scheduleRoutes from "./routes/schedules";
@@ -94,6 +95,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use(`${apiPrefix}/students`, studentRoutes);
   app.use(`${apiPrefix}/courses`, courseRoutes);
   app.use(`${apiPrefix}/conversations`, conversationRoutes);
+  app.use(`${apiPrefix}/messages`, messageRoutes);
   app.use(`${apiPrefix}/bookings`, bookingRoutes);
   app.use(`${apiPrefix}/payments`, paymentRoutes);
   app.use(`${apiPrefix}/schedules`, scheduleRoutes);
