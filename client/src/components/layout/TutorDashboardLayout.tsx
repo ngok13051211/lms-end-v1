@@ -1,13 +1,19 @@
 import { ReactNode } from "react";
 import { useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { UserCircle, FileText, MessageSquare, BarChart } from "lucide-react";
+import {
+  UserCircle,
+  FileText,
+  MessageSquare,
+  BarChart,
+  CalendarClock,
+} from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 
 interface TutorDashboardLayoutProps {
   children: ReactNode;
-  activePage: "profile" | "courses" | "messages" | "stats";
+  activePage: "profile" | "courses" | "messages" | "stats" | "bookings";
 }
 
 export default function TutorDashboardLayout({
@@ -28,6 +34,12 @@ export default function TutorDashboardLayout({
       icon: <FileText className="mr-2 h-4 w-4" />,
       href: "/dashboard/tutor/courses",
       active: activePage === "courses",
+    },
+    {
+      title: "Đặt lịch",
+      icon: <CalendarClock className="mr-2 h-4 w-4" />,
+      href: "/dashboard/tutor/bookings",
+      active: activePage === "bookings",
     },
     {
       title: "Tin nhắn",

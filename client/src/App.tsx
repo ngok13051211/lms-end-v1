@@ -17,6 +17,7 @@ import TutorDashboardCourses from "@/pages/tutor-dashboard-courses";
 import TutorDashboardMessages from "@/pages/tutor-dashboard-messages";
 import TutorDashboardStats from "@/pages/tutor-dashboard-stats";
 import TutorDashboardSchedule from "@/pages/tutor-dashboard-schedule";
+import TutorDashboardBookings from "@/pages/tutor-dashboard-bookings";
 import StudentDashboard from "@/pages/student-dashboard";
 import StudentDashboardProfile from "@/pages/student-dashboard-profile";
 import StudentDashboardTutors from "@/pages/student-dashboard-tutors";
@@ -31,6 +32,7 @@ import BecomeTutor from "@/pages/become-tutor";
 import BookingForm from "@/pages/booking-form";
 import Payment from "@/pages/payment";
 import StudentBookingDetail from "@/pages/student-booking-detail";
+import TutorBookingDetail from "@/pages/tutor-booking-detail";
 import PrivateRoute from "@/components/auth/PrivateRoute";
 import MainLayout from "@/components/layout/MainLayout";
 import { useEffect, useState, ReactNode } from "react";
@@ -98,9 +100,12 @@ function Router() {
       </Route>
       <Route path="/tutor-dashboard/stats">
         <PrivateRoute role="tutor" component={TutorDashboardStats} />
-      </Route>
+      </Route>{" "}
       <Route path="/tutor-dashboard/schedule">
         <PrivateRoute role="tutor" component={TutorDashboardSchedule} />
+      </Route>
+      <Route path="/tutor-dashboard/bookings">
+        <PrivateRoute role="tutor" component={TutorDashboardBookings} />
       </Route>
       {/* Main tutor dashboard route */}
       <Route path="/dashboard/tutor">
@@ -118,12 +123,15 @@ function Router() {
       </Route>
       <Route path="/dashboard/tutor/messages/:id">
         <PrivateRoute role="tutor" component={TutorDashboardMessages} />
-      </Route>
+      </Route>{" "}
       <Route path="/dashboard/tutor/stats">
         <PrivateRoute role="tutor" component={TutorDashboardStats} />
       </Route>
       <Route path="/dashboard/tutor/schedule">
         <PrivateRoute role="tutor" component={TutorDashboardSchedule} />
+      </Route>
+      <Route path="/dashboard/tutor/bookings">
+        <PrivateRoute role="tutor" component={TutorDashboardBookings} />
       </Route>
       {/* Student dashboard */}
       <Route path="/dashboard/student">
@@ -168,9 +176,13 @@ function Router() {
       <Route path="/payment">
         <PrivateRoute role="student" component={Payment} />
       </Route>
-      {/* Booking detail route */}
+      {/* Booking detail route */} {/* Student booking detail route */}
       <Route path="/bookings/:id">
         <PrivateRoute role="student" component={StudentBookingDetail} />
+      </Route>
+      {/* Tutor booking detail route */}
+      <Route path="/dashboard/tutor/bookings/:id">
+        <PrivateRoute role="tutor" component={TutorBookingDetail} />
       </Route>
       <Route component={NotFound} />
     </Switch>

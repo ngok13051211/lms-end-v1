@@ -1,4 +1,3 @@
-// filepath: d:\Downloads\HomiTutorPlatform\client\src\pages\student-dashboard-bookings.tsx
 import { useState } from "react";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store";
@@ -33,7 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import useStudentBookingsQuery from "@/hooks/useStudentBookingsQuery";
+import useTutorBookingsQuery from "@/hooks/useTutorBookingsQuery";
 
 // Status options for filtering bookings
 const statusOptions = [
@@ -111,7 +110,7 @@ const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString("vi-VN");
 };
 
-export default function StudentDashboardBookings() {
+export default function TutorDashboardBookings() {
   const { user } = useSelector((state: RootState) => state.auth);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<
@@ -124,43 +123,48 @@ export default function StudentDashboardBookings() {
     isLoading,
     error,
     refetch,
-  } = useStudentBookingsQuery({ status: statusFilter });
-
+  } = useTutorBookingsQuery({ status: statusFilter });
   // Lọc danh sách bookings theo từ khóa tìm kiếm
   const filteredBookings = bookings
-    ? bookings.filter(
-        (booking) =>
+    ? bookings.filter((booking) => {
+        const studentName = booking.student
+          ? `${booking.student.first_name || ""} ${
+              booking.student.last_name || ""
+            }`.toLowerCase()
+          : "";
+
+        return (
           booking.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (booking.tutor.user.first_name + " " + booking.tutor.user.last_name)
+          studentName.includes(searchQuery.toLowerCase()) ||
+          (booking.course?.title || "")
             .toLowerCase()
             .includes(searchQuery.toLowerCase()) ||
           booking.status.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+        );
+      })
     : [];
 
   return (
     <DashboardLayout>
       <div className="p-6 max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-medium">
-            Danh sách yêu cầu đặt lịch học
-          </h1>
+          <h1 className="text-2xl font-medium">Danh sách yêu cầu đặt lịch</h1>
           <div className="flex gap-2">
-            <Link href="/dashboard/student/profile">
-              <Button variant="outline">Hồ sơ</Button>
+            <Link href="/dashboard/tutor/schedule">
+              <Button variant="outline">Lịch dạy</Button>
             </Link>
-            <Link href="/dashboard/student/tutors">
-              <Button variant="outline">Gia sư yêu thích</Button>
+            <Link href="/dashboard/tutor/courses">
+              <Button variant="outline">Khóa học</Button>
             </Link>
           </div>
-        </div>{" "}
+        </div>
         <Card className="mb-6">
           <CardContent className="p-6">
             <div className="flex flex-col md:flex-row gap-4 items-center">
               <div className="relative flex-1 w-full">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Tìm kiếm theo tên khóa học, gia sư hoặc trạng thái..."
+                  placeholder="Tìm kiếm theo tên khóa học, học viên hoặc trạng thái..."
                   className="pl-8 w-full"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -188,11 +192,12 @@ export default function StudentDashboardBookings() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Yêu cầu đặt lịch học của bạn</CardTitle>
+            <CardTitle>Yêu cầu đặt lịch học với bạn</CardTitle>
             <CardDescription>
-              Danh sách các yêu cầu đặt lịch học của bạn và trạng thái hiện tại
+              Danh sách các yêu cầu đặt lịch học của học viên và trạng thái hiện
+              tại
             </CardDescription>
-          </CardHeader>{" "}
+          </CardHeader>
           <CardContent>
             {isLoading ? (
               <div className="text-center py-12">
@@ -225,7 +230,7 @@ export default function StudentDashboardBookings() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Khóa học</TableHead>
-                      <TableHead>Gia sư</TableHead>
+                      <TableHead>Học viên</TableHead>
                       <TableHead>Ngày tạo</TableHead>
                       <TableHead>Số buổi</TableHead>
                       <TableHead>Tổng tiền</TableHead>
@@ -238,22 +243,26 @@ export default function StudentDashboardBookings() {
                       <TableRow key={booking.id}>
                         <TableCell className="font-medium">
                           {booking.title}
-                        </TableCell>
+                        </TableCell>{" "}
                         <TableCell>
                           <div className="flex items-center gap-2">
+                            {" "}
                             <Avatar className="h-8 w-8">
                               <AvatarImage
-                                src={booking.tutor.user.avatar || undefined}
-                                alt={`${booking.tutor.user.first_name} ${booking.tutor.user.last_name}`}
+                                src={booking.student?.avatar || undefined}
+                                alt={`${booking.student?.first_name || ""} ${
+                                  booking.student?.last_name || ""
+                                }`}
                               />
                               <AvatarFallback className="text-xs">
-                                {booking.tutor.user.first_name.charAt(0)}
-                                {booking.tutor.user.last_name.charAt(0)}
+                                {booking.student?.first_name?.charAt(0) || "?"}
+                                {booking.student?.last_name?.charAt(0) ||
+                                  ""}{" "}
                               </AvatarFallback>
                             </Avatar>
                             <span>
-                              {booking.tutor.user.first_name}{" "}
-                              {booking.tutor.user.last_name}
+                              {booking.student?.first_name || "Không có tên"}{" "}
+                              {booking.student?.last_name || ""}
                             </span>
                           </div>
                         </TableCell>
@@ -261,12 +270,13 @@ export default function StudentDashboardBookings() {
                         <TableCell>{booking.sessions.length} buổi</TableCell>
                         <TableCell>
                           {formatCurrency(parseFloat(booking.total_amount))}
-                        </TableCell>{" "}
-                        <TableCell>{getStatusBadge(booking.status)}</TableCell>
+                        </TableCell>
+                        <TableCell>{getStatusBadge(booking.status)}</TableCell>{" "}
                         <TableCell className="text-right">
                           <BookingActionsCell
                             booking={booking}
                             refetchBookings={refetch}
+                            tutorActions={true}
                           />
                         </TableCell>
                       </TableRow>
@@ -292,14 +302,16 @@ export default function StudentDashboardBookings() {
                   Bạn chưa có yêu cầu đặt lịch nào
                 </h2>
                 <p className="mt-2 text-muted-foreground max-w-md mx-auto">
-                  Bạn chưa tạo yêu cầu đặt lịch học với gia sư nào. Hãy tìm kiếm
-                  gia sư và đặt lịch học ngay!
+                  Chưa có học viên nào đặt lịch học với bạn. Hãy kiểm tra lại
+                  thông tin khóa học và lịch dạy của bạn.
                 </p>
                 <Button
                   className="mt-6"
-                  onClick={() => (window.location.href = "/tutors")}
+                  onClick={() =>
+                    (window.location.href = "/dashboard/tutor/courses")
+                  }
                 >
-                  Tìm gia sư
+                  Quản lý khóa học
                 </Button>
               </div>
             )}

@@ -56,11 +56,15 @@ export interface User {
   updated_at: string;
 }
 
-// Define the Student interface
+// Define the Student interface - flattened without nested user object
 export interface Student {
   id: number;
   user_id: number;
-  user: User;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone?: string;
+  avatar?: string;
   created_at: string;
   updated_at: string;
 }

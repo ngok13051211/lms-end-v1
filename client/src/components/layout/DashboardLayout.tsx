@@ -12,6 +12,7 @@ import {
   PieChart,
   LogOut,
   Menu,
+  CalendarClock,
   X,
   ChevronRight,
   Users,
@@ -60,7 +61,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           href: "/dashboard/tutor",
         },
         {
-          label: "Profile",
+          label: "Hồ sơ",
           icon: <User className="h-5 w-5" />,
           href: "/dashboard/tutor/profile",
         },
@@ -70,12 +71,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           href: "/dashboard/tutor/courses",
         },
         {
-          label: "Messages",
+          label: "Tin nhắn",
           icon: <MessageSquare className="h-5 w-5" />,
           href: "/dashboard/tutor/messages",
         },
         {
-          label: "Statistics",
+          label: "Đặt lịch",
+          icon: <CalendarClock className="h-5 w-5" />,
+          href: "/dashboard/tutor/bookings",
+        },
+        {
+          label: "Thống kê",
           icon: <PieChart className="h-5 w-5" />,
           href: "/dashboard/tutor/stats",
         },

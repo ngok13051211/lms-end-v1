@@ -56,7 +56,7 @@ router.patch(
   "/:id/status",
   authMiddleware,
   validateParams(schema.idSchema),
-  validateBody(schema.bookingSchema),
+  validateBody(schema.bookingRequestStatusSchema),
   bookingController.updateBookingStatus
 );
 
