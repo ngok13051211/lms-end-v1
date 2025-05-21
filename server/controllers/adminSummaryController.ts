@@ -560,3 +560,158 @@ export const getCoursesBySubject = async (req: Request, res: Response) => {
         return res.status(500).json({ error: "Failed to get courses by subject statistics" });
     }
 };
+
+// Get revenue statistics from booking_requests
+export const getRevenueStats = async (req: Request, res: Response) => {
+    try {
+        // Extract query parameters
+        const { type = 'month', month, year: yearParam, fromDate, toDate } = req.query;
+        const currentDate = new Date();
+        const year = yearParam ? parseInt(yearParam as string, 10) : currentDate.getFullYear();
+
+        let result;
+
+        // Different queries based on type parameter
+        switch (type) {
+            case 'day':
+                // Filter by date range if fromDate and toDate are provided
+                if (fromDate && toDate) {
+                    result = await db.execute(
+                        sql`
+                        SELECT 
+                          TO_CHAR(created_at, 'YYYY-MM-DD') as period,
+                          COALESCE(SUM(total_amount), 0) as revenue
+                        FROM booking_requests
+                        WHERE 
+                          status = 'completed' AND
+                          created_at::date BETWEEN ${fromDate}::date AND ${toDate}::date
+                        GROUP BY TO_CHAR(created_at, 'YYYY-MM-DD')
+                        ORDER BY period ASC
+                        `
+                    );
+                } else if (fromDate) {
+                    // If only fromDate is provided
+                    result = await db.execute(
+                        sql`
+                        SELECT 
+                          TO_CHAR(created_at, 'YYYY-MM-DD') as period,
+                          COALESCE(SUM(total_amount), 0) as revenue
+                        FROM booking_requests
+                        WHERE 
+                          status = 'completed' AND
+                          created_at::date >= ${fromDate}::date
+                        GROUP BY TO_CHAR(created_at, 'YYYY-MM-DD')
+                        ORDER BY period ASC
+                        `
+                    );
+                } else {
+                    // Default: last 30 days
+                    result = await db.execute(
+                        sql`
+                        SELECT 
+                          TO_CHAR(created_at, 'YYYY-MM-DD') as period,
+                          COALESCE(SUM(total_amount), 0) as revenue
+                        FROM booking_requests
+                        WHERE 
+                          status = 'completed' AND
+                          created_at::date >= NOW() - INTERVAL '30 days'
+                        GROUP BY TO_CHAR(created_at, 'YYYY-MM-DD')
+                        ORDER BY period ASC
+                        `
+                    );
+                }
+                break;
+
+            case 'week':
+                // Group by week number for the specified year
+                result = await db.execute(
+                    sql`
+                    SELECT 
+                      TO_CHAR(created_at, 'IYYY-IW') as period,
+                      COALESCE(SUM(total_amount), 0) as revenue
+                    FROM booking_requests
+                    WHERE 
+                      status = 'completed' AND
+                      EXTRACT(YEAR FROM created_at) = ${year}
+                    GROUP BY TO_CHAR(created_at, 'IYYY-IW')
+                    ORDER BY period ASC
+                    `
+                );
+                break;
+
+            case 'month':
+                // If month is specified, group by day within that month
+                if (month) {
+                    const monthNum = parseInt(month as string, 10);
+                    if (monthNum < 1 || monthNum > 12) {
+                        return res.status(400).json({ error: "Month parameter must be between 1 and 12" });
+                    }
+
+                    result = await db.execute(
+                        sql`
+                        SELECT 
+                          TO_CHAR(created_at, 'YYYY-MM-DD') as period,
+                          COALESCE(SUM(total_amount), 0) as revenue
+                        FROM booking_requests
+                        WHERE 
+                          status = 'completed' AND
+                          EXTRACT(YEAR FROM created_at) = ${year} AND
+                          EXTRACT(MONTH FROM created_at) = ${monthNum}
+                        GROUP BY TO_CHAR(created_at, 'YYYY-MM-DD')
+                        ORDER BY period ASC
+                        `
+                    );
+                } else {
+                    // If no month specified, return all months for the year
+                    result = await db.execute(
+                        sql`
+                        SELECT 
+                          TO_CHAR(created_at, 'YYYY-MM') as period,
+                          COALESCE(SUM(total_amount), 0) as revenue
+                        FROM booking_requests
+                        WHERE 
+                          status = 'completed' AND
+                          EXTRACT(YEAR FROM created_at) = ${year}
+                        GROUP BY TO_CHAR(created_at, 'YYYY-MM')
+                        ORDER BY period ASC
+                        `
+                    );
+                }
+                break;
+
+            case 'year':
+                // Group by month for the specified year
+                result = await db.execute(
+                    sql`
+                    SELECT 
+                      TO_CHAR(created_at, 'YYYY-MM') as period,
+                      COALESCE(SUM(total_amount), 0) as revenue
+                    FROM booking_requests
+                    WHERE 
+                      status = 'completed' AND
+                      EXTRACT(YEAR FROM created_at) = ${year}
+                    GROUP BY TO_CHAR(created_at, 'YYYY-MM')
+                    ORDER BY period ASC
+                    `
+                );
+                break;
+
+            default:
+                return res.status(400).json({ error: "Invalid type parameter. Use 'day', 'week', 'month', or 'year'" });
+        }
+
+        // Transform the data: extract rows and convert revenue to number
+        const revenueData = result.rows.map(item => ({
+            period: item.period,
+            revenue: parseFloat(item.revenue) // Convert string to number (float for money values)
+        }));
+
+        console.log("Revenue statistics processed:", revenueData);
+
+        // Return revenue data as an array
+        return res.json(revenueData);
+    } catch (error) {
+        console.error("Error getting revenue statistics:", error);
+        return res.status(500).json({ error: "Failed to get revenue statistics" });
+    }
+};

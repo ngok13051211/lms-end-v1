@@ -9,7 +9,8 @@ import {
     getUserGrowthByMonth,
     getUserGrowthLatest12Months,
     getBookingsVolume,
-    getCoursesBySubject
+    getCoursesBySubject,
+    getRevenueStats
 } from "../controllers/adminSummaryController";
 import { authMiddleware, roleMiddleware } from "../middlewares/authMiddleware";
 
@@ -42,5 +43,7 @@ router.get("/statistics/bookings-volume", getBookingsVolume);
 
 // Courses by subject statistics endpoint
 router.get("/statistics/courses-by-subject", getCoursesBySubject);
+
+router.get('/statistics/revenue-stats', getRevenueStats);
 
 export default router;

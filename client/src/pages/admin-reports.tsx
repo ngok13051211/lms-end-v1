@@ -81,7 +81,7 @@ interface BookingVolumeData {
 // Interface cho dữ liệu doanh thu
 interface RevenueData {
   period: string;
-  amount: number;
+  revenue: number;
 }
 
 // Interface cho Top Tutors
@@ -530,6 +530,115 @@ export default function AdminReports() {
       setShouldFetchData(false);
     }
   }, [shouldFetchData, advancedBookingVolumeData]);
+  // Xử lý dữ liệu doanh thu
+  const {
+    data: revenueStatsData,
+    isLoading: isRevenueStatsLoading,
+    error: revenueStatsError
+  } = useQuery({
+    queryKey: ["revenue-stats", filterParams], queryFn: async () => {
+      try {        // Chuẩn bị các tham số cho API call
+        let url = '/api/v1/admin/summary/statistics/revenue-stats';
+        const params = new URLSearchParams();
+
+        // Thêm tham số type dựa vào bộ lọc
+        params.append('type', filterParams.filterType);
+
+        // Thêm các tham số khác nếu có
+        switch (filterParams.filterType) {
+          case 'day':
+            if (filterParams.fromDate) {
+              params.append('fromDate', format(filterParams.fromDate, 'yyyy-MM-dd'));
+            }
+            if (filterParams.toDate) {
+              params.append('toDate', format(filterParams.toDate, 'yyyy-MM-dd'));
+            }
+            break;
+          case 'month':
+            if (filterParams.month) {
+              params.append('month', filterParams.month.toString());
+            }
+            if (filterParams.year) {
+              params.append('year', filterParams.year.toString());
+            }
+            break;
+          case 'year':
+            if (filterParams.year) {
+              params.append('year', filterParams.year.toString());
+            }
+            break;
+        }        // Gọi API với tham số đã xác định
+        console.log(`Fetching revenue data from: ${url}?${params.toString()}`);
+        const response = await apiRequest("GET", `${url}?${params.toString()}`);
+        const data = await response.json();
+        console.log("Revenue data response:", data);
+        return data as RevenueData[];
+      } catch (error) {
+        console.error("Lỗi khi lấy thống kê doanh thu:", error);
+        throw error;
+      }
+    },
+    enabled: shouldFetchData,
+    refetchOnWindowFocus: false,
+  });  // Format dữ liệu doanh thu cho biểu đồ
+  const formatRevenueChart = () => {
+    console.log("Formatting revenue data:", revenueStatsData);
+
+    if (!revenueStatsData || revenueStatsData.length === 0) {
+      console.log("No revenue data available to format");
+      return {
+        labels: [],
+        datasets: [{
+          label: 'Doanh thu (triệu VND)',
+          data: [],
+          backgroundColor: 'rgba(10, 179, 156, 0.5)',
+          borderColor: 'rgb(10, 179, 156)',
+          tension: 0.3,
+        }]
+      };
+    }
+
+    // Sắp xếp dữ liệu theo thời gian (từ sớm đến muộn)
+    const sortedData = [...revenueStatsData].sort((a, b) => {
+      return a.period.localeCompare(b.period);
+    });
+
+    // Tách dữ liệu thành labels và values
+    const labels = sortedData.map(item => {
+      // Định dạng label hiển thị dựa vào loại thời gian
+      // Kiểm tra định dạng của period để xác định cách hiển thị phù hợp
+      if (item.period.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        // Định dạng YYYY-MM-DD (ngày)
+        const dateParts = item.period.split('-');
+        return `${dateParts[2]}/${dateParts[1]}`;
+      } else if (item.period.match(/^\d{4}-\d{2}$/)) {
+        // Định dạng YYYY-MM (tháng)
+        const monthParts = item.period.split('-');
+        return `${monthParts[1]}/${monthParts[0]}`;
+      } else if (item.period.match(/^\d{4}-\d{2}$/)) {
+        // Định dạng IYYY-IW (tuần ISO)
+        const weekParts = item.period.split('-');
+        return `Tuần ${weekParts[1]}/${weekParts[0]}`;
+      } else {
+        // Định dạng khác
+        return item.period;
+      }
+    });
+
+    // Chuyển doanh thu từ đơn vị VND sang triệu VND để hiển thị
+    const values = sortedData.map(item => Number((item.revenue / 1000000).toFixed(1)));
+
+    return {
+      labels,
+      datasets: [{
+        label: 'Doanh thu (triệu VND)',
+        data: values,
+        backgroundColor: 'rgba(10, 179, 156, 0.5)',
+        borderColor: 'rgb(10, 179, 156)',
+        tension: 0.3,
+      }]
+    };
+  };
 
   return (
     <DashboardLayout>
@@ -609,9 +718,9 @@ export default function AdminReports() {
           <CardContent>
             <Tabs defaultValue="user-growth" value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="mb-4">
-                <TabsTrigger value="user-growth">User Growth</TabsTrigger>
-                <TabsTrigger value="booking-volume">Booking Volume</TabsTrigger>
-                <TabsTrigger value="revenue-chart">Revenue Chart</TabsTrigger>
+                <TabsTrigger value="user-growth">	Tăng trưởng người dùng</TabsTrigger>
+                <TabsTrigger value="booking-volume">Lượt đặt lịch</TabsTrigger>
+                <TabsTrigger value="revenue-chart">Biểu đồ doanh thu</TabsTrigger>
               </TabsList>              {/* Biểu đồ User Growth */}
               <TabsContent value="user-growth">
                 <div className="h-[350px]">
@@ -668,22 +777,45 @@ export default function AdminReports() {
               {/* Biểu đồ Revenue */}
               <TabsContent value="revenue-chart">
                 <div className="h-[350px]">
-                  <Line
-                    data={revenueData}
-                    options={{
-                      responsive: true,
-                      maintainAspectRatio: false,
-                      plugins: {
-                        legend: {
-                          position: 'top' as const,
+                  {isRevenueStatsLoading ? (
+                    <div className="h-full flex items-center justify-center">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      <span className="ml-2">Đang tải dữ liệu...</span>
+                    </div>
+                  ) : revenueStatsData && revenueStatsData.length > 0 ? (
+                    <Line
+                      data={formatRevenueChart()}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                          legend: {
+                            position: 'top' as const,
+                          },
+                          title: {
+                            display: true,
+                            text: 'Doanh thu theo thời gian (triệu VND)',
+                          },
                         },
-                        title: {
-                          display: true,
-                          text: 'Doanh thu theo tháng (triệu VND)',
-                        },
-                      },
-                    }}
-                  />
+                        scales: {
+                          y: {
+                            beginAtZero: true,
+                          }
+                        }
+                      }}
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="text-center">
+                        <LineChart className="h-16 w-16 mx-auto text-muted-foreground" />
+                        <p className="mt-4 text-muted-foreground">
+                          {shouldFetchData
+                            ? "Đang tải dữ liệu..."
+                            : "Chọn bộ lọc thời gian và nhấn nút Xem để hiển thị dữ liệu doanh thu."}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </TabsContent>
             </Tabs>
