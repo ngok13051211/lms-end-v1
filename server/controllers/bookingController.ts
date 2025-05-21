@@ -5,165 +5,9 @@ import { eq, and, desc, sql } from "drizzle-orm";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 
-// Tạo booking mới
-export const createBooking = async (req: Request, res: Response) => {
-  try {
-    const studentId = req.user?.id;
-
-    if (!studentId) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    // Validate booking data
-    const validatedData = schema.bookingRequestValidationSchema.parse({
-      ...req.body,
-      student_id: studentId,
-    });
-
-    // Kiểm tra xem gia sư có tồn tại không
-    const tutor = await db.query.tutorProfiles.findFirst({
-      where: eq(schema.tutorProfiles.id, validatedData.tutor_id),
-    });
-
-    if (!tutor) {
-      return res.status(404).json({ message: "Tutor not found" });
-    }
-
-    // Xác định hourly_rate từ course nếu có course_id
-    let hourlyRate;
-    let selectedCourse;
-
-    if (validatedData.course_id) {
-      selectedCourse = await db.query.courses.findFirst({
-        where: and(
-          eq(schema.courses.id, validatedData.course_id),
-          eq(schema.courses.tutor_id, validatedData.tutor_id)
-        ),
-      });
-
-      if (!selectedCourse) {
-        return res.status(404).json({
-          message: "Course not found or does not belong to the tutor",
-        });
-      }
-
-      // Lấy hourly_rate từ course
-      hourlyRate = Number(selectedCourse.hourly_rate);
-    } else {
-      // Nếu không có course_id, sử dụng hourly_rate từ request
-      // (KHÔNG khuyến khích, nên yêu cầu client luôn gửi course_id)
-      if (!validatedData.hourly_rate) {
-        return res.status(400).json({
-          message: "Either course_id or hourly_rate must be provided",
-        });
-      }
-      hourlyRate =
-        typeof validatedData.hourly_rate === "string"
-          ? parseFloat(validatedData.hourly_rate)
-          : validatedData.hourly_rate;
-    }
-
-    // Tính toán tổng thời gian
-    // Đảm bảo xử lý thời gian đúng cách bằng cách thêm thông tin múi giờ
-    // Sử dụng 'T' như một phần của chuỗi ISO để đảm bảo JavaScript xử lý đúng múi giờ địa phương
-    const bookingDate = validatedData.date as string;
-
-    // Chuẩn hóa định dạng giờ HH:MM
-    let startTimeStr = String(validatedData.start_time);
-    let endTimeStr = String(validatedData.end_time);
-
-    // Đảm bảo định dạng giờ có đầy đủ 2 chữ số ở phần giờ (HH:MM)
-    if (startTimeStr.length === 4) {
-      startTimeStr = "0" + startTimeStr;
-    }
-
-    if (endTimeStr.length === 4) {
-      endTimeStr = "0" + endTimeStr;
-    }
-
-    // Tạo đối tượng Date với định dạng chuẩn ISO 8601 (YYYY-MM-DDThh:mm:ss)
-    const startTime = new Date(`${bookingDate}T${startTimeStr}:00`);
-    const endTime = new Date(`${bookingDate}T${endTimeStr}:00`);
-
-    console.log(
-      `Thời gian bắt đầu: ${startTime.toISOString()}, Thời gian kết thúc: ${endTime.toISOString()}`
-    );
-
-    const diffMs = endTime.getTime() - startTime.getTime();
-    const hours = diffMs / (1000 * 60 * 60);
-
-    if (hours <= 0) {
-      return res
-        .status(400)
-        .json({ message: "End time must be after start time" });
-    }
-
-    // Tính toán tổng số tiền dựa trên hourlyRate đã xác định
-    const totalAmount = hourlyRate * hours;
-
-    // Tạo booking request
-    const [bookingRequest] = await db
-      .insert(schema.bookingRequests)
-      .values([
-        {
-          student_id: studentId,
-          tutor_id: validatedData.tutor_id,
-          course_id: validatedData.course_id,
-          title: validatedData.title,
-          description: validatedData.description || "",
-          mode: validatedData.location ? "offline" : "online",
-          location: validatedData.location,
-          meeting_url: validatedData.meeting_url,
-          hourly_rate: hourlyRate.toString(),
-          total_hours: hours.toString(),
-          total_amount: totalAmount.toString(),
-          status: "pending",
-          created_at: new Date(),
-          updated_at: new Date(),
-        },
-      ])
-      .returning();
-
-    // Extract date from the ISO datetime string
-    const dateOnly = startTime.toISOString().split("T")[0];
-
-    // Tạo booking session
-    const [bookingSession] = await db
-      .insert(schema.bookingSessions)
-      .values([
-        {
-          request_id: bookingRequest.id,
-          date: dateOnly,
-          start_time: startTimeStr,
-          end_time: endTimeStr,
-          status: "pending",
-          created_at: new Date(),
-          updated_at: new Date(),
-        },
-      ])
-      .returning();
-
-    // Get the complete booking request with session
-    const completeBooking = await db.query.bookingRequests.findFirst({
-      where: eq(schema.bookingRequests.id, bookingRequest.id),
-      with: {
-        sessions: true,
-      },
-    });
-
-    return res.status(201).json({
-      message: "Booking created successfully",
-      booking: completeBooking,
-    });
-  } catch (error) {
-    if (error instanceof ZodError) {
-      const validationError = fromZodError(error);
-      return res.status(400).json({ message: validationError.message });
-    }
-    console.error("Create booking error:", error);
-    return res.status(500).json({ message: "Internal server error" });
-  }
-};
+// [DEPRECATED] Tạo booking mới (đã bị xóa)
+// Phương thức này đã bị loại bỏ vì sử dụng bookingRequestValidationSchema cũ
+// Vui lòng sử dụng createMultipleBookings thay thế
 
 // Lấy danh sách booking của học sinh
 export const getStudentBookings = async (req: Request, res: Response) => {
@@ -591,12 +435,10 @@ export const createMultipleBookings = async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    // Lấy dữ liệu từ request body
-    const { courseId, tutorId, mode, location, note, bookings } = req.body;
+    const { course_id, tutor_id, mode, location, note, bookings } = req.body;
 
-    // Convert IDs to numbers
-    const courseIdNumber = parseInt(courseId, 10);
-    const tutorIdNumber = parseInt(tutorId, 10);
+    const courseIdNumber = Number(course_id);
+    const tutorIdNumber = Number(tutor_id);
 
     // Validate all time slots (ensure end time is after start time)
     for (const booking of bookings) {

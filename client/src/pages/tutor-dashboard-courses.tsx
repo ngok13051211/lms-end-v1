@@ -286,7 +286,7 @@ export default function TutorDashboardCourses() {
       console.log("Updating course with data:", formattedData);
       const res = await apiRequest(
         "PATCH",
-        `/api/v1/tutors/courses/${id}`,
+        `/api/v1/courses/${id}`,
         formattedData
       );
       return res.json();

@@ -57,6 +57,7 @@ export default function TutorProfile() {
     id: string | number;
     title: string;
     description?: string;
+    desc?: string; // Add desc field as an alternative to description
     subject?: {
       id: string | number;
       name: string;
@@ -679,7 +680,9 @@ export default function TutorProfile() {
                               {course.title || "Untitled Course"}
                             </h3>
                             <p className="text-muted-foreground mb-4 whitespace-pre-line">
-                              {course.description || "No description available"}
+                              {course.desc ||
+                                course.description ||
+                                "No description available"}
                             </p>
 
                             <div className="flex flex-wrap gap-2 mb-4">

@@ -677,36 +677,38 @@ export const reviewSelectSchema = createSelectSchema(reviews);
 export const bookingRequestInsertSchema = createInsertSchema(bookingRequests);
 export const bookingSessionInsertSchema = createInsertSchema(bookingSessions);
 
-// Bổ sung validation riêng cho booking request
-export const bookingRequestValidationSchema = z.object({
-  title: z.string().min(3, "Tiêu đề phải có ít nhất 3 ký tự"),
+// Schema mới cho booking từ frontend - phản ánh payload khi học sinh đặt lịch học
+export const bookingSchema = z.object({
   student_id: z.number(),
   tutor_id: z.number(),
-  course_id: z.number().optional(),
-  description: z.string().optional(),
+  course_id: z.number(),
   mode: z.enum(["online", "offline"]),
   location: z.string().optional(),
-  meeting_url: z.string().optional(),
-  hourly_rate: z.number().or(z.string().transform((val) => parseFloat(val))),
-  date: z.string(),
-  start_time: z.string(),
-  end_time: z.string(),
-  total_hours: z.number().optional(), // Trở thành optional vì sẽ tính toán trên server
-  total_amount: z.number().optional(), // Trở thành optional vì sẽ tính toán trên server
-  status: z.string().default("pending"),
+  note: z.string().optional(),
+  paymentMethod: z.enum(["direct", "online"]),
+  hourly_rate: z.union([
+    z.number(),
+    z.string().transform((val) => parseFloat(val)),
+  ]),
+  totalHours: z.union([
+    z.number(),
+    z.string().transform((val) => parseFloat(val)),
+  ]),
+  totalAmount: z.union([
+    z.number(),
+    z.string().transform((val) => parseFloat(val)),
+  ]),
+  bookings: z.array(
+    z.object({
+      scheduleId: z.number(),
+      date: z.string(), // Định dạng YYYY-MM-DD
+      startTime: z.string(), // Định dạng HH:MM
+      endTime: z.string(), // Định dạng HH:MM
+    })
+  ),
 });
 
-// Schema cho booking session
-export const bookingSessionValidationSchema = z.object({
-  request_id: z.number(),
-  title: z.string().min(3, "Tiêu đề phải có ít nhất 3 ký tự"),
-  date: z.string(), // Hỗ trợ nhập ngày và chuyển đổi sang timestamp
-  start_time: z.string(), // Định dạng "HH:MM"
-  end_time: z.string(), // Định dạng "HH:MM"
-  status: z.string().default("pending"),
-});
-
-// Schema cho cập nhật trạng thái booking request
+// Schema cho cập nhật trạng thái (giữ lại vì vẫn có thể sử dụng cho API khác)
 export const bookingRequestStatusSchema = z.object({
   status: z.enum(
     ["pending", "confirmed", "completed", "cancelled", "rejected"],
@@ -717,7 +719,6 @@ export const bookingRequestStatusSchema = z.object({
   reason: z.string().optional(), // Lý do nếu từ chối hoặc hủy
 });
 
-// Schema cho cập nhật trạng thái booking session
 export const bookingSessionStatusSchema = z.object({
   status: z.enum(["pending", "confirmed", "completed", "cancelled"], {
     errorMap: () => ({ message: "Trạng thái không hợp lệ" }),
@@ -870,6 +871,9 @@ export const schema = {
   tutorSubjects,
   tutorEducationLevels,
   emailOtps,
+
+  // Schema validation
+  bookingSchema,
 
   // ✅ Export thêm các relations quan trọng
   coursesRelations,

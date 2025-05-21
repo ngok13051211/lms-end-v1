@@ -103,6 +103,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           href: "/dashboard/student/tutors",
         },
         {
+          label: "Đặt lịch học",
+          icon: <Calendar className="h-5 w-5" />,
+          href: "/dashboard/student/bookings",
+        },
+        {
           label: "Messages",
           icon: <MessageSquare className="h-5 w-5" />,
           href: "/dashboard/student/messages",
@@ -181,10 +186,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             return (
               <div
                 key={item.href}
-                className={`flex items-center px-4 py-3 text-sm rounded-md transition-colors cursor-pointer ${isActive
+                className={`flex items-center px-4 py-3 text-sm rounded-md transition-colors cursor-pointer ${
+                  isActive
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  }`}
+                }`}
                 onClick={() => {
                   if (isMobile) setSidebarOpen(false);
                   window.location.href = item.href;

@@ -298,7 +298,7 @@ export default function TutorDashboard() {
   // Create course
   const createCourseMutation = useMutation({
     mutationFn: async (data: z.infer<typeof courseSchema>) => {
-      const response = await apiRequest("POST", "/api/v1/tutors/courses", data);
+      const response = await apiRequest("POST", "/api/v1/courses", data);
       return response.json();
     },
     onSuccess: () => {
@@ -333,7 +333,7 @@ export default function TutorDashboard() {
     mutationFn: async (courseId: number) => {
       const response = await apiRequest(
         "DELETE",
-        `/api/v1/tutors/courses/${courseId}`,
+        `/api/v1/courses/${courseId}`,
         undefined
       );
       return response.json();

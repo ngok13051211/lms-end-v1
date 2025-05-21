@@ -112,6 +112,14 @@ export default function StudentDashboardTutors() {
             <Button
               variant="outline"
               onClick={() =>
+                (window.location.href = "/dashboard/student/bookings")
+              }
+            >
+              Đặt lịch học
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() =>
                 (window.location.href = "/dashboard/student/messages")
               }
             >

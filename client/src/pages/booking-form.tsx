@@ -303,6 +303,7 @@ export default function BookingForm() {
   const [availableTimeSlotsMap, setAvailableTimeSlotsMap] = useState<
     Record<string, TimeSlot[]>
   >({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const tutorId = params?.tutorId;
   const courseId = new URLSearchParams(window.location.search).get("course");
@@ -575,7 +576,6 @@ export default function BookingForm() {
     );
     return session?.timeSlots || [];
   };
-
   // Xóa một phiên học đã chọn
   const removeSession = (dateStr: string) => {
     setSelectedSessions((prev) =>
@@ -586,15 +586,14 @@ export default function BookingForm() {
       prev.filter((date) => format(date, "yyyy-MM-dd") !== dateStr)
     );
   };
+
   // Form submission handling
   const onSubmit = async (data: BookingFormValues) => {
     // Form is already validated through the Zod schema, so we can proceed directly
 
     // If all validations passed, proceed with form submission
     console.log("Form data:", data);
-    console.log("Selected bookings:", data.bookings);
-
-    // Format the data to match the expected structure
+    console.log("Selected bookings:", data.bookings); // Format the data to match the expected structure
     const bookingData = {
       tutorId: data.tutorId,
       courseId: data.courseId,
@@ -603,47 +602,44 @@ export default function BookingForm() {
       note: data.note,
       bookings: data.bookings,
     };
+
+    // Set loading state
+    setIsSubmitting(true);
+
     try {
-      // Set loading state
-      form.formState.isSubmitting = true;
+      // Lưu dữ liệu vào localStorage để sử dụng ở trang thanh toán
+      localStorage.setItem("bookingData", JSON.stringify(bookingData));
 
-      // Import apiRequest from queryClient
-      const { apiRequest } = await import("@/lib/queryClient");
+      // Lưu thông tin khóa học và gia sư để hiển thị ở trang thanh toán
+      if (course) {
+        localStorage.setItem("selectedCourse", JSON.stringify(course));
+      }
 
-      // Submit data to API using the utility function for consistent error handling
-      const response = await apiRequest(
-        "POST",
-        "/api/v1/bookings",
-        bookingData
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || "Có lỗi xảy ra khi đặt lịch");
+      if (tutor) {
+        localStorage.setItem("selectedTutor", JSON.stringify(tutor));
       }
 
       // Show success toast
       toast({
-        title: "Đặt lịch thành công",
-        description:
-          "Yêu cầu của bạn đã được gửi tới gia sư. Vui lòng chờ xác nhận.",
+        title: "Xác nhận đặt lịch thành công",
+        description: "Vui lòng tiếp tục để hoàn thành thanh toán.",
       });
 
-      // Redirect to student dashboard after short delay
+      // Redirect to payment page after short delay
       setTimeout(() => {
-        window.location.href = "/student-dashboard";
-      }, 2000);
-    } catch (error: any) {
-      // Show error toast
+        window.location.href = "/payment";
+      }, 1000);
+    } catch (error) {
+      // Show error toast in case localStorage fails
       toast({
         title: "Đặt lịch thất bại",
         description:
-          error.message || "Có lỗi xảy ra khi đặt lịch. Vui lòng thử lại sau.",
+          "Có lỗi xảy ra khi lưu thông tin đặt lịch. Vui lòng thử lại.",
         variant: "destructive",
       });
-      console.error("Booking error:", error);
+      console.error("Booking data storage error:", error);
     } finally {
-      form.formState.isSubmitting = false;
+      setIsSubmitting(false);
     }
   };
 
@@ -1100,11 +1096,9 @@ export default function BookingForm() {
                 <Button
                   className="w-full sm:w-auto"
                   onClick={form.handleSubmit(onSubmit)}
-                  disabled={
-                    !form.formState.isValid || form.formState.isSubmitting
-                  }
+                  disabled={!form.formState.isValid || isSubmitting}
                 >
-                  {form.formState.isSubmitting ? (
+                  {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Đang xử lý...
@@ -1180,7 +1174,7 @@ export default function BookingForm() {
                             style: "currency",
                             currency: "VND",
                           }).format(course.pricePerSession)}
-                          /buổi
+                          /Giờ
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
