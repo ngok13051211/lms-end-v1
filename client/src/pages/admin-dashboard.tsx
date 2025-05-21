@@ -32,7 +32,10 @@ import UserGrowthChart from "@/components/admin/UserGrowthChart";
 // Interface cho thống kê tổng quan
 interface DashboardOverview {
   totalUsers: number;
+  totalStudents: number;
+  studentsPercentage: number;
   activeTutors: number;
+  tutorsPercentage: number;
   totalCourses: number;
   totalBookings: number;
 }
@@ -177,11 +180,11 @@ export default function AdminDashboard() {
 
         {/* Thống kê tổng quan */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Tổng người dùng */}
+          {/* Số lượng học viên */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Tổng người dùng
+                Số lượng học viên
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -198,23 +201,23 @@ export default function AdminDashboard() {
                   <div className="flex items-center">
                     <Users className="h-5 w-5 text-primary mr-2" />
                     <span className="text-2xl font-bold">
-                      {dashboardStats?.totalUsers || 0}
+                      {dashboardStats?.totalStudents || 0}
                     </span>
                   </div>
                   <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full flex items-center">
                     <ArrowUpRight className="h-3 w-3 mr-1" />
-                    12%
+                    {dashboardStats?.studentsPercentage || 0}%
                   </span>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Gia sư đang hoạt động */}
+          {/* Số lượng gia sư */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Gia sư đang hoạt động
+                Số lượng gia sư
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -236,18 +239,18 @@ export default function AdminDashboard() {
                   </div>
                   <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full flex items-center">
                     <ArrowUpRight className="h-3 w-3 mr-1" />
-                    8%
+                    {dashboardStats?.tutorsPercentage || 0}%
                   </span>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Khóa học */}
+          {/* Khóa học đã tạo */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Khóa học
+                Khóa học đã tạo
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -267,20 +270,16 @@ export default function AdminDashboard() {
                       {dashboardStats?.totalCourses || 0}
                     </span>
                   </div>
-                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full flex items-center">
-                    <ArrowUpRight className="h-3 w-3 mr-1" />
-                    15%
-                  </span>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Đặt lịch */}
+          {/* Lượt đặt lịch */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Đặt lịch
+                Lượt đặt lịch
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -300,10 +299,6 @@ export default function AdminDashboard() {
                       {dashboardStats?.totalBookings || 0}
                     </span>
                   </div>
-                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full flex items-center">
-                    <ArrowUpRight className="h-3 w-3 mr-1" />
-                    20%
-                  </span>
                 </div>
               )}
             </CardContent>

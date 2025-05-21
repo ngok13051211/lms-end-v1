@@ -53,14 +53,32 @@ export const getTotalBookings = async (req: Request, res: Response) => {
 // Get overall dashboard summary
 export const getDashboardOverview = async (req: Request, res: Response) => {
     try {
-        // Get total users count
-        const usersCount = await db.select({ count: count() }).from(users);
+        // Get total active users count
+        const usersCount = await db
+            .select({ count: count() })
+            .from(users)
+            .where(eq(users.is_active, true));
+        const totalUsers = Number(usersCount[0].count || 0);
+
+        // Get active student count
+        const studentsCount = await db
+            .select({ count: count() })
+            .from(users)
+            .where(and(
+                eq(users.role, "student"),
+                eq(users.is_active, true)
+            ));
+        const totalStudents = Number(studentsCount[0].count || 0);
 
         // Get active tutors count
         const activeTutorsCount = await db
             .select({ count: count() })
             .from(users)
-            .where(and(eq(users.role, "tutor"), eq(users.is_active, true)));
+            .where(and(
+                eq(users.role, "tutor"),
+                eq(users.is_active, true)
+            ));
+        const totalTutors = Number(activeTutorsCount[0].count || 0);
 
         // Get total courses count
         const coursesCount = await db.select({ count: count() }).from(courses);
@@ -68,14 +86,21 @@ export const getDashboardOverview = async (req: Request, res: Response) => {
         // Get total bookings count
         const bookingsCount = await db.select({ count: count() }).from(bookingRequests);
 
+        // Calculate percentages
+        const studentsPercentage = totalUsers > 0 ? Math.round((totalStudents / totalUsers) * 100) : 0;
+        const tutorsPercentage = totalUsers > 0 ? Math.round((totalTutors / totalUsers) * 100) : 0;
+
         // Combine all statistics into one response
         const dashboardStats = {
-            totalUsers: usersCount[0].count,
-            activeTutors: activeTutorsCount[0].count,
+            totalUsers: totalUsers,
+            totalStudents: totalStudents,
+            studentsPercentage: studentsPercentage,
+            activeTutors: totalTutors,
+            tutorsPercentage: tutorsPercentage,
             totalCourses: coursesCount[0].count,
             totalBookings: bookingsCount[0].count
         };
-
+        console.log("Dashboard statistics:", dashboardStats);
         return res.json(dashboardStats);
     } catch (error) {
         console.error("Error getting dashboard overview:", error);
