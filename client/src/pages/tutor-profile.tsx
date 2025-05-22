@@ -4,6 +4,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import LoginDialog from "@/components/auth/LoginDialog";
 import {
   Loader2,
   Mail,
@@ -28,10 +29,40 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 export default function TutorProfile() {
   const { id } = useParams();
   const [, navigate] = useLocation();
-  const { user } = useSelector((state: RootState) => state.auth);
-  const { toast } = useToast();
+  const { user } = useSelector((state: RootState) => state.auth);  const { toast } = useToast();
   const [isFavorite, setIsFavorite] = useState(false);
   const [isStartingConversation, setIsStartingConversation] = useState(false);
+  const [isLoginDialogOpen, setIsLoginDialogOpen] = useState(false);
+  const [pendingBookingUrl, setPendingBookingUrl] = useState<string | null>(null);
+
+  // Handle booking with login check
+  const handleBooking = (tutorId: string | number | undefined, courseId?: string | number) => {
+    if (!tutorId) return;
+    
+    const bookingUrl = courseId 
+      ? `/book/${tutorId}?course=${courseId}` 
+      : `/book/${tutorId}`;
+    
+    if (!user) {
+      // Store the booking URL and show login dialog
+      setPendingBookingUrl(bookingUrl);
+      setIsLoginDialogOpen(true);
+    } else {
+      // User is logged in, navigate directly to booking
+      navigate(bookingUrl);
+    }
+  };
+
+  // Handle successful login
+  const handleLoginSuccess = () => {
+    setIsLoginDialogOpen(false);
+    
+    // Navigate to the pending booking URL if available
+    if (pendingBookingUrl) {
+      navigate(pendingBookingUrl);
+      setPendingBookingUrl(null);
+    }
+  };
 
   // Get tutor details
   const { data: tutor, isLoading: tutorLoading } = useQuery<TutorProfile>({
@@ -820,7 +851,7 @@ export default function TutorProfile() {
 
                               <Button
                                 onClick={() =>
-                                  navigate(`/book/${id}?course=${course.id}`)
+                                  handleBooking(id, course.id)
                                 }
                                 className="bg-primary hover:bg-primary-dark"
                               >
@@ -962,15 +993,15 @@ export default function TutorProfile() {
                       : "Tutor")}
                 </h3>
 
-                {/* {user && user.role === "student" && (
+                {user && user.role === "student" && (
                   <Button
-                    onClick={() => navigate(`/book/${id}`)}
+                    onClick={() => handleBooking(id)}
                     className="w-full mb-3"
                     variant="default"
                   >
                     <Calendar className="mr-2 h-4 w-4" /> Đặt lịch học
                   </Button>
-                )} */}
+                )}
 
                 <Button
                   onClick={startConversation}
@@ -1036,6 +1067,11 @@ export default function TutorProfile() {
           </div>
         </div>
       </div>
+      <LoginDialog
+        isOpen={isLoginDialogOpen}
+        onClose={() => setIsLoginDialogOpen(false)}
+        onLoginSuccess={handleLoginSuccess}
+      />
     </div>
   );
 }

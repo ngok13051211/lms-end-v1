@@ -12,12 +12,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Menu, User, LogOut, BookOpen, MessageSquare, PieChart } from "lucide-react";
 import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+  Menu,
+  User,
+  LogOut,
+  BookOpen,
+  MessageSquare,
+  PieChart,
+} from "lucide-react";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { queryClient } from "@/lib/queryClient";
 
 export default function Navbar() {
@@ -64,10 +67,9 @@ export default function Navbar() {
 
   return (
     <header
-      className={`sticky top-0 z-50 ${isScrolled
-        ? "bg-white shadow-md"
-        : "bg-white"
-        } transition-shadow duration-300`}
+      className={`sticky top-0 z-50 ${
+        isScrolled ? "bg-white shadow-md" : "bg-white"
+      } transition-shadow duration-300`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
         <div className="flex items-center">
@@ -80,13 +82,22 @@ export default function Navbar() {
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-8">
-          <Link href="/tutors" className="text-foreground hover:text-primary text-sm font-medium">
+          <Link
+            href="/tutors"
+            className="text-foreground hover:text-primary text-sm font-medium"
+          >
             Tìm gia sư
           </Link>
-          <Link href="/become-tutor" className="text-foreground hover:text-primary text-sm font-medium">
+          <Link
+            href="/register"
+            className="text-foreground hover:text-primary text-sm font-medium"
+          >
             Trở thành gia sư
           </Link>
-          <Link href="/blog" className="text-foreground hover:text-primary text-sm font-medium">
+          <Link
+            href="/blog"
+            className="text-foreground hover:text-primary text-sm font-medium"
+          >
             Blog
           </Link>
 
@@ -98,9 +109,13 @@ export default function Navbar() {
                   className="relative h-8 w-8 rounded-full"
                 >
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.avatar || undefined} alt={user.first_name} />
+                    <AvatarImage
+                      src={user.avatar || undefined}
+                      alt={user.first_name}
+                    />
                     <AvatarFallback>
-                      {user.first_name?.[0]}{user.last_name?.[0]}
+                      {user.first_name?.[0]}
+                      {user.last_name?.[0]}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
@@ -108,9 +123,13 @@ export default function Navbar() {
               <DropdownMenuContent align="end" className="w-56">
                 <div className="flex items-center justify-start gap-2 p-2">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.avatar || undefined} alt={user.first_name} />
+                    <AvatarImage
+                      src={user.avatar || undefined}
+                      alt={user.first_name}
+                    />
                     <AvatarFallback>
-                      {user.first_name?.[0]}{user.last_name?.[0]}
+                      {user.first_name?.[0]}
+                      {user.last_name?.[0]}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col space-y-1 leading-none">
@@ -124,19 +143,28 @@ export default function Navbar() {
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href={getDashboardLink()} className="w-full flex items-center">
+                  <Link
+                    href={getDashboardLink()}
+                    className="w-full flex items-center"
+                  >
                     <User className="mr-2 h-4 w-4" />
                     <span>Dashboard</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href={`${getDashboardLink()}/profile`} className="w-full flex items-center">
+                  <Link
+                    href={`${getDashboardLink()}/profile`}
+                    className="w-full flex items-center"
+                  >
                     <User className="mr-2 h-4 w-4" />
                     <span>Profile</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/dashboard/messages" className="w-full flex items-center">
+                  <Link
+                    href="/dashboard/messages"
+                    className="w-full flex items-center"
+                  >
                     <MessageSquare className="mr-2 h-4 w-4" />
                     <span>Tin nhắn</span>
                   </Link>
@@ -144,19 +172,28 @@ export default function Navbar() {
                 {user.role === "tutor" && (
                   <>
                     <DropdownMenuItem asChild>
-                      <Link href="/dashboard/tutor/courses" className="w-full flex items-center">
+                      <Link
+                        href="/dashboard/tutor/courses"
+                        className="w-full flex items-center"
+                      >
                         <BookOpen className="mr-2 h-4 w-4" />
                         <span>Khóa học</span>
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link href="/dashboard/messages" className="w-full flex items-center">
+                      <Link
+                        href="/dashboard/messages"
+                        className="w-full flex items-center"
+                      >
                         <MessageSquare className="mr-2 h-4 w-4" />
                         <span>Messages</span>
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link href="/dashboard/tutor/stats" className="w-full flex items-center">
+                      <Link
+                        href="/dashboard/tutor/stats"
+                        className="w-full flex items-center"
+                      >
                         <PieChart className="mr-2 h-4 w-4" />
                         <span>Statistics</span>
                       </Link>
@@ -210,7 +247,7 @@ export default function Navbar() {
                     Tìm gia sư
                   </Link>
                   <Link
-                    href="/become-tutor"
+                    href="/register"
                     className="px-3 py-2 text-foreground hover:bg-muted rounded-md text-base font-medium"
                     onClick={() => setMobileMenuOpen(false)}
                   >
@@ -230,9 +267,13 @@ export default function Navbar() {
                     <div className="border-t pt-4 mt-4">
                       <div className="flex items-center px-3 py-2">
                         <Avatar className="h-10 w-10">
-                          <AvatarImage src={user.avatar || undefined} alt={user.first_name} />
+                          <AvatarImage
+                            src={user.avatar || undefined}
+                            alt={user.first_name}
+                          />
                           <AvatarFallback>
-                            {user.first_name?.[0]}{user.last_name?.[0]}
+                            {user.first_name?.[0]}
+                            {user.last_name?.[0]}
                           </AvatarFallback>
                         </Avatar>
                         <div className="ml-3">

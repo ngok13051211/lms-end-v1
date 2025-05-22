@@ -12,6 +12,7 @@ import TutorListing from "@/pages/tutor-listing";
 import SubjectDetail from "@/pages/subject-detail";
 import Subjects from "@/pages/subjects";
 import TutorDashboard from "@/pages/tutor-dashboard";
+import BookingSchedulePage from "@/pages/booking-schedule";
 import TutorDashboardProfile from "@/pages/tutor-dashboard-profile";
 import TutorDashboardCourses from "@/pages/tutor-dashboard-courses";
 import TutorDashboardStats from "@/pages/tutor-dashboard-stats";
@@ -244,7 +245,7 @@ function Router() {
       {/* Unified messages page */}
       <Route path="/dashboard/messages">
         <PrivateRoute component={DashboardMessages} />
-      </Route>
+      </Route>{" "}
       <Route path="/dashboard/messages/:id">
         <PrivateRoute component={DashboardMessages} />
       </Route>
@@ -259,6 +260,10 @@ function Router() {
             return null;
           }}
         />
+      </Route>
+      {/* Booking schedule route */}
+      <Route path="/bookings/:id/schedule">
+        <PrivateRoute component={BookingSchedulePage} />
       </Route>
       <Route component={NotFound} />
     </Switch>

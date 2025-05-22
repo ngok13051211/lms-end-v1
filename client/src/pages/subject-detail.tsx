@@ -1,8 +1,10 @@
+import { useState } from "react";
+import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { useParams } from "wouter";
 import { subjects, courses } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import LoginDialog from "@/components/auth/LoginDialog";
 
 // Định nghĩa kiểu Subject dựa trên schema subjects
 type Subject = {
@@ -76,6 +78,9 @@ import { Button } from "@/components/ui/button";
 
 export default function SubjectDetail() {
   const { id } = useParams<{ id: string }>();
+  const [, navigate] = useLocation();
+  const [isLoginDialogOpen, setIsLoginDialogOpen] = useState(false);
+  const [pendingBookingUrl, setPendingBookingUrl] = useState<string | null>(null);
 
   // Get current user
   const { data: userData } = useQuery<{
@@ -89,6 +94,31 @@ export default function SubjectDetail() {
 
   const isLoggedIn = !!userData?.user;
   const isTutor = userData?.user?.role === "tutor";
+
+  // Handle booking with login check
+  const handleBooking = (tutorId: number, courseId: number, courseTitle: string) => {
+    const bookingUrl = `/book/${tutorId}?course=${courseId}`;
+    
+    if (!isLoggedIn) {
+      // Store the booking URL and show login dialog
+      setPendingBookingUrl(bookingUrl);
+      setIsLoginDialogOpen(true);
+    } else {
+      // User is logged in, navigate directly to booking
+      navigate(bookingUrl);
+    }
+  };
+
+  // Handle successful login
+  const handleLoginSuccess = () => {
+    setIsLoginDialogOpen(false);
+    
+    // Navigate to the pending booking URL if available
+    if (pendingBookingUrl) {
+      navigate(pendingBookingUrl);
+      setPendingBookingUrl(null);
+    }
+  };
 
   // Fetch subject details
   const { data: subject, isLoading: isLoadingSubject } = useQuery<
@@ -187,6 +217,13 @@ export default function SubjectDetail() {
 
   return (
     <div className="w-full mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-6 sm:py-10 max-w-[95%] md:max-w-[90%] lg:max-w-7xl">
+      {/* Login Dialog */}
+      <LoginDialog 
+        isOpen={isLoginDialogOpen} 
+        onClose={() => setIsLoginDialogOpen(false)} 
+        onLoginSuccess={handleLoginSuccess} 
+      />
+      
       {/* Breadcrumb */}
       <Breadcrumb className="mb-6 text-sm overflow-hidden">
         <BreadcrumbItem>
@@ -375,7 +412,7 @@ export default function SubjectDetail() {
 
                   <Button
                     onClick={() =>
-                      (window.location.href = `/book/${course.tutor.id}?course=${course.id}`)
+                      handleBooking(course.tutor.id, course.id, course.title)
                     }
                     className="bg-primary hover:bg-primary-dark text-sm"
                     size="sm"

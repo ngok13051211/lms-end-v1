@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Link } from "wouter";
 import { Separator } from "@/components/ui/separator";
-import { CalendarClock, Info, Loader2, Search } from "lucide-react";
+import { CalendarClock, Info, Loader2, Search, Star } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { BookingActionsCell } from "@/components/ui/BookingActionsCell";
 import {
@@ -33,6 +33,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import useStudentBookingsQuery from "@/hooks/useStudentBookingsQuery";
 
 // Status options for filtering bookings
@@ -118,6 +129,16 @@ export default function StudentDashboardBookings() {
     "all" | "pending" | "confirmed" | "completed" | "cancelled" | "rejected"
   >("all");
 
+  // State cho dialog đánh giá buổi học
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedSessionId, setSelectedSessionId] = useState<number | null>(
+    null
+  );
+  const [rating, setRating] = useState<number>(5);
+  const [feedback, setFeedback] = useState<string>("");
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+  const { toast } = useToast();
+
   // Fetch bookings data using the custom hook
   const {
     data: bookings,
@@ -137,6 +158,51 @@ export default function StudentDashboardBookings() {
           booking.status.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : [];
+
+  // Hàm mở dialog đánh giá buổi học
+  const openFeedbackDialog = (sessionId: number) => {
+    setSelectedSessionId(sessionId);
+    setRating(5);
+    setFeedback("");
+    setIsDialogOpen(true);
+  };
+
+  // Hàm xử lý gửi đánh giá
+  const submitFeedback = async () => {
+    if (!selectedSessionId) return;
+
+    setIsSubmittingFeedback(true);
+
+    try {
+      await apiRequest(
+        "POST",
+        `/api/v1/bookings/sessions/${selectedSessionId}/notes`,
+        {
+          student_rating: rating,
+          student_feedback: feedback,
+        }
+      );
+
+      // Đóng dialog và tải lại dữ liệu
+      setIsDialogOpen(false);
+      await refetch();
+
+      toast({
+        title: "Thành công",
+        description: "Đã gửi đánh giá và góp ý cho buổi học.",
+        variant: "success",
+      });
+    } catch (err) {
+      console.error("Error submitting feedback:", err);
+      toast({
+        title: "Lỗi",
+        description: "Không thể gửi đánh giá và góp ý. Vui lòng thử lại sau.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmittingFeedback(false);
+    }
+  };
 
   return (
     <DashboardLayout>
@@ -262,11 +328,14 @@ export default function StudentDashboardBookings() {
                         <TableCell>
                           {formatCurrency(parseFloat(booking.total_amount))}
                         </TableCell>{" "}
-                        <TableCell>{getStatusBadge(booking.status)}</TableCell>
+                        <TableCell>{getStatusBadge(booking.status)}</TableCell>{" "}
                         <TableCell className="text-right">
                           <BookingActionsCell
                             booking={booking}
                             refetchBookings={refetch}
+                            onFeedback={(sessionId) =>
+                              openFeedbackDialog(sessionId)
+                            }
                           />
                         </TableCell>
                       </TableRow>
@@ -302,10 +371,55 @@ export default function StudentDashboardBookings() {
                   Tìm gia sư
                 </Button>
               </div>
-            )}
+            )}{" "}
           </CardContent>
         </Card>
       </div>
+
+      {/* Feedback Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Đánh giá buổi học</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="mb-4">
+              <div className="text-sm font-medium mb-2">Đánh giá của bạn</div>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Star
+                    key={i}
+                    className={cn(
+                      "h-5 w-5 cursor-pointer transition-all",
+                      i < rating
+                        ? "fill-yellow-400 text-yellow-400"
+                        : "text-gray-300"
+                    )}
+                    onClick={() => setRating(i + 1)}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="mb-4">
+              <div className="text-sm font-medium mb-2">Góp ý của bạn</div>
+              <Textarea
+                placeholder="Chia sẻ trải nghiệm của bạn về buổi học này..."
+                value={feedback}
+                onChange={(e) => setFeedback(e.target.value)}
+                rows={4}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+              Hủy bỏ
+            </Button>
+            <Button onClick={submitFeedback} disabled={isSubmittingFeedback}>
+              {isSubmittingFeedback ? "Đang gửi..." : "Gửi đánh giá"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }
