@@ -1,3 +1,4 @@
+// filepath: d:\lms-end-v1\client\src\pages\admin-tutor-verification.tsx
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -28,6 +29,13 @@ import {
   Info,
 } from "lucide-react";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -38,7 +46,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 
-// Interface cho yêu cầu giảng dạy đang chờ duyệt
+// Interface para la respuesta de la API de solicitudes de enseñanza
+interface TeachingRequestsResponse {
+  requests: TeachingRequest[];
+  total: number;
+  total_pages: number;
+  current_page: number;
+}
+
+// Interface para solicitud de enseñanza
 interface TeachingRequest {
   id: number;
   subject: {
@@ -59,8 +75,8 @@ interface TeachingRequest {
       email: string;
       phone?: string;
       avatar?: string;
-      date_of_birth?: string; // Chuyển vào đây
-      address?: string; // Chuyển vào đây
+      date_of_birth?: string;
+      address?: string;
     };
   };
   introduction: string;
@@ -90,17 +106,20 @@ export default function AdminTutorVerification() {
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [currentRequestId, setCurrentRequestId] = useState<number | null>(null);
-  const [detailsOpen, setDetailsOpen] = useState(false); // Truy vấn danh sách yêu cầu giảng dạy đang chờ duyệt
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>("pending");
+
+  // Truy vấn danh sách yêu cầu giảng dạy theo trạng thái
   const {
-    data: pendingRequests = [],
+    data: teachingRequestsData,
     isLoading,
     error,
-  } = useQuery<TeachingRequest[]>({
-    queryKey: ["/api/v1/admin/teaching-requests/pending"],
+  } = useQuery<TeachingRequestsResponse>({
+    queryKey: ["/api/v1/admin/teaching-requests", { status: activeTab }],
     queryFn: () =>
-      fetchJson<TeachingRequest[]>(
+      fetchJson<TeachingRequestsResponse>(
         "GET",
-        "/api/v1/admin/teaching-requests/pending"
+        `/api/v1/admin/teaching-requests?status=${activeTab}`
       ),
     refetchOnWindowFocus: false,
   });
@@ -119,10 +138,11 @@ export default function AdminTutorVerification() {
         description: "Đã chấp nhận yêu cầu giảng dạy",
         variant: "default",
       });
-      // Đóng dialog chi tiết nếu đang mở      setDetailsOpen(false);
+      // Đóng dialog chi tiết nếu đang mở
+      setDetailsOpen(false);
       // Cập nhật lại danh sách sau khi xử lý thành công
       queryClient.invalidateQueries({
-        queryKey: ["/api/v1/admin/teaching-requests/pending"],
+        queryKey: ["/api/v1/admin/teaching-requests"],
       });
     },
     onError: (error: any) => {
@@ -162,7 +182,7 @@ export default function AdminTutorVerification() {
       setRejectionReason("");
       // Cập nhật lại danh sách sau khi xử lý thành công
       queryClient.invalidateQueries({
-        queryKey: ["/api/v1/admin/teaching-requests/pending"],
+        queryKey: ["/api/v1/admin/teaching-requests"],
       });
     },
     onError: (error: any) => {
@@ -188,6 +208,7 @@ export default function AdminTutorVerification() {
       minute: "2-digit",
     });
   };
+
   // Xử lý phê duyệt yêu cầu giảng dạy
   const handleApproveRequest = (requestId: number) => {
     approveMutation.mutate(requestId);
@@ -221,6 +242,7 @@ export default function AdminTutorVerification() {
     setSelectedRequest(request);
     setDetailsOpen(true);
   };
+
   // Kiểm tra nếu URL là hình ảnh
   const isImageUrl = (url: string): boolean => {
     const imageExtensions = [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"];
@@ -232,6 +254,7 @@ export default function AdminTutorVerification() {
   const isPdfUrl = (url: string): boolean => {
     return url.toLowerCase().endsWith(".pdf");
   };
+
   // Hiển thị chứng chỉ với các loại file khác nhau
   const renderCertifications = (certificationsString?: string) => {
     if (!certificationsString) return "Không có chứng chỉ";
@@ -358,9 +381,23 @@ export default function AdminTutorVerification() {
       console.error("Error parsing certifications:", e);
       return "Định dạng chứng chỉ không hợp lệ";
     }
-  }; // Không còn sử dụng dữ liệu mẫu nữa
-  // Chỉ sử dụng dữ liệu API, không còn dùng dữ liệu mẫu
-  const displayPendingRequests = pendingRequests;
+  };
+
+  // Danh sách các yêu cầu dạy học được lọc theo trạng thái
+  const teachingRequests = teachingRequestsData?.requests || [];
+
+  // Map trạng thái sang văn bản hiển thị
+  const statusText = {
+    pending: "Chờ duyệt",
+    approved: "Đã duyệt",
+    rejected: "Đã từ chối",
+  };
+
+  // Handler để thay đổi tab
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+  };
+
   return (
     <DashboardLayout>
       <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -368,36 +405,58 @@ export default function AdminTutorVerification() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-3xl font-bold tracking-tight">
-                Duyệt yêu cầu giảng dạy
+                Quản lý yêu cầu giảng dạy
               </h1>
               {!isLoading &&
                 !error &&
-                displayPendingRequests &&
-                displayPendingRequests.length > 0 && (
+                teachingRequests &&
+                teachingRequests.length > 0 && (
                   <Badge className="ml-2 bg-primary text-white text-sm">
-                    {displayPendingRequests.length}
+                    {teachingRequests.length}
                   </Badge>
                 )}
             </div>
             <p className="text-muted-foreground mt-1">
-              Kiểm tra và phê duyệt các yêu cầu giảng dạy từ gia sư trên nền
-              tảng
+              Xem và quản lý các yêu cầu giảng dạy từ gia sư trên nền tảng
             </p>
           </div>
-        </div>{" "}
-        <Card>
-          <CardHeader>
-            <CardTitle>Danh sách yêu cầu giảng dạy chờ duyệt</CardTitle>
-            <CardDescription>
-              Các yêu cầu giảng dạy của gia sư đang chờ phê duyệt
-            </CardDescription>
-          </CardHeader>
+        </div>        <Card>          <CardHeader className="pb-3">
+          <div className="flex items-center justify-between flex-col sm:flex-row gap-4">
+            <div>
+              <CardTitle>Danh sách yêu cầu giảng dạy</CardTitle>
+              <CardDescription className="min-h-[24px]">
+                {activeTab === "pending" && "Các yêu cầu giảng dạy của gia sư đang chờ phê duyệt"}
+                {activeTab === "approved" && "Các yêu cầu giảng dạy đã được phê duyệt"}
+                {activeTab === "rejected" && "Các yêu cầu giảng dạy đã bị từ chối"}
+              </CardDescription>
+            </div>
+            <div className="self-end sm:self-auto"><Select value={activeTab} onValueChange={handleTabChange}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Chọn trạng thái" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pending" className="flex items-center">
+                  <span className="inline-block w-2 h-2 rounded-full bg-yellow-400 mr-2"></span>
+                  Chờ duyệt
+                </SelectItem>
+                <SelectItem value="approved" className="flex items-center">
+                  <span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-2"></span>
+                  Đã duyệt
+                </SelectItem>
+                <SelectItem value="rejected" className="flex items-center">
+                  <span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-2"></span>
+                  Đã từ chối
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            </div>
+          </div>
+        </CardHeader>
           <CardContent>
-            {isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <span className="ml-2">Đang tải dữ liệu...</span>
-              </div>
+            {isLoading ? (<div className="flex flex-col items-center justify-center min-h-[500px] py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
+              <span>Đang tải dữ liệu...</span>
+            </div>
             ) : error ? (
               <div className="text-center py-12">
                 <XCircle className="h-16 w-16 mx-auto text-destructive" />
@@ -411,30 +470,33 @@ export default function AdminTutorVerification() {
                 >
                   Thử lại
                 </Button>
-              </div>
-            ) : displayPendingRequests.length === 0 ? (
-              <div className="text-center py-12">
-                <UserCheck className="h-16 w-16 mx-auto text-muted-foreground" />
-                <p className="mt-4 text-lg text-muted-foreground">
-                  Không có yêu cầu giảng dạy nào đang chờ duyệt
+              </div>) : teachingRequests.length === 0 ? (<div className="text-center py-12 min-h-[500px] flex flex-col items-center justify-center">
+                <UserCheck className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                <p className="text-lg text-muted-foreground">
+                  {activeTab === "pending" && "Không có yêu cầu giảng dạy nào đang chờ duyệt"}
+                  {activeTab === "approved" && "Không có yêu cầu giảng dạy nào đã được duyệt"}
+                  {activeTab === "rejected" && "Không có yêu cầu giảng dạy nào đã bị từ chối"}
+                </p>
+                <p className="text-sm text-muted-foreground/70 mt-2 max-w-md">
+                  {activeTab === "pending" && "Khi gia sư gửi yêu cầu giảng dạy mới, họ sẽ xuất hiện ở đây để bạn xét duyệt"}
+                  {activeTab === "approved" && "Các yêu cầu giảng dạy đã được chấp nhận sẽ xuất hiện ở đây"}
+                  {activeTab === "rejected" && "Các yêu cầu giảng dạy đã bị từ chối sẽ xuất hiện ở đây"}
                 </p>
               </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
+              ) : (<div className="overflow-x-auto min-h-[500px]">
+                <table className="w-full table-fixed">
                   <thead>
-                    <tr className="border-b text-left">
-                      <th className="py-4 px-4 font-medium">Gia sư</th>
-                      <th className="py-4 px-4 font-medium">Môn học</th>
-                      <th className="py-4 px-4 font-medium">Cấp độ</th>
-                      <th className="py-4 px-4 font-medium">Ngày yêu cầu</th>
-                      <th className="py-4 px-4 font-medium text-right">
+                    <tr className="border-b text-left">                      <th className="py-4 px-4 font-medium w-[25%]">Gia sư</th>
+                      <th className="py-4 px-4 font-medium w-[15%]">Môn học</th>
+                      <th className="py-4 px-4 font-medium w-[15%]">Cấp độ</th>
+                      <th className="py-4 px-4 font-medium w-[15%]">Ngày yêu cầu</th>
+                      <th className="py-4 px-4 font-medium text-center w-[30%]">
                         Thao tác
                       </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {displayPendingRequests.map((request) => (
+                    {teachingRequests.map((request) => (
                       <tr
                         key={request.id}
                         className="border-b hover:bg-muted/50"
@@ -494,83 +556,124 @@ export default function AdminTutorVerification() {
                               "vi-VN"
                             )}
                           </div>
-                        </td>
-                        <td className="py-4 px-4 text-right">
-                          <div className="flex items-center justify-end space-x-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleViewRequestDetail(request)}
-                            >
-                              <Info className="h-4 w-4 mr-1" />
-                              Chi tiết
-                            </Button>{" "}
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-green-600"
-                              onClick={() => handleApproveRequest(request.id)}
-                              disabled={
-                                approveMutation.isPending &&
-                                approveMutation.variables === request.id
-                              }
-                            >
-                              {approveMutation.isPending &&
-                                approveMutation.variables === request.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <CheckCircle className="h-4 w-4 mr-1" />
-                              )}
-                              Chấp nhận
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-red-600"
-                              onClick={() => openRejectDialog(request.id)}
-                              disabled={
-                                approveMutation.isPending &&
-                                approveMutation.variables === request.id
-                              }
-                            >
-                              <XCircle className="h-4 w-4 mr-1" />
-                              Từ chối
-                            </Button>
+                        </td>                        <td className="py-4 px-4 text-center">
+                          <div className="flex items-center justify-center space-x-2">
+                            {activeTab === "pending" ? (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-red-600"
+                                  onClick={() => openRejectDialog(request.id)}
+                                  disabled={
+                                    approveMutation.isPending &&
+                                    approveMutation.variables === request.id
+                                  }
+                                >
+                                  <XCircle className="h-4 w-4 mr-1" />
+                                  Từ chối
+                                </Button>
+
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleViewRequestDetail(request)}
+                                >
+                                  <Info className="h-4 w-4 mr-1" />
+                                  Chi tiết
+                                </Button>
+
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-green-600"
+                                  onClick={() => handleApproveRequest(request.id)}
+                                  disabled={
+                                    approveMutation.isPending &&
+                                    approveMutation.variables === request.id
+                                  }
+                                >
+                                  {approveMutation.isPending &&
+                                    approveMutation.variables === request.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <CheckCircle className="h-4 w-4 mr-1" />
+                                  )}
+                                  Chấp nhận
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                {/* Left placeholder to maintain centering */}
+                                <div className="inline-flex invisible items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-[82px] px-4 py-2">
+                                  Placeholder
+                                </div>
+
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleViewRequestDetail(request)}
+                                >
+                                  <Info className="h-4 w-4 mr-1" />
+                                  Chi tiết
+                                </Button>
+
+                                {/* Right placeholder to maintain centering */}
+                                <div className="inline-flex invisible items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-[92px] px-4 py-2">
+                                  Placeholder
+                                </div>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>
                     ))}
                   </tbody>
-                </table>
-                <div className="flex items-center justify-between mt-6">
+                </table>                  <div className="flex items-center justify-between mt-6">
                   <div className="text-sm text-muted-foreground">
                     Hiển thị{" "}
                     <span className="font-medium">
-                      {displayPendingRequests.length}
+                      {teachingRequests.length}
                     </span>{" "}
-                    yêu cầu giảng dạy đang chờ duyệt
+                    yêu cầu giảng dạy {statusText[activeTab as keyof typeof statusText].toLowerCase()}
                   </div>
-                  {displayPendingRequests.length > 10 && (
-                    <div className="flex space-x-2">
-                      <Button variant="outline" size="sm" disabled>
-                        Trước
-                      </Button>
-                      <Button variant="outline" size="sm" disabled>
-                        Tiếp
-                      </Button>
-                    </div>
-                  )}
+                  <div className="flex space-x-2 min-w-[168px] justify-end">
+                    {teachingRequests.length > 10 ? (
+                      <>
+                        <Button variant="outline" size="sm" disabled>
+                          Trước
+                        </Button>
+                        <Button variant="outline" size="sm" disabled>
+                          Tiếp
+                        </Button>
+                      </>
+                    ) : (
+                      <div className="h-8"></div>
+                    )}
+                  </div>
                 </div>
               </div>
-            )}
-          </CardContent>
+            )}          </CardContent>
         </Card>
-      </div>{" "}
-      {/* Dialog xem chi tiết yêu cầu giảng dạy */}
+      </div>{" "}      {/* Dialog xem chi tiết yêu cầu giảng dạy */}
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <DialogContent className="sm:max-w-[700px]">
+        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Chi tiết yêu cầu giảng dạy</DialogTitle>
+            {selectedRequest && (
+              <Badge
+                className={
+                  selectedRequest.status === "approved"
+                    ? "bg-green-100 text-green-800 hover:bg-green-100 border-green-200 w-fit mt-2"
+                    : selectedRequest.status === "rejected"
+                      ? "bg-red-100 text-red-800 hover:bg-red-100 border-red-200 w-fit mt-2"
+                      : "bg-yellow-50 text-yellow-800 hover:bg-yellow-50 border-yellow-200 w-fit mt-2"
+                }
+                variant="outline"
+              >
+                {statusText[selectedRequest.status as keyof typeof statusText]}
+              </Badge>
+            )}
           </DialogHeader>
 
           {selectedRequest && (
@@ -602,15 +705,14 @@ export default function AdminTutorVerification() {
                     </div>
                   )}
                 </div>
-              </div>
-              <Separator />{" "}
-              <div className="flex items-center justify-between mb-2">
+              </div>              <Separator />
+              <div className="flex items-center justify-between mb-4">
                 <Badge variant="outline" className="text-xs">
                   Yêu cầu gửi: {formatDate(selectedRequest.created_at)}
                 </Badge>
-              </div>
-              <div className="grid gap-5">
-                <div className="flex gap-4">
+                <div className="w-4"></div> {/* Empty div for spacing */}
+              </div>              <div className="grid gap-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="flex-1">
                     <h4 className="font-medium text-sm mb-1 flex items-center">
                       <BookOpen className="h-4 w-4 mr-1" /> Môn học
@@ -688,43 +790,66 @@ export default function AdminTutorVerification() {
                     {renderCertifications(selectedRequest.certifications)}
                   </div>
                 </div>
+
+                {selectedRequest.rejection_reason && (
+                  <div>
+                    <h4 className="font-medium text-sm mb-1 flex items-center text-red-500">
+                      <XCircle className="h-4 w-4 mr-1" /> Lý do từ chối
+                    </h4>
+                    <p className="text-sm text-red-500/80 whitespace-pre-wrap border-l-2 border-red-300 pl-3 py-1">
+                      {selectedRequest.rejection_reason}
+                    </p>
+                  </div>
+                )}
               </div>
-              <Separator />
-              <DialogFooter>
+              <Separator />              <DialogFooter>
                 <div className="w-full flex justify-between">
-                  <Button
-                    variant="destructive"
-                    onClick={() => {
-                      setDetailsOpen(false);
-                      openRejectDialog(selectedRequest.id);
-                    }}
-                    disabled={approveMutation.isPending}
-                  >
-                    <XCircle className="h-4 w-4 mr-1" />
-                    Từ chối
-                  </Button>
-                  <Button
-                    onClick={() => handleApproveRequest(selectedRequest.id)}
-                    disabled={approveMutation.isPending}
-                  >
-                    {approveMutation.isPending ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Đang xử lý...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle className="h-4 w-4 mr-1" />
-                        Chấp nhận
-                      </>
-                    )}
-                  </Button>
+                  {activeTab === "pending" ? (
+                    <>
+                      <Button
+                        variant="destructive"
+                        onClick={() => {
+                          setDetailsOpen(false);
+                          openRejectDialog(selectedRequest.id);
+                        }}
+                        disabled={approveMutation.isPending}
+                      >
+                        <XCircle className="h-4 w-4 mr-1" />
+                        Từ chối
+                      </Button>
+                      <Button
+                        onClick={() => handleApproveRequest(selectedRequest.id)}
+                        disabled={approveMutation.isPending}
+                      >
+                        {approveMutation.isPending ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Đang xử lý...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Chấp nhận
+                          </>
+                        )}
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="invisible">Placeholder</div>
+                      <Button
+                        onClick={() => setDetailsOpen(false)}
+                      >
+                        Đóng
+                      </Button>
+                    </>
+                  )}
                 </div>
               </DialogFooter>
             </div>
           )}
         </DialogContent>
-      </Dialog>{" "}
+      </Dialog>
       {/* Dialog từ chối yêu cầu giảng dạy */}
       <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
