@@ -261,18 +261,29 @@ export default function TutorDashboardProfile() {
       experience: "",
       certifications: [],
     },
-  });
-
-  // Fetch subjects and education levels for teaching request
+  }); // Fetch subjects and education levels for teaching request
   const { data: subjects = [] } = useQuery<any[]>({
     queryKey: [`/api/v1/subjects`],
     enabled: teachingRequestDialogOpen,
   });
 
-  const { data: educationLevels = [] } = useQuery<any[]>({
-    queryKey: [`/api/v1/education-levels`],
-    enabled: teachingRequestDialogOpen,
-  });
+  // State to store filtered education levels based on selected subject
+  const [filteredEducationLevels, setFilteredEducationLevels] = useState<any[]>(
+    []
+  );
+  const [selectedSubjectId, setSelectedSubjectId] = useState<number | null>(
+    null
+  );
+  // Fetch education levels by subject ID when a subject is selected
+  const { data: subjectEducationLevels, refetch: refetchSubjectLevels } =
+    useQuery<any>({
+      queryKey: [`/api/v1/subjects/${selectedSubjectId}/education-levels`],
+      enabled:
+        teachingRequestDialogOpen &&
+        selectedSubjectId !== null &&
+        selectedSubjectId > 0,
+      select: (data) => data?.educationLevels || [],
+    });
   // State để lưu preview URL của avatar đã chọn
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
@@ -1110,7 +1121,38 @@ export default function TutorDashboardProfile() {
 
       return updatedUrls;
     });
-  };
+  }; // Effect to handle subject changes and filter education levels
+  useEffect(() => {
+    const selectedSubjectId = teachingRequestForm.watch("subject_id");
+
+    if (selectedSubjectId && selectedSubjectId > 0) {
+      setSelectedSubjectId(selectedSubjectId);
+      // Reset level_id when subject changes
+      teachingRequestForm.setValue("level_id", 0);
+    } else {
+      // Reset filtered levels when no subject is selected
+      setFilteredEducationLevels([]);
+      setSelectedSubjectId(null);
+    }
+  }, [teachingRequestForm.watch("subject_id")]);
+
+  // Update filtered education levels when subjectEducationLevels changes
+  useEffect(() => {
+    if (subjectEducationLevels) {
+      setFilteredEducationLevels(subjectEducationLevels);
+
+      // Reset level_id if the current selection is not in the filtered list
+      const currentLevelId = teachingRequestForm.watch("level_id");
+      if (currentLevelId && currentLevelId > 0) {
+        const isLevelValid = subjectEducationLevels.some(
+          (level: any) => level.id === currentLevelId
+        );
+        if (!isLevelValid) {
+          teachingRequestForm.setValue("level_id", 0);
+        }
+      }
+    }
+  }, [subjectEducationLevels, teachingRequestForm]);
 
   if (profileLoading) {
     return (
@@ -1569,14 +1611,18 @@ export default function TutorDashboardProfile() {
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Chọn cấp độ" />
-                          </SelectTrigger>
+                          </SelectTrigger>{" "}
                           <SelectContent>
-                            {educationLevels.length === 0 ? (
+                            {!selectedSubjectId ? (
+                              <SelectItem value="no_subject" disabled>
+                                Chọn môn học trước
+                              </SelectItem>
+                            ) : filteredEducationLevels.length === 0 ? (
                               <SelectItem value="no_levels" disabled>
-                                Không có cấp độ nào
+                                Không có cấp độ nào cho môn học này
                               </SelectItem>
                             ) : (
-                              educationLevels.map((level) => (
+                              filteredEducationLevels.map((level) => (
                                 <SelectItem
                                   key={level.id}
                                   value={String(level.id)}

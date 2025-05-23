@@ -135,6 +135,41 @@ export const getEducationLevels = async (req: Request, res: Response) => {
   }
 };
 
+// Get education levels by subject ID
+export const getEducationLevelsBySubjectId = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const subjectId = parseInt(req.params.id);
+
+    if (isNaN(subjectId)) {
+      return res.status(400).json({ message: "Invalid subject ID" });
+    }
+
+    // Find education levels that are associated with this subject
+    const subjectEducationLevels =
+      await db.query.subjectEducationLevels.findMany({
+        where: eq(schema.subjectEducationLevels.subject_id, subjectId),
+        with: {
+          level: true,
+        },
+      });
+
+    if (!subjectEducationLevels || subjectEducationLevels.length === 0) {
+      return res.status(200).json({ educationLevels: [] });
+    }
+
+    // Extract education level objects from the result
+    const educationLevels = subjectEducationLevels.map((item) => item.level);
+
+    return res.status(200).json({ educationLevels });
+  } catch (error) {
+    console.error("Get education levels by subject ID error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 // Get featured testimonials
 export const getTestimonials = async (req: Request, res: Response) => {
   try {
