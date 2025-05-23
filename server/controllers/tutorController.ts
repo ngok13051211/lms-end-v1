@@ -1918,9 +1918,7 @@ export const approveTeachingRequest = async (req: Request, res: Response) => {
       return res
         .status(404)
         .json({ message: "Không tìm thấy yêu cầu giảng dạy" });
-    }
-
-    // Cập nhật yêu cầu thành approved
+    } // Cập nhật yêu cầu thành approved
     await db
       .update(schema.teachingRequests)
       .set({
@@ -1929,6 +1927,26 @@ export const approveTeachingRequest = async (req: Request, res: Response) => {
         updated_at: new Date(),
       })
       .where(eq(schema.teachingRequests.id, requestId));
+
+    // Kiểm tra xem profile của gia sư đã được xác minh chưa
+    const tutorProfile = await db.query.tutorProfiles.findFirst({
+      where: eq(schema.tutorProfiles.id, request.tutor_id),
+    });
+
+    if (tutorProfile && !tutorProfile.is_verified) {
+      // Nếu đây là lần đầu tiên được phê duyệt, cập nhật is_verified thành true
+      await db
+        .update(schema.tutorProfiles)
+        .set({
+          is_verified: true,
+          updated_at: new Date(),
+        })
+        .where(eq(schema.tutorProfiles.id, request.tutor_id));
+
+      console.log(
+        `Đã cập nhật is_verified thành true cho gia sư ID: ${request.tutor_id}`
+      );
+    }
 
     // Kiểm tra và liên kết môn học với gia sư
     const existingSubject = await db.query.tutorSubjects.findFirst({
