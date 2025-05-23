@@ -190,7 +190,7 @@ export default function StudentDashboardBookings() {
       toast({
         title: "Thành công",
         description: "Đã gửi đánh giá và góp ý cho buổi học.",
-        variant: "success",
+        variant: "default",
       });
     } catch (err) {
       console.error("Error submitting feedback:", err);

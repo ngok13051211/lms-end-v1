@@ -2,9 +2,28 @@ import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -32,7 +51,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
-import { Bar, Line, Pie } from 'react-chartjs-2';
+import { Bar, Line, Pie } from "react-chartjs-2";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -44,10 +63,14 @@ import {
   Title,
   Tooltip,
   Legend,
-} from 'chart.js';
+} from "chart.js";
 
 // Import component TimeFilter
-import { TimeFilter, TimeFilterParams, FilterType } from "@/components/admin/TimeFilter";
+import {
+  TimeFilter,
+  TimeFilterParams,
+  FilterType,
+} from "@/components/admin/TimeFilter";
 // Import component UserGrowthChart
 import UserGrowthChart from "@/components/admin/UserGrowthChart";
 
@@ -108,16 +131,18 @@ interface CourseBySubjectData {
 }
 
 // Enum cho loại bộ lọc thời gian (giữ lại cho tương thích với code cũ)
-type TimeFilterType = '7days' | '30days' | 'monthly';
+type TimeFilterType = "7days" | "30days" | "monthly";
 
 export default function AdminReports() {
   // State cho bộ lọc thời gian (cũ - giữ lại để không ảnh hưởng đến các chức năng hiện tại)
-  const [timeFilter, setTimeFilter] = useState<TimeFilterType>('7days');
-  const [selectedMonth, setSelectedMonth] = useState<string>(format(new Date(), 'yyyy-MM'));
+  const [timeFilter, setTimeFilter] = useState<TimeFilterType>("7days");
+  const [selectedMonth, setSelectedMonth] = useState<string>(
+    format(new Date(), "yyyy-MM")
+  );
 
   // State cho bộ lọc thời gian mới
   const [filterParams, setFilterParams] = useState<TimeFilterParams>({
-    filterType: 'month',
+    filterType: "month",
     month: new Date().getMonth() + 1,
     year: new Date().getFullYear(),
   });
@@ -126,19 +151,22 @@ export default function AdminReports() {
   const [shouldFetchData, setShouldFetchData] = useState(false);
 
   // State cho tab đang chọn
-  const [activeTab, setActiveTab] = useState<string>('user-growth');
-  const [activeDetailTab, setActiveDetailTab] = useState<string>('top-tutors');
+  const [activeTab, setActiveTab] = useState<string>("user-growth");
+  const [activeDetailTab, setActiveDetailTab] = useState<string>("top-tutors");
 
   // Xử lý dữ liệu người dùng tăng trưởng
   const {
     data: userGrowthData,
     isLoading: isUserGrowthLoading,
-    error: userGrowthError
+    error: userGrowthError,
   } = useQuery({
     queryKey: ["user-growth-stats", timeFilter, selectedMonth],
     queryFn: async () => {
       try {
-        const response = await apiRequest("GET", '/api/v1/admin/summary/statistics/user-growth');
+        const response = await apiRequest(
+          "GET",
+          "/api/v1/admin/summary/statistics/user-growth"
+        );
         const data = await response.json();
         return data as MonthlyGrowthData[];
       } catch (error) {
@@ -153,29 +181,29 @@ export default function AdminReports() {
   const {
     data: bookingVolumeRawData,
     isLoading: isBookingVolumeLoading,
-    error: bookingVolumeError
+    error: bookingVolumeError,
   } = useQuery({
     queryKey: ["booking-volume-stats", timeFilter, selectedMonth],
     queryFn: async () => {
       try {
         // Chuẩn bị các tham số cho API call
-        let url = '/api/v1/admin/statistics/bookings-volume';
+        let url = "/api/v1/admin/statistics/bookings-volume";
         const params = new URLSearchParams();
 
         // Xác định loại thống kê dựa trên bộ lọc thời gian
-        let queryType = 'year';
-        if (timeFilter === '7days' || timeFilter === '30days') {
-          queryType = 'week';
-        } else if (timeFilter === 'monthly') {
-          queryType = 'month';
+        let queryType = "year";
+        if (timeFilter === "7days" || timeFilter === "30days") {
+          queryType = "week";
+        } else if (timeFilter === "monthly") {
+          queryType = "month";
           if (selectedMonth) {
-            const [year, month] = selectedMonth.split('-');
-            params.append('month', month);
-            params.append('year', year);
+            const [year, month] = selectedMonth.split("-");
+            params.append("month", month);
+            params.append("year", year);
           }
         }
 
-        params.append('type', queryType);
+        params.append("type", queryType);
 
         // Gọi API với tham số đã xác định
         const response = await apiRequest("GET", `${url}?${params.toString()}`);
@@ -196,12 +224,12 @@ export default function AdminReports() {
         labels: [],
         datasets: [
           {
-            label: 'Số lượng đặt lịch',
+            label: "Số lượng đặt lịch",
             data: [],
-            backgroundColor: 'rgba(99, 102, 241, 0.5)',
-            borderColor: 'rgb(99, 102, 241)',
-          }
-        ]
+            backgroundColor: "rgba(99, 102, 241, 0.5)",
+            borderColor: "rgb(99, 102, 241)",
+          },
+        ],
       };
     }
 
@@ -209,38 +237,38 @@ export default function AdminReports() {
     let data = [];
 
     // Xử lý dữ liệu theo loại thời gian
-    if (timeFilter === 'monthly' && selectedMonth) {
+    if (timeFilter === "monthly" && selectedMonth) {
       // Nếu là dữ liệu theo ngày trong tháng
-      labels = bookingVolumeRawData.map(item => {
-        const date = item.period.split('-')[2]; // Lấy phần ngày từ YYYY-MM-DD
+      labels = bookingVolumeRawData.map((item) => {
+        const date = item.period.split("-")[2]; // Lấy phần ngày từ YYYY-MM-DD
         return `Ngày ${date}`;
       });
-    } else if (timeFilter === '7days' || timeFilter === '30days') {
+    } else if (timeFilter === "7days" || timeFilter === "30days") {
       // Nếu là dữ liệu theo tuần
-      labels = bookingVolumeRawData.map(item => {
-        const weekInfo = item.period.split('-')[1]; // Lấy số tuần từ YYYY-WW
+      labels = bookingVolumeRawData.map((item) => {
+        const weekInfo = item.period.split("-")[1]; // Lấy số tuần từ YYYY-WW
         return `Tuần ${weekInfo}`;
       });
     } else {
       // Nếu là dữ liệu theo tháng trong năm
-      labels = bookingVolumeRawData.map(item => {
-        const month = parseInt(item.period.split('-')[1]); // Lấy tháng từ YYYY-MM
+      labels = bookingVolumeRawData.map((item) => {
+        const month = parseInt(item.period.split("-")[1]); // Lấy tháng từ YYYY-MM
         return `T${month}`;
       });
     }
 
-    data = bookingVolumeRawData.map(item => item.count);
+    data = bookingVolumeRawData.map((item) => item.count);
 
     return {
       labels,
       datasets: [
         {
-          label: 'Số lượng đặt lịch',
+          label: "Số lượng đặt lịch",
           data,
-          backgroundColor: 'rgba(99, 102, 241, 0.5)',
-          borderColor: 'rgb(99, 102, 241)',
-        }
-      ]
+          backgroundColor: "rgba(99, 102, 241, 0.5)",
+          borderColor: "rgb(99, 102, 241)",
+        },
+      ],
     };
   };
 
@@ -251,110 +279,148 @@ export default function AdminReports() {
         labels: [],
         datasets: [
           {
-            label: 'Người dùng mới',
+            label: "Người dùng mới",
             data: [],
-            backgroundColor: 'rgba(99, 102, 241, 0.5)',
-            borderColor: 'rgb(99, 102, 241)',
+            backgroundColor: "rgba(99, 102, 241, 0.5)",
+            borderColor: "rgb(99, 102, 241)",
             borderWidth: 1,
-          }
-        ]
+          },
+        ],
       };
     }
 
     // Chuyển định dạng tháng
-    const labels = userGrowthData.map(item => {
-      const [year, month] = item.month.split('-');
-      const monthNames = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12'];
+    const labels = userGrowthData.map((item) => {
+      const [year, month] = item.month.split("-");
+      const monthNames = [
+        "T1",
+        "T2",
+        "T3",
+        "T4",
+        "T5",
+        "T6",
+        "T7",
+        "T8",
+        "T9",
+        "T10",
+        "T11",
+        "T12",
+      ];
       return monthNames[parseInt(month) - 1];
     });
 
-    const counts = userGrowthData.map(item => item.count);
+    const counts = userGrowthData.map((item) => item.count);
 
     return {
       labels,
       datasets: [
         {
-          label: 'Người dùng mới',
+          label: "Người dùng mới",
           data: counts,
-          backgroundColor: 'rgba(99, 102, 241, 0.5)',
-          borderColor: 'rgb(99, 102, 241)',
+          backgroundColor: "rgba(99, 102, 241, 0.5)",
+          borderColor: "rgb(99, 102, 241)",
           borderWidth: 1,
-        }
-      ]
+        },
+      ],
     };
   };
 
   // Các tùy chọn bộ lọc thời gian
   const timeFilterOptions = [
-    { value: '7days', label: '7 ngày gần đây' },
-    { value: '30days', label: '30 ngày' },
-    { value: 'monthly', label: 'Theo tháng' },
+    { value: "7days", label: "7 ngày gần đây" },
+    { value: "30days", label: "30 ngày" },
+    { value: "monthly", label: "Theo tháng" },
   ];
 
   // Dữ liệu mẫu cho biểu đồ doanh thu
   const revenueData = {
-    labels: ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12'],
+    labels: [
+      "T1",
+      "T2",
+      "T3",
+      "T4",
+      "T5",
+      "T6",
+      "T7",
+      "T8",
+      "T9",
+      "T10",
+      "T11",
+      "T12",
+    ],
     datasets: [
       {
-        label: 'Doanh thu (triệu VND)',
+        label: "Doanh thu (triệu VND)",
         data: [12, 19, 13, 15, 22, 27, 30, 35, 40, 38, 42, 50],
-        backgroundColor: 'rgba(10, 179, 156, 0.5)',
-        borderColor: 'rgb(10, 179, 156)',
+        backgroundColor: "rgba(10, 179, 156, 0.5)",
+        borderColor: "rgb(10, 179, 156)",
         tension: 0.3,
-      }
-    ]
+      },
+    ],
   };
 
   // Dữ liệu mẫu cho top tutors
   const topTutorsData = [
-    { id: 1, name: 'Nguyễn Văn A', bookings: 45, revenue: 15.5, rating: 4.9 },
-    { id: 2, name: 'Trần Thị B', bookings: 38, revenue: 12.8, rating: 4.8 },
-    { id: 3, name: 'Lê Văn C', bookings: 32, revenue: 10.5, rating: 4.7 },
-    { id: 4, name: 'Phạm Thị D', bookings: 30, revenue: 9.8, rating: 4.6 },
-    { id: 5, name: 'Hoàng Văn E', bookings: 28, revenue: 9.2, rating: 4.5 },
+    { id: 1, name: "Nguyễn Văn A", bookings: 45, revenue: 15.5, rating: 4.9 },
+    { id: 2, name: "Trần Thị B", bookings: 38, revenue: 12.8, rating: 4.8 },
+    { id: 3, name: "Lê Văn C", bookings: 32, revenue: 10.5, rating: 4.7 },
+    { id: 4, name: "Phạm Thị D", bookings: 30, revenue: 9.8, rating: 4.6 },
+    { id: 5, name: "Hoàng Văn E", bookings: 28, revenue: 9.2, rating: 4.5 },
   ];
 
   // Dữ liệu mẫu cho trạng thái booking
   const bookingStatusData = {
-    labels: ['Chờ xác nhận', 'Đã xác nhận', 'Đang diễn ra', 'Hoàn thành', 'Đã hủy'],
+    labels: [
+      "Chờ xác nhận",
+      "Đã xác nhận",
+      "Đang diễn ra",
+      "Hoàn thành",
+      "Đã hủy",
+    ],
     datasets: [
       {
         data: [15, 25, 20, 30, 10],
         backgroundColor: [
-          'rgba(255, 159, 64, 0.7)',   // Chờ xác nhận
-          'rgba(54, 162, 235, 0.7)',    // Đã xác nhận
-          'rgba(75, 192, 192, 0.7)',    // Đang diễn ra
-          'rgba(10, 179, 156, 0.7)',    // Hoàn thành
-          'rgba(255, 99, 132, 0.7)',    // Đã hủy
+          "rgba(255, 159, 64, 0.7)", // Chờ xác nhận
+          "rgba(54, 162, 235, 0.7)", // Đã xác nhận
+          "rgba(75, 192, 192, 0.7)", // Đang diễn ra
+          "rgba(10, 179, 156, 0.7)", // Hoàn thành
+          "rgba(255, 99, 132, 0.7)", // Đã hủy
         ],
         borderColor: [
-          'rgb(255, 159, 64)',
-          'rgb(54, 162, 235)',
-          'rgb(75, 192, 192)',
-          'rgb(10, 179, 156)',
-          'rgb(255, 99, 132)',
+          "rgb(255, 159, 64)",
+          "rgb(54, 162, 235)",
+          "rgb(75, 192, 192)",
+          "rgb(10, 179, 156)",
+          "rgb(255, 99, 132)",
         ],
         borderWidth: 1,
-      }
-    ]
+      },
+    ],
   };
   // Fetch khóa học theo môn từ API
   const {
     data: rawCoursesBySubject,
     isLoading: isCoursesBySubjectLoading,
-    error: coursesBySubjectError
+    error: coursesBySubjectError,
   } = useQuery({
     queryKey: ["courses-by-subject-stats"],
     queryFn: async () => {
       try {
-        const response = await apiRequest("GET", '/api/v1/admin/statistics/courses-by-subject');
+        const response = await apiRequest(
+          "GET",
+          "/api/v1/admin/statistics/courses-by-subject"
+        );
         const data = await response.json();
 
         // Tính toán tỷ lệ phần trăm cho mỗi môn học
-        const total = data.reduce((sum: number, item: CourseBySubjectData) => sum + item.count, 0);
+        const total = data.reduce(
+          (sum: number, item: CourseBySubjectData) => sum + item.count,
+          0
+        );
         return data.map((item: CourseBySubjectData) => ({
           ...item,
-          percentage: Math.round((item.count / total) * 100)
+          percentage: Math.round((item.count / total) * 100),
         }));
       } catch (error) {
         console.error("Lỗi khi lấy thống kê khóa học theo môn:", error);
@@ -366,34 +432,38 @@ export default function AdminReports() {
 
   // Chuẩn bị dữ liệu cho biểu đồ pie chart
   const coursesBySubjectData = {
-    labels: rawCoursesBySubject ? rawCoursesBySubject.map((item: CourseBySubjectData) => item.subject) : [],
+    labels: rawCoursesBySubject
+      ? rawCoursesBySubject.map((item: CourseBySubjectData) => item.subject)
+      : [],
     datasets: [
       {
-        data: rawCoursesBySubject ? rawCoursesBySubject.map((item: CourseBySubjectData) => item.count) : [],
+        data: rawCoursesBySubject
+          ? rawCoursesBySubject.map((item: CourseBySubjectData) => item.count)
+          : [],
         backgroundColor: [
-          'rgba(255, 99, 132, 0.7)',
-          'rgba(54, 162, 235, 0.7)',
-          'rgba(255, 206, 86, 0.7)',
-          'rgba(75, 192, 192, 0.7)',
-          'rgba(153, 102, 255, 0.7)',
-          'rgba(255, 159, 64, 0.7)',
-          'rgba(201, 203, 207, 0.7)',
-          'rgba(128, 0, 128, 0.7)',
-          'rgba(0, 128, 0, 0.7)',
-          'rgba(128, 128, 0, 0.7)'
+          "rgba(255, 99, 132, 0.7)",
+          "rgba(54, 162, 235, 0.7)",
+          "rgba(255, 206, 86, 0.7)",
+          "rgba(75, 192, 192, 0.7)",
+          "rgba(153, 102, 255, 0.7)",
+          "rgba(255, 159, 64, 0.7)",
+          "rgba(201, 203, 207, 0.7)",
+          "rgba(128, 0, 128, 0.7)",
+          "rgba(0, 128, 0, 0.7)",
+          "rgba(128, 128, 0, 0.7)",
         ],
         borderColor: [
-          'rgb(255, 99, 132)',
-          'rgb(54, 162, 235)',
-          'rgb(255, 206, 86)',
-          'rgb(75, 192, 192)',
-          'rgb(153, 102, 255)',
-          'rgb(255, 159, 64)',
-          'rgb(201, 203, 207)'
+          "rgb(255, 99, 132)",
+          "rgb(54, 162, 235)",
+          "rgb(255, 206, 86)",
+          "rgb(75, 192, 192)",
+          "rgb(153, 102, 255)",
+          "rgb(255, 159, 64)",
+          "rgb(201, 203, 207)",
         ],
         borderWidth: 1,
-      }
-    ]
+      },
+    ],
   };
 
   // Xử lý booking volume với bộ lọc mới
@@ -401,44 +471,50 @@ export default function AdminReports() {
     data: advancedBookingVolumeData,
     isLoading: isAdvancedBookingVolumeLoading,
     error: advancedBookingVolumeError,
-    refetch: refetchBookingVolume
+    refetch: refetchBookingVolume,
   } = useQuery({
     queryKey: ["advanced-booking-volume-stats", filterParams],
     queryFn: async () => {
       try {
         // Chuẩn bị các tham số cho API call
-        let url = '/api/v1/admin/statistics/bookings-volume';
+        let url = "/api/v1/admin/statistics/bookings-volume";
         const params = new URLSearchParams();
 
         // Xác định loại thống kê dựa trên loại bộ lọc
         switch (filterParams.filterType) {
-          case 'day':
+          case "day":
             // Nếu lọc theo ngày
-            params.append('type', 'day');
+            params.append("type", "day");
             if (filterParams.fromDate) {
-              params.append('fromDate', format(filterParams.fromDate, 'yyyy-MM-dd'));
+              params.append(
+                "fromDate",
+                format(filterParams.fromDate, "yyyy-MM-dd")
+              );
             }
             if (filterParams.toDate) {
-              params.append('toDate', format(filterParams.toDate, 'yyyy-MM-dd'));
+              params.append(
+                "toDate",
+                format(filterParams.toDate, "yyyy-MM-dd")
+              );
             }
             break;
 
-          case 'month':
+          case "month":
             // Nếu lọc theo tháng
-            params.append('type', 'month');
+            params.append("type", "month");
             if (filterParams.month) {
-              params.append('month', filterParams.month.toString());
+              params.append("month", filterParams.month.toString());
             }
             if (filterParams.year) {
-              params.append('year', filterParams.year.toString());
+              params.append("year", filterParams.year.toString());
             }
             break;
 
-          case 'year':
+          case "year":
             // Nếu lọc theo năm
-            params.append('type', 'year');
+            params.append("type", "year");
             if (filterParams.year) {
-              params.append('year', filterParams.year.toString());
+              params.append("year", filterParams.year.toString());
             }
             break;
         }
@@ -463,12 +539,12 @@ export default function AdminReports() {
         labels: [],
         datasets: [
           {
-            label: 'Số lượng đặt lịch',
+            label: "Số lượng đặt lịch",
             data: [],
-            backgroundColor: 'rgba(99, 102, 241, 0.5)',
-            borderColor: 'rgb(99, 102, 241)',
-          }
-        ]
+            backgroundColor: "rgba(99, 102, 241, 0.5)",
+            borderColor: "rgb(99, 102, 241)",
+          },
+        ],
       };
     }
 
@@ -477,44 +553,44 @@ export default function AdminReports() {
 
     // Xử lý dữ liệu theo loại bộ lọc
     switch (filterParams.filterType) {
-      case 'day':
+      case "day":
         // Nếu là dữ liệu theo ngày
-        labels = advancedBookingVolumeData.map(item => {
+        labels = advancedBookingVolumeData.map((item) => {
           // Dự kiến period có định dạng "YYYY-MM-DD"
-          const parts = item.period.split('-');
+          const parts = item.period.split("-");
           return `${parts[2]}/${parts[1]}`; // Format: DD/MM
         });
         break;
 
-      case 'month':
+      case "month":
         // Nếu là dữ liệu theo ngày trong tháng
-        labels = advancedBookingVolumeData.map(item => {
-          const date = item.period.split('-')[2]; // Lấy phần ngày từ YYYY-MM-DD
+        labels = advancedBookingVolumeData.map((item) => {
+          const date = item.period.split("-")[2]; // Lấy phần ngày từ YYYY-MM-DD
           return `Ngày ${date}`;
         });
         break;
 
-      case 'year':
+      case "year":
         // Nếu là dữ liệu theo tháng trong năm
-        labels = advancedBookingVolumeData.map(item => {
-          const month = parseInt(item.period.split('-')[1]); // Lấy tháng từ YYYY-MM
+        labels = advancedBookingVolumeData.map((item) => {
+          const month = parseInt(item.period.split("-")[1]); // Lấy tháng từ YYYY-MM
           return `T${month}`;
         });
         break;
     }
 
-    data = advancedBookingVolumeData.map(item => item.count);
+    data = advancedBookingVolumeData.map((item) => item.count);
 
     return {
       labels,
       datasets: [
         {
-          label: 'Số lượng đặt lịch',
+          label: "Số lượng đặt lịch",
           data,
-          backgroundColor: 'rgba(99, 102, 241, 0.5)',
-          borderColor: 'rgb(99, 102, 241)',
-        }
-      ]
+          backgroundColor: "rgba(99, 102, 241, 0.5)",
+          borderColor: "rgb(99, 102, 241)",
+        },
+      ],
     };
   };
 
@@ -534,40 +610,48 @@ export default function AdminReports() {
   const {
     data: revenueStatsData,
     isLoading: isRevenueStatsLoading,
-    error: revenueStatsError
+    error: revenueStatsError,
   } = useQuery({
-    queryKey: ["revenue-stats", filterParams], queryFn: async () => {
-      try {        // Chuẩn bị các tham số cho API call
-        let url = '/api/v1/admin/summary/statistics/revenue-stats';
+    queryKey: ["revenue-stats", filterParams],
+    queryFn: async () => {
+      try {
+        // Chuẩn bị các tham số cho API call
+        let url = "/api/v1/admin/summary/statistics/revenue-stats";
         const params = new URLSearchParams();
 
         // Thêm tham số type dựa vào bộ lọc
-        params.append('type', filterParams.filterType);
+        params.append("type", filterParams.filterType);
 
         // Thêm các tham số khác nếu có
         switch (filterParams.filterType) {
-          case 'day':
+          case "day":
             if (filterParams.fromDate) {
-              params.append('fromDate', format(filterParams.fromDate, 'yyyy-MM-dd'));
+              params.append(
+                "fromDate",
+                format(filterParams.fromDate, "yyyy-MM-dd")
+              );
             }
             if (filterParams.toDate) {
-              params.append('toDate', format(filterParams.toDate, 'yyyy-MM-dd'));
+              params.append(
+                "toDate",
+                format(filterParams.toDate, "yyyy-MM-dd")
+              );
             }
             break;
-          case 'month':
+          case "month":
             if (filterParams.month) {
-              params.append('month', filterParams.month.toString());
+              params.append("month", filterParams.month.toString());
             }
             if (filterParams.year) {
-              params.append('year', filterParams.year.toString());
+              params.append("year", filterParams.year.toString());
             }
             break;
-          case 'year':
+          case "year":
             if (filterParams.year) {
-              params.append('year', filterParams.year.toString());
+              params.append("year", filterParams.year.toString());
             }
             break;
-        }        // Gọi API với tham số đã xác định
+        } // Gọi API với tham số đã xác định
         console.log(`Fetching revenue data from: ${url}?${params.toString()}`);
         const response = await apiRequest("GET", `${url}?${params.toString()}`);
         const data = await response.json();
@@ -580,7 +664,7 @@ export default function AdminReports() {
     },
     enabled: shouldFetchData,
     refetchOnWindowFocus: false,
-  });  // Format dữ liệu doanh thu cho biểu đồ
+  }); // Format dữ liệu doanh thu cho biểu đồ
   const formatRevenueChart = () => {
     console.log("Formatting revenue data:", revenueStatsData);
 
@@ -588,13 +672,15 @@ export default function AdminReports() {
       console.log("No revenue data available to format");
       return {
         labels: [],
-        datasets: [{
-          label: 'Doanh thu (triệu VND)',
-          data: [],
-          backgroundColor: 'rgba(10, 179, 156, 0.5)',
-          borderColor: 'rgb(10, 179, 156)',
-          tension: 0.3,
-        }]
+        datasets: [
+          {
+            label: "Doanh thu (triệu VND)",
+            data: [],
+            backgroundColor: "rgba(10, 179, 156, 0.5)",
+            borderColor: "rgb(10, 179, 156)",
+            tension: 0.3,
+          },
+        ],
       };
     }
 
@@ -604,20 +690,20 @@ export default function AdminReports() {
     });
 
     // Tách dữ liệu thành labels và values
-    const labels = sortedData.map(item => {
+    const labels = sortedData.map((item) => {
       // Định dạng label hiển thị dựa vào loại thời gian
       // Kiểm tra định dạng của period để xác định cách hiển thị phù hợp
       if (item.period.match(/^\d{4}-\d{2}-\d{2}$/)) {
         // Định dạng YYYY-MM-DD (ngày)
-        const dateParts = item.period.split('-');
+        const dateParts = item.period.split("-");
         return `${dateParts[2]}/${dateParts[1]}`;
       } else if (item.period.match(/^\d{4}-\d{2}$/)) {
         // Định dạng YYYY-MM (tháng)
-        const monthParts = item.period.split('-');
+        const monthParts = item.period.split("-");
         return `${monthParts[1]}/${monthParts[0]}`;
       } else if (item.period.match(/^\d{4}-\d{2}$/)) {
         // Định dạng IYYY-IW (tuần ISO)
-        const weekParts = item.period.split('-');
+        const weekParts = item.period.split("-");
         return `Tuần ${weekParts[1]}/${weekParts[0]}`;
       } else {
         // Định dạng khác
@@ -626,17 +712,21 @@ export default function AdminReports() {
     });
 
     // Chuyển doanh thu từ đơn vị VND sang triệu VND để hiển thị
-    const values = sortedData.map(item => Number((item.revenue / 1000000).toFixed(1)));
+    const values = sortedData.map((item) =>
+      Number((item.revenue / 1000000).toFixed(1))
+    );
 
     return {
       labels,
-      datasets: [{
-        label: 'Doanh thu (triệu VND)',
-        data: values,
-        backgroundColor: 'rgba(10, 179, 156, 0.5)',
-        borderColor: 'rgb(10, 179, 156)',
-        tension: 0.3,
-      }]
+      datasets: [
+        {
+          label: "Doanh thu (triệu VND)",
+          data: values,
+          backgroundColor: "rgba(10, 179, 156, 0.5)",
+          borderColor: "rgb(10, 179, 156)",
+          tension: 0.3,
+        },
+      ],
     };
   };
 
@@ -645,7 +735,9 @@ export default function AdminReports() {
       <div className="p-6 max-w-7xl mx-auto space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight mb-1">📊 Báo cáo thống kê</h1>
+            <h1 className="text-3xl font-bold tracking-tight mb-1">
+              📊 Báo cáo thống kê
+            </h1>
             <p className="text-muted-foreground">
               Xem thống kê chi tiết về hoạt động của hệ thống HomiTutor
             </p>
@@ -655,9 +747,9 @@ export default function AdminReports() {
           <Button variant="outline">
             <Download className="mr-2 h-4 w-4" /> Xuất báo cáo
           </Button>
-        </div>        {/* Bộ lọc thời gian mới */}
+        </div>{" "}
+        {/* Bộ lọc thời gian mới */}
         <TimeFilter onApplyFilter={handleApplyFilter} />
-
         {/* Bộ lọc thời gian cũ - giữ lại cho các tab khác */}
         <Card className="hidden">
           <CardHeader className="pb-3">
@@ -666,12 +758,17 @@ export default function AdminReports() {
           <CardContent>
             <div className="flex flex-wrap gap-4 items-end">
               <div className="grid w-full max-w-sm items-center gap-1.5">
-                <Select value={timeFilter} onValueChange={value => setTimeFilter(value as TimeFilterType)}>
+                <Select
+                  value={timeFilter}
+                  onValueChange={(value) =>
+                    setTimeFilter(value as TimeFilterType)
+                  }
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Chọn khoảng thời gian" />
                   </SelectTrigger>
                   <SelectContent>
-                    {timeFilterOptions.map(option => (
+                    {timeFilterOptions.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}
                       </SelectItem>
@@ -680,9 +777,12 @@ export default function AdminReports() {
                 </Select>
               </div>
 
-              {timeFilter === 'monthly' && (
+              {timeFilter === "monthly" && (
                 <div className="grid w-full max-w-sm items-center gap-1.5">
-                  <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                  <Select
+                    value={selectedMonth}
+                    onValueChange={setSelectedMonth}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Chọn tháng" />
                     </SelectTrigger>
@@ -706,7 +806,6 @@ export default function AdminReports() {
             </div>
           </CardContent>
         </Card>
-
         {/* Biểu đồ tổng hợp */}
         <Card>
           <CardHeader>
@@ -716,17 +815,28 @@ export default function AdminReports() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="user-growth" value={activeTab} onValueChange={setActiveTab}>
+            <Tabs
+              defaultValue="user-growth"
+              value={activeTab}
+              onValueChange={setActiveTab}
+            >
               <TabsList className="mb-4">
-                <TabsTrigger value="user-growth">	Tăng trưởng người dùng</TabsTrigger>
+                <TabsTrigger value="user-growth">
+                  {" "}
+                  Tăng trưởng người dùng
+                </TabsTrigger>
                 <TabsTrigger value="booking-volume">Lượt đặt lịch</TabsTrigger>
-                <TabsTrigger value="revenue-chart">Biểu đồ doanh thu</TabsTrigger>
-              </TabsList>              {/* Biểu đồ User Growth */}
+                <TabsTrigger value="revenue-chart">
+                  Biểu đồ doanh thu
+                </TabsTrigger>
+              </TabsList>{" "}
+              {/* Biểu đồ User Growth */}
               <TabsContent value="user-growth">
                 <div className="h-[350px]">
                   <UserGrowthChart filterParams={filterParams} />
                 </div>
-              </TabsContent>{/* Biểu đồ Booking Volume */}
+              </TabsContent>
+              {/* Biểu đồ Booking Volume */}
               <TabsContent value="booking-volume">
                 <div className="h-[350px]">
                   {isAdvancedBookingVolumeLoading ? (
@@ -734,7 +844,8 @@ export default function AdminReports() {
                       <Loader2 className="h-8 w-8 animate-spin text-primary" />
                       <span className="ml-2">Đang tải dữ liệu...</span>
                     </div>
-                  ) : advancedBookingVolumeData && advancedBookingVolumeData.length > 0 ? (
+                  ) : advancedBookingVolumeData &&
+                    advancedBookingVolumeData.length > 0 ? (
                     <Bar
                       data={formatAdvancedBookingVolumeChart()}
                       options={{
@@ -742,21 +853,21 @@ export default function AdminReports() {
                         maintainAspectRatio: false,
                         plugins: {
                           legend: {
-                            position: 'top' as const,
+                            position: "top" as const,
                           },
                           title: {
                             display: true,
-                            text: 'Số lượng đặt lịch theo thời gian',
+                            text: "Số lượng đặt lịch theo thời gian",
                           },
                         },
                         scales: {
                           y: {
                             beginAtZero: true,
                             ticks: {
-                              precision: 0
-                            }
-                          }
-                        }
+                              precision: 0,
+                            },
+                          },
+                        },
                       }}
                     />
                   ) : (
@@ -773,7 +884,6 @@ export default function AdminReports() {
                   )}
                 </div>
               </TabsContent>
-
               {/* Biểu đồ Revenue */}
               <TabsContent value="revenue-chart">
                 <div className="h-[350px]">
@@ -790,18 +900,18 @@ export default function AdminReports() {
                         maintainAspectRatio: false,
                         plugins: {
                           legend: {
-                            position: 'top' as const,
+                            position: "top" as const,
                           },
                           title: {
                             display: true,
-                            text: 'Doanh thu theo thời gian (triệu VND)',
+                            text: "Doanh thu theo thời gian (triệu VND)",
                           },
                         },
                         scales: {
                           y: {
                             beginAtZero: true,
-                          }
-                        }
+                          },
+                        },
                       }}
                     />
                   ) : (
@@ -821,7 +931,6 @@ export default function AdminReports() {
             </Tabs>
           </CardContent>
         </Card>
-
         {/* Phân tích chi tiết */}
         <Card>
           <CardHeader>
@@ -831,13 +940,20 @@ export default function AdminReports() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="top-tutors" value={activeDetailTab} onValueChange={setActiveDetailTab}>
+            <Tabs
+              defaultValue="top-tutors"
+              value={activeDetailTab}
+              onValueChange={setActiveDetailTab}
+            >
               <TabsList className="mb-4">
                 <TabsTrigger value="top-tutors">Top Tutors</TabsTrigger>
-                <TabsTrigger value="booking-status">Trạng thái đặt lịch</TabsTrigger>
-                <TabsTrigger value="courses-by-subject">Khóa học theo môn</TabsTrigger>
+                <TabsTrigger value="booking-status">
+                  Trạng thái đặt lịch
+                </TabsTrigger>
+                <TabsTrigger value="courses-by-subject">
+                  Khóa học theo môn
+                </TabsTrigger>
               </TabsList>
-
               {/* Bảng Top Tutors */}
               <TabsContent value="top-tutors">
                 <div>
@@ -854,12 +970,17 @@ export default function AdminReports() {
                     <TableBody>
                       {topTutorsData.map((tutor) => (
                         <TableRow key={tutor.id}>
-                          <TableCell className="font-medium">{tutor.id}</TableCell>
+                          <TableCell className="font-medium">
+                            {tutor.id}
+                          </TableCell>
                           <TableCell>{tutor.name}</TableCell>
                           <TableCell>{tutor.bookings}</TableCell>
                           <TableCell>{tutor.revenue.toFixed(1)}</TableCell>
                           <TableCell>
-                            <Badge variant="secondary" className="bg-green-100 text-green-800">
+                            <Badge
+                              variant="secondary"
+                              className="bg-green-100 text-green-800"
+                            >
                               ★ {tutor.rating.toFixed(1)}
                             </Badge>
                           </TableCell>
@@ -869,7 +990,6 @@ export default function AdminReports() {
                   </Table>
                 </div>
               </TabsContent>
-
               {/* Biểu đồ trạng thái đặt lịch */}
               <TabsContent value="booking-status">
                 <div className="flex flex-col md:flex-row md:items-center gap-8">
@@ -881,11 +1001,11 @@ export default function AdminReports() {
                         maintainAspectRatio: false,
                         plugins: {
                           legend: {
-                            position: 'right' as const,
+                            position: "right" as const,
                           },
                           title: {
                             display: true,
-                            text: 'Phân bố trạng thái đặt lịch',
+                            text: "Phân bố trạng thái đặt lịch",
                           },
                         },
                       }}
@@ -931,8 +1051,8 @@ export default function AdminReports() {
                   </div>
                 </div>
               </TabsContent>
-
-              {/* Biểu đồ khóa học theo môn */}              <TabsContent value="courses-by-subject">
+              {/* Biểu đồ khóa học theo môn */}{" "}
+              <TabsContent value="courses-by-subject">
                 <div className="flex flex-col md:flex-row md:items-center gap-8">
                   <div className="w-full md:w-1/2 h-[300px]">
                     {isCoursesBySubjectLoading ? (
@@ -949,7 +1069,8 @@ export default function AdminReports() {
                           </p>
                         </div>
                       </div>
-                    ) : rawCoursesBySubject && rawCoursesBySubject.length > 0 ? (
+                    ) : rawCoursesBySubject &&
+                      rawCoursesBySubject.length > 0 ? (
                       <Pie
                         data={coursesBySubjectData}
                         options={{
@@ -957,11 +1078,11 @@ export default function AdminReports() {
                           maintainAspectRatio: false,
                           plugins: {
                             legend: {
-                              position: 'right' as const,
+                              position: "right" as const,
                             },
                             title: {
                               display: true,
-                              text: 'Khóa học theo môn học',
+                              text: "Khóa học theo môn học",
                             },
                           },
                         }}
@@ -994,17 +1115,22 @@ export default function AdminReports() {
                               Đang tải dữ liệu...
                             </TableCell>
                           </TableRow>
-                        ) : rawCoursesBySubject && rawCoursesBySubject.length > 0 ? (
-                          rawCoursesBySubject.map((item, index) => (
-                            <TableRow key={index}>
-                              <TableCell>{item.subject}</TableCell>
-                              <TableCell>{item.count}</TableCell>
-                              <TableCell>{item.percentage}%</TableCell>
-                            </TableRow>
-                          ))
+                        ) : rawCoursesBySubject &&
+                          rawCoursesBySubject.length > 0 ? (
+                          rawCoursesBySubject.map(
+                            (item: CourseBySubjectData, index: number) => (
+                              <TableRow key={index}>
+                                <TableCell>{item.subject}</TableCell>
+                                <TableCell>{item.count}</TableCell>
+                                <TableCell>{item.percentage}%</TableCell>
+                              </TableRow>
+                            )
+                          )
                         ) : (
                           <TableRow>
-                            <TableCell colSpan={3} className="text-center">Không có dữ liệu</TableCell>
+                            <TableCell colSpan={3} className="text-center">
+                              Không có dữ liệu
+                            </TableCell>
                           </TableRow>
                         )}
                       </TableBody>

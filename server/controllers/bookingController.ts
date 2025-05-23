@@ -4,6 +4,8 @@ import * as schema from "@shared/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
+import { sessionNotes } from "../../shared/schema";
+import type { InferInsertModel } from "drizzle-orm";
 
 // [DEPRECATED] Tạo booking mới (đã bị xóa)
 // Phương thức này đã bị loại bỏ vì sử dụng bookingRequestValidationSchema cũ
@@ -327,7 +329,7 @@ export const addSessionNotes = async (req: Request, res: Response) => {
 
     // Gia sư chỉ có thể thêm tutor_notes
     // Học sinh chỉ có thể thêm student_rating và student_feedback
-    let updateData: Partial<schema.NewSessionNote> = {};
+    let updateData: Partial<InferInsertModel<typeof sessionNotes>> = {};
 
     if (isTutor && tutor_notes) {
       updateData.tutor_notes = tutor_notes;

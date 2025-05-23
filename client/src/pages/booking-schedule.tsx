@@ -208,7 +208,7 @@ export default function BookingSchedule() {
       toast({
         title: "Thành công",
         description: "Đã cập nhật trạng thái buổi học thành hoàn thành.",
-        variant: "success",
+        variant: "default",
       });
     } catch (err) {
       console.error("Error updating session status:", err);
@@ -252,7 +252,7 @@ export default function BookingSchedule() {
       toast({
         title: "Thành công",
         description: "Đã gửi đánh giá và góp ý cho buổi học.",
-        variant: "success",
+        variant: "default",
       });
     } catch (err) {
       console.error("Error submitting feedback:", err);

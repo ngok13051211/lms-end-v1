@@ -33,8 +33,6 @@ export const subjects = pgTable("subjects", {
   description: text("description"),
   icon: text("icon"),
   tutor_count: integer("tutor_count").default(0),
-  teaching_mode: text("teaching_mode").default("both"), // "online", "offline", "both"
-  hourly_rate: decimal("hourly_rate", { precision: 10, scale: 2 }).default("0"),
   created_at: timestamp("created_at").defaultNow().notNull(),
   updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -320,6 +318,9 @@ export const reviews = pgTable("reviews", {
   tutor_id: integer("tutor_id")
     .notNull()
     .references(() => tutorProfiles.id),
+  course_id: integer("course_id")
+    .notNull()
+    .references(() => courses.id),
   rating: integer("rating").notNull(),
   comment: text("comment"),
   created_at: timestamp("created_at").defaultNow().notNull(),
@@ -339,17 +340,7 @@ export const testimonials = pgTable("testimonials", {
 });
 
 // Conversations Model
-// export const conversations = pgTable("conversations", {
-//   id: serial("id").primaryKey(),
-//   student_id: integer("student_id")
-//     .notNull()
-//     .references(() => users.id),
-//   tutor_id: integer("tutor_id")
-//     .notNull()
-//     .references(() => users.id),
-//   last_message_at: timestamp("last_message_at").defaultNow().notNull(),
-//   created_at: timestamp("created_at").defaultNow().notNull(),
-// });
+
 export const conversations = pgTable(
   "conversations",
   {
@@ -585,6 +576,10 @@ export const reviewsRelations = relations(reviews, ({ one }) => ({
   tutor: one(tutorProfiles, {
     fields: [reviews.tutor_id],
     references: [tutorProfiles.id],
+  }),
+  course: one(courses, {
+    fields: [reviews.course_id],
+    references: [courses.id],
   }),
 }));
 
@@ -903,7 +898,7 @@ export const teachingRequestSchema = z.object({
 
 // Schema cho cập nhật trạng thái yêu cầu giảng dạy
 export const teachingRequestStatusSchema = z.object({
-  status: z.enum(["pending", "approved", "rejected"], {
+  status: z.enum(["draft", "pending", "approved", "rejected"], {
     errorMap: () => ({ message: "Trạng thái không hợp lệ" }),
   }),
   rejection_reason: z.string().optional(), // Lý do nếu từ chối

@@ -80,7 +80,9 @@ export default function SubjectDetail() {
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
   const [isLoginDialogOpen, setIsLoginDialogOpen] = useState(false);
-  const [pendingBookingUrl, setPendingBookingUrl] = useState<string | null>(null);
+  const [pendingBookingUrl, setPendingBookingUrl] = useState<string | null>(
+    null
+  );
 
   // Get current user
   const { data: userData } = useQuery<{
@@ -96,9 +98,13 @@ export default function SubjectDetail() {
   const isTutor = userData?.user?.role === "tutor";
 
   // Handle booking with login check
-  const handleBooking = (tutorId: number, courseId: number, courseTitle: string) => {
+  const handleBooking = (
+    tutorId: number,
+    courseId: number,
+    courseTitle: string
+  ) => {
     const bookingUrl = `/book/${tutorId}?course=${courseId}`;
-    
+
     if (!isLoggedIn) {
       // Store the booking URL and show login dialog
       setPendingBookingUrl(bookingUrl);
@@ -112,7 +118,7 @@ export default function SubjectDetail() {
   // Handle successful login
   const handleLoginSuccess = () => {
     setIsLoginDialogOpen(false);
-    
+
     // Navigate to the pending booking URL if available
     if (pendingBookingUrl) {
       navigate(pendingBookingUrl);
@@ -218,12 +224,12 @@ export default function SubjectDetail() {
   return (
     <div className="w-full mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-6 sm:py-10 max-w-[95%] md:max-w-[90%] lg:max-w-7xl">
       {/* Login Dialog */}
-      <LoginDialog 
-        isOpen={isLoginDialogOpen} 
-        onClose={() => setIsLoginDialogOpen(false)} 
-        onLoginSuccess={handleLoginSuccess} 
+      <LoginDialog
+        isOpen={isLoginDialogOpen}
+        onClose={() => setIsLoginDialogOpen(false)}
+        onLoginSuccess={handleLoginSuccess}
       />
-      
+
       {/* Breadcrumb */}
       <Breadcrumb className="mb-6 text-sm overflow-hidden">
         <BreadcrumbItem>

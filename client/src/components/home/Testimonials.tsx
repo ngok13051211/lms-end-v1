@@ -1,5 +1,3 @@
-import TestimonialCard from "@/components/ui/TestimonialCard";
-
 export default function Testimonials() {
   return (
     <section className="py-12 md:py-16 bg-white">

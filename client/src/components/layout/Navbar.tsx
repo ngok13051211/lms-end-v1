@@ -79,8 +79,7 @@ export default function Navbar() {
             </span>
           </Link>
         </div>
-
-        {/* Desktop Navigation */}
+        {/* Desktop Navigation */}{" "}
         <nav className="hidden md:flex items-center space-x-8">
           <Link
             href="/tutors"
@@ -88,12 +87,14 @@ export default function Navbar() {
           >
             Tìm gia sư
           </Link>
-          <Link
-            href="/register"
-            className="text-foreground hover:text-primary text-sm font-medium"
-          >
-            Trở thành gia sư
-          </Link>
+          {!user && (
+            <Link
+              href="/register"
+              className="text-foreground hover:text-primary text-sm font-medium"
+            >
+              Trở thành gia sư
+            </Link>
+          )}
           <Link
             href="/blog"
             className="text-foreground hover:text-primary text-sm font-medium"
@@ -226,7 +227,6 @@ export default function Navbar() {
             </>
           )}
         </nav>
-
         {/* Mobile Menu Button */}
         <div className="md:hidden flex items-center">
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
@@ -238,6 +238,7 @@ export default function Navbar() {
             </SheetTrigger>
             <SheetContent side="right" className="w-[280px] sm:w-[350px]">
               <div className="px-2 py-6 flex flex-col h-full">
+                {" "}
                 <div className="mt-8 flex flex-col space-y-4">
                   <Link
                     href="/tutors"
@@ -246,13 +247,15 @@ export default function Navbar() {
                   >
                     Tìm gia sư
                   </Link>
-                  <Link
-                    href="/register"
-                    className="px-3 py-2 text-foreground hover:bg-muted rounded-md text-base font-medium"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Trở thành gia sư
-                  </Link>
+                  {!user && (
+                    <Link
+                      href="/register"
+                      className="px-3 py-2 text-foreground hover:bg-muted rounded-md text-base font-medium"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Trở thành gia sư
+                    </Link>
+                  )}
                   <Link
                     href="/blog"
                     className="px-3 py-2 text-foreground hover:bg-muted rounded-md text-base font-medium"
@@ -261,7 +264,6 @@ export default function Navbar() {
                     Blog
                   </Link>
                 </div>
-
                 <div className="mt-auto">
                   {user ? (
                     <div className="border-t pt-4 mt-4">

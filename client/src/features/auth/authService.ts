@@ -111,30 +111,6 @@ const login = async (userData: {
 
   return user;
 };
-
-// Load user profile
-// const loadUser = async (): Promise<typeof User> => {
-//   // Get token from localStorage
-//   const token = localStorage.getItem("token");
-//   const headers: HeadersInit = {};
-
-//   if (token) {
-//     headers["Authorization"] = `Bearer ${token}`;
-//   }
-
-//   const response = await fetch("/api/v1/auth/me", {
-//     method: "GET",
-//     credentials: "include",
-//     headers,
-//   });
-
-//   if (!response.ok) {
-//     throw new Error("Failed to load user profile");
-//   }
-
-//   const data = await response.json();
-//   return data.user;
-// };
 const loadUser = async (): Promise<typeof User> => {
   const token = localStorage.getItem("token");
 

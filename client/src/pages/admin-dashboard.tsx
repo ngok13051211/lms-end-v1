@@ -86,10 +86,6 @@ export default function AdminDashboard() {
       );
       return await response.json();
     },
-    onError: (error: Error) => {
-      console.error("Lỗi khi lấy thống kê tổng quan:", error);
-      setError("Không thể tải thông tin thống kê. Vui lòng thử lại sau.");
-    },
     refetchOnWindowFocus: false,
     staleTime: 5 * 60 * 1000, // 5 phút
   });
@@ -107,10 +103,6 @@ export default function AdminDashboard() {
         "/api/v1/admin/summary/recent-activities"
       );
       return await response.json();
-    },
-    onError: (error: Error) => {
-      console.error("Lỗi khi lấy hoạt động gần đây:", error);
-      setError("Không thể tải hoạt động gần đây. Vui lòng thử lại sau.");
     },
     refetchOnWindowFocus: false,
     staleTime: 60 * 1000, // 1 phút

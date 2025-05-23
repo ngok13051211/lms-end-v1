@@ -526,7 +526,7 @@ export default function PaymentPage() {
 
           {/* Sidebar with booking summary */}
           <div className="lg:col-span-1 space-y-6 self-start">
-            {/* Course information card */}
+            {/* Course information card
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg">Thông tin khóa học</CardTitle>
@@ -601,7 +601,7 @@ export default function PaymentPage() {
                   </div>
                 </div>
               </CardContent>{" "}
-            </Card>
+            </Card> */}
 
             {/* Booking details card */}
             <Card>
@@ -662,7 +662,7 @@ export default function PaymentPage() {
               </CardContent>
             </Card>
 
-            {/* Tutor information card */}
+            {/* Tutor information card
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg">Thông tin gia sư</CardTitle>
@@ -730,7 +730,7 @@ export default function PaymentPage() {
                   </p>
                 </div>
               </CardContent>
-            </Card>
+            </Card> */}
             {/* Payment summary card */}
             <Card className="sticky top-20">
               <CardHeader className="pb-3">

@@ -79,11 +79,12 @@ export default function TutorDashboardMessages() {
   });
 
   // Get a specific conversation if ID is provided
-  const { data: conversationData, isLoading: conversationLoading } = useQuery({
-    queryKey: [`/api/v1/conversations/${conversationId}`],
-    enabled: !!conversationId && !!tutorProfile,
-    refetchInterval: 15000, // Auto-refresh every 15 seconds to get new messages
-  });
+  const { data: conversationData, isLoading: conversationLoading } =
+    useQuery<Conversation>({
+      queryKey: [`/api/v1/conversations/${conversationId}`],
+      enabled: !!conversationId && !!tutorProfile,
+      refetchInterval: 15000, // Tự động làm mới mỗi 15 giây để nhận tin nhắn mới
+    });
 
   // Theo dõi thay đổi của conversationData
   useEffect(() => {
@@ -114,10 +115,10 @@ export default function TutorDashboardMessages() {
     scrollToBottom();
 
     // Scroll on window resize
-    window.addEventListener('resize', scrollToBottom);
+    window.addEventListener("resize", scrollToBottom);
 
     return () => {
-      window.removeEventListener('resize', scrollToBottom);
+      window.removeEventListener("resize", scrollToBottom);
     };
   }, [conversationId]);
 
@@ -188,10 +189,11 @@ export default function TutorDashboardMessages() {
                       href={`/dashboard/tutor/messages/${conv.id}`}
                     >
                       <a
-                        className={`flex items-center p-4 border rounded-lg transition-colors hover:border-primary ${conversationId === conv.id.toString()
-                          ? "border-primary bg-primary/5"
-                          : ""
-                          }`}
+                        className={`flex items-center p-4 border rounded-lg transition-colors hover:border-primary ${
+                          conversationId === conv.id.toString()
+                            ? "border-primary bg-primary/5"
+                            : ""
+                        }`}
                       >
                         <Avatar className="h-10 w-10">
                           <AvatarImage
@@ -258,7 +260,10 @@ export default function TutorDashboardMessages() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="flex-1 overflow-y-auto p-4 space-y-4" style={{ maxHeight: "calc(70vh - 140px)" }}>
+              <CardContent
+                className="flex-1 overflow-y-auto p-4 space-y-4"
+                style={{ maxHeight: "calc(70vh - 140px)" }}
+              >
                 <div className="space-y-4">
                   <div className="flex items-start">
                     <div className="h-8 w-8 rounded-full bg-muted mr-2"></div>
@@ -338,7 +343,10 @@ export default function TutorDashboardMessages() {
                           ? conversation.student?.email
                           : conversation.tutor?.email}
                       </p>
-                      <Badge variant="outline" className="text-xs px-1 py-0 h-5">
+                      <Badge
+                        variant="outline"
+                        className="text-xs px-1 py-0 h-5"
+                      >
                         {user?.role === "tutor" ? "Học viên" : "Giáo viên"}
                       </Badge>
                     </div>
@@ -346,7 +354,10 @@ export default function TutorDashboardMessages() {
                 </div>
               </CardHeader>
 
-              <CardContent className="flex-1 overflow-y-auto p-4 space-y-4" style={{ maxHeight: "calc(70vh - 140px)" }}>
+              <CardContent
+                className="flex-1 overflow-y-auto p-4 space-y-4"
+                style={{ maxHeight: "calc(70vh - 140px)" }}
+              >
                 <MessageList
                   groupedMessages={groupedMessages}
                   user={user}
@@ -358,12 +369,14 @@ export default function TutorDashboardMessages() {
 
               <CardFooter className="p-4 border-t">
                 <MessageInput
-                  conversationId={conversationId || ''}
+                  conversationId={conversationId || ""}
                   onMessageSent={() => {
                     // Scroll to bottom after sending
                     setTimeout(() => {
                       if (messagesEndRef.current) {
-                        messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+                        messagesEndRef.current.scrollIntoView({
+                          behavior: "smooth",
+                        });
                       }
                     }, 100);
                   }}

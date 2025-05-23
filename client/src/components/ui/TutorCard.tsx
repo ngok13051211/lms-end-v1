@@ -286,10 +286,10 @@ export default function TutorCard({
         )}
         <div className="mt-auto flex items-center justify-between">
           <div>
-            <span className="text-secondary font-medium">
+            {/* <span className="text-secondary font-medium">
               {formatPrice(tutor.hourly_rate)}
             </span>
-            <span className="text-muted-foreground text-sm">/giờ</span>
+            <span className="text-muted-foreground text-sm">/giờ</span> */}
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             {isFavorite && onRemoveFromFavorites && (

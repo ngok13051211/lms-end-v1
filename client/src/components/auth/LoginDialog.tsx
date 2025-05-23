@@ -40,7 +40,11 @@ interface LoginDialogProps {
   onLoginSuccess: () => void;
 }
 
-export default function LoginDialog({ isOpen, onClose, onLoginSuccess }: LoginDialogProps) {
+export default function LoginDialog({
+  isOpen,
+  onClose,
+  onLoginSuccess,
+}: LoginDialogProps) {
   const dispatch = useDispatch();
   const { isLoading, error } = useSelector((state: RootState) => state.auth);
   const [showPassword, setShowPassword] = useState(false);
@@ -90,10 +94,13 @@ export default function LoginDialog({ isOpen, onClose, onLoginSuccess }: LoginDi
           onSuccess={handleVerificationSuccess}
         />
       )}
-      
-      <Dialog open={isOpen} onOpenChange={(open) => {
-        if (!open) onClose();
-      }}>
+
+      <Dialog
+        open={isOpen}
+        onOpenChange={(open) => {
+          if (!open) onClose();
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <div className="flex justify-center mb-4">
@@ -108,7 +115,7 @@ export default function LoginDialog({ isOpen, onClose, onLoginSuccess }: LoginDi
               Vui lòng đăng nhập để đặt lịch học
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             {error && (
               <Alert variant="destructive">
@@ -179,7 +186,7 @@ export default function LoginDialog({ isOpen, onClose, onLoginSuccess }: LoginDi
               </form>
             </Form>
           </div>
-          
+
           <DialogFooter className="flex flex-col space-y-2">
             <div className="text-center text-sm">
               <a

@@ -29,6 +29,7 @@ import { queryClient } from "@/lib/queryClient";
 
 interface DashboardLayoutProps {
   children: ReactNode;
+  activePage?: string;
 }
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
@@ -99,12 +100,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           href: "/dashboard/student",
         },
         {
-          label: "Profile",
+          label: "Hồ sơ",
           icon: <User className="h-5 w-5" />,
           href: "/dashboard/student/profile",
         },
         {
-          label: "My Tutors",
+          label: "Gia sư yêu thích",
           icon: <Users className="h-5 w-5" />,
           href: "/dashboard/student/tutors",
         },
@@ -114,7 +115,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           href: "/dashboard/student/bookings",
         },
         {
-          label: "Messages",
+          label: "Nhắn tin",
           icon: <MessageSquare className="h-5 w-5" />,
           href: "/dashboard/messages",
         },
@@ -192,10 +193,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             return (
               <div
                 key={item.href}
-                className={`flex items-center px-4 py-3 text-sm rounded-md transition-colors cursor-pointer ${isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  }`}
+                className={`flex items-center px-4 py-3 text-sm rounded-md transition-colors cursor-pointer ${
+                  isActive
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
                 onClick={() => {
                   if (isMobile) setSidebarOpen(false);
                   window.location.href = item.href;

@@ -1203,8 +1203,7 @@ export default function BookingForm() {
                 )}
               </CardContent>
             </Card>
-
-            {/* Tutor information card */}
+            {/* Tutor information card
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg">Thông tin gia sư</CardTitle>
@@ -1368,7 +1367,7 @@ export default function BookingForm() {
                   </p>
                 )}
               </CardContent>
-            </Card>
+            </Card> */}
           </div>
         </div>
       </div>

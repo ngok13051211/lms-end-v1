@@ -5,7 +5,13 @@ import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "@/store";
 import { updateUserProfile, updateAvatar } from "@/features/auth/authSlice";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -14,12 +20,26 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
 import { Link, useLocation } from "wouter";
-import { Loader2, User, ChevronRight, MessageSquare, Star, Upload } from "lucide-react";
+import {
+  Loader2,
+  User,
+  ChevronRight,
+  MessageSquare,
+  Star,
+  Upload,
+} from "lucide-react";
 import TutorCard from "@/components/ui/TutorCard";
 
 // Form schema for student profile
@@ -78,16 +98,20 @@ export default function StudentDashboard() {
   const [, navigate] = useLocation();
   const [avatar, setAvatar] = useState<File | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  
+
   // Get favorite tutors
-  const { data: favoriteTutors = [], isLoading: tutorsLoading, refetch: refetchFavoriteTutors } = useQuery<FavoriteTutor[]>({
-    queryKey: ['/api/v1/students/favorite-tutors'],
+  const {
+    data: favoriteTutors = [],
+    isLoading: tutorsLoading,
+    refetch: refetchFavoriteTutors,
+  } = useQuery<FavoriteTutor[]>({
+    queryKey: ["/api/v1/students/favorite-tutors"],
   });
-  
+
   // Remove tutor from favorites
   const handleRemoveFromFavorites = async (tutorId: number) => {
     try {
-      await apiRequest('DELETE', `/api/v1/students/favorite-tutors/${tutorId}`);
+      await apiRequest("DELETE", `/api/v1/students/favorite-tutors/${tutorId}`);
       toast({
         title: "Đã xóa khỏi danh sách yêu thích",
         description: "Gia sư đã được xóa khỏi danh sách yêu thích của bạn.",
@@ -103,12 +127,13 @@ export default function StudentDashboard() {
       console.error(error);
     }
   };
-  
+
   // Get recent conversations
-  const { data: conversations = [], isLoading: conversationsLoading } = useQuery<Conversation[]>({
-    queryKey: ['/api/v1/conversations'],
-  });
-  
+  const { data: conversations = [], isLoading: conversationsLoading } =
+    useQuery<Conversation[]>({
+      queryKey: ["/api/v1/conversations"],
+    });
+
   // Profile form
   const form = useForm<z.infer<typeof profileSchema>>({
     resolver: zodResolver(profileSchema),
@@ -118,7 +143,7 @@ export default function StudentDashboard() {
       email: user?.email || "",
     },
   });
-  
+
   // Cập nhật form khi user thay đổi
   useEffect(() => {
     if (user) {
@@ -129,17 +154,17 @@ export default function StudentDashboard() {
       });
     }
   }, [user, form]);
-  
+
   // Upload avatar
   const uploadAvatar = async () => {
     if (!avatar) return;
-    
+
     setUploadingAvatar(true);
-    
+
     try {
       const formData = new FormData();
       formData.append("avatar", avatar);
-      
+
       // Sử dụng apiRequest thay vì fetch trực tiếp để đảm bảo xác thực được xử lý đúng
       const response = await fetch("/api/v1/users/avatar", {
         method: "POST",
@@ -148,23 +173,25 @@ export default function StudentDashboard() {
         headers: {
           // Không đặt Content-Type với FormData, trình duyệt sẽ tự động thêm với boundary cần thiết
           // Thêm Authorization header nếu có token
-          ...(localStorage.getItem('token') ? { 'Authorization': `Bearer ${localStorage.getItem('token')}` } : {})
-        }
+          ...(localStorage.getItem("token")
+            ? { Authorization: `Bearer ${localStorage.getItem("token")}` }
+            : {}),
+        },
       });
-      
+
       if (response.ok) {
         const data = await response.json();
-        
+
         console.log("Cập nhật avatar thành công:", data);
-        
+
         // Cập nhật Redux store với avatar URL mới
         if (data.user?.avatar) {
           dispatch(updateAvatar(data.user.avatar));
         }
-        
+
         // Cập nhật React Query cache
-        queryClient.invalidateQueries({ queryKey: ['/api/v1/auth/me'] });
-        
+        queryClient.invalidateQueries({ queryKey: ["/api/v1/auth/me"] });
+
         // Hiển thị thông báo thành công
         toast({
           title: "Thành công",
@@ -173,12 +200,16 @@ export default function StudentDashboard() {
         });
       } else {
         // Xử lý lỗi từ phản hồi
-        const errorData = await response.json().catch(() => ({ message: "Lỗi không xác định" }));
+        const errorData = await response
+          .json()
+          .catch(() => ({ message: "Lỗi không xác định" }));
         console.error("Upload avatar error:", errorData);
-        
+
         toast({
           title: "Lỗi",
-          description: errorData.message || "Không thể tải lên ảnh đại diện. Vui lòng thử lại sau.",
+          description:
+            errorData.message ||
+            "Không thể tải lên ảnh đại diện. Vui lòng thử lại sau.",
           variant: "destructive",
         });
       }
@@ -195,32 +226,36 @@ export default function StudentDashboard() {
       setAvatar(null);
     }
   };
-  
+
   const handleOnAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setAvatar(e.target.files[0]);
     }
   };
-  
+
   // Update profile
   const updateProfile = async (data: z.infer<typeof profileSchema>) => {
     try {
       // Chuyển đổi từ camelCase sang snake_case cho API
       const apiData = {
         first_name: data.firstName,
-        last_name: data.lastName
+        last_name: data.lastName,
       };
-      
-      const response = await apiRequest("PATCH", "/api/v1/users/profile", apiData);
-      
+
+      const response = await apiRequest(
+        "PATCH",
+        "/api/v1/users/profile",
+        apiData
+      );
+
       if (response.ok) {
         // Cập nhật Redux store
         const responseData = await response.json();
         dispatch(updateUserProfile(apiData));
-        
+
         // Cập nhật React Query cache
-        queryClient.invalidateQueries({ queryKey: ['/api/v1/auth/me'] });
-        
+        queryClient.invalidateQueries({ queryKey: ["/api/v1/auth/me"] });
+
         // Hiển thị thông báo thành công
         toast({
           title: "Thành công",
@@ -238,9 +273,9 @@ export default function StudentDashboard() {
       });
     }
   };
-  
+
   const isLoading = tutorsLoading || conversationsLoading;
-  
+
   if (isLoading) {
     return (
       <DashboardLayout>
@@ -251,12 +286,12 @@ export default function StudentDashboard() {
       </DashboardLayout>
     );
   }
-  
+
   return (
     <DashboardLayout>
       <div className="p-6 max-w-7xl mx-auto">
         <h1 className="text-2xl font-medium mb-6">Bảng điều khiển học viên</h1>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card>
             <CardContent className="p-6">
@@ -271,53 +306,67 @@ export default function StudentDashboard() {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center">
                 <Star className="h-8 w-8 text-primary" />
                 <div className="ml-4">
-                  <p className="text-sm text-muted-foreground">Gia sư yêu thích</p>
-                  <p className="text-lg font-medium">{favoriteTutors?.length || 0}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Gia sư của tôi
+                  </p>
+                  <p className="text-lg font-medium">
+                    {favoriteTutors?.length || 0}
+                  </p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center">
                 <MessageSquare className="h-8 w-8 text-primary" />
                 <div className="ml-4">
-                  <p className="text-sm text-muted-foreground">Cuộc trò chuyện</p>
-                  <p className="text-lg font-medium">{conversations?.length || 0}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Cuộc trò chuyện
+                  </p>
+                  <p className="text-lg font-medium">
+                    {conversations?.length || 0}
+                  </p>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
-        
+
         <Tabs defaultValue="profile">
           <TabsList className="mb-8">
             <TabsTrigger value="profile">Hồ sơ</TabsTrigger>
             <TabsTrigger value="favorites">Gia sư yêu thích</TabsTrigger>
             <TabsTrigger value="messages">Tin nhắn</TabsTrigger>
           </TabsList>
-          
+
           <div className="mb-4 mt-2 flex justify-end">
             <div className="space-x-2">
               <Link href="/dashboard/student/profile">
-                <Button variant="outline" size="sm">Đi đến trang hồ sơ đầy đủ</Button>
+                <Button variant="outline" size="sm">
+                  Đi đến trang hồ sơ đầy đủ
+                </Button>
               </Link>
               <Link href="/dashboard/student/tutors">
-                <Button variant="outline" size="sm">Đi đến trang gia sư yêu thích</Button>
+                <Button variant="outline" size="sm">
+                  Đi đến trang gia sư yêu thích
+                </Button>
               </Link>
               <Link href="/dashboard/student/messages">
-                <Button variant="outline" size="sm">Đi đến trang tin nhắn</Button>
+                <Button variant="outline" size="sm">
+                  Đi đến trang tin nhắn
+                </Button>
               </Link>
             </div>
           </div>
-          
+
           {/* Profile Tab */}
           <TabsContent value="profile">
             <Card>
@@ -327,18 +376,22 @@ export default function StudentDashboard() {
                   Quản lý thông tin cá nhân của bạn
                 </CardDescription>
               </CardHeader>
-              
+
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                   <div>
                     <div className="flex flex-col items-center">
                       <Avatar className="h-32 w-32 mb-4">
-                        <AvatarImage src={user?.avatar || undefined} alt={user?.first_name || ""} />
+                        <AvatarImage
+                          src={user?.avatar || undefined}
+                          alt={user?.first_name || ""}
+                        />
                         <AvatarFallback className="text-3xl">
-                          {user?.first_name?.[0]}{user?.last_name?.[0]}
+                          {user?.first_name?.[0]}
+                          {user?.last_name?.[0]}
                         </AvatarFallback>
                       </Avatar>
-                      
+
                       <div className="w-full">
                         <label className="block mb-2 text-sm font-medium">
                           Cập nhật ảnh đại diện
@@ -351,14 +404,14 @@ export default function StudentDashboard() {
                             id="avatar-upload"
                             onChange={handleOnAvatarChange}
                           />
-                          <label 
+                          <label
                             htmlFor="avatar-upload"
                             className="flex items-center px-3 py-2 text-sm border rounded cursor-pointer bg-background hover:bg-muted transition-colors"
                           >
                             <Upload className="mr-2 h-4 w-4" />
                             Chọn ảnh
                           </label>
-                          
+
                           {avatar && (
                             <Button
                               onClick={uploadAvatar}
@@ -384,10 +437,13 @@ export default function StudentDashboard() {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="md:col-span-2">
                     <Form {...form}>
-                      <form onSubmit={form.handleSubmit(updateProfile)} className="space-y-6">
+                      <form
+                        onSubmit={form.handleSubmit(updateProfile)}
+                        className="space-y-6"
+                      >
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <FormField
                             control={form.control}
@@ -396,13 +452,16 @@ export default function StudentDashboard() {
                               <FormItem>
                                 <FormLabel>Họ</FormLabel>
                                 <FormControl>
-                                  <Input {...field} placeholder="Nhập họ của bạn" />
+                                  <Input
+                                    {...field}
+                                    placeholder="Nhập họ của bạn"
+                                  />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
                             )}
                           />
-                          
+
                           <FormField
                             control={form.control}
                             name="lastName"
@@ -410,14 +469,17 @@ export default function StudentDashboard() {
                               <FormItem>
                                 <FormLabel>Tên</FormLabel>
                                 <FormControl>
-                                  <Input {...field} placeholder="Nhập tên của bạn" />
+                                  <Input
+                                    {...field}
+                                    placeholder="Nhập tên của bạn"
+                                  />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
                             )}
                           />
                         </div>
-                        
+
                         <FormField
                           control={form.control}
                           name="email"
@@ -431,17 +493,23 @@ export default function StudentDashboard() {
                             </FormItem>
                           )}
                         />
-                        
+
                         <div>
                           <Badge variant="outline" className="mr-2">
                             Học viên
                           </Badge>
                           <Badge variant="outline">
-                            Tham gia {new Date(user?.created_at || "").toLocaleDateString()}
+                            Tham gia{" "}
+                            {new Date(
+                              user?.created_at || ""
+                            ).toLocaleDateString()}
                           </Badge>
                         </div>
-                        
-                        <Button type="submit" className="bg-primary hover:bg-primary/90">
+
+                        <Button
+                          type="submit"
+                          className="bg-primary hover:bg-primary/90"
+                        >
                           Cập nhật hồ sơ
                         </Button>
                       </form>
@@ -451,7 +519,7 @@ export default function StudentDashboard() {
               </CardContent>
             </Card>
           </TabsContent>
-          
+
           {/* Favorites Tab */}
           <TabsContent value="favorites">
             <Card>
@@ -461,27 +529,34 @@ export default function StudentDashboard() {
                   Các gia sư bạn đã thêm vào danh sách yêu thích
                 </CardDescription>
               </CardHeader>
-              
+
               <CardContent>
                 {favoriteTutors && favoriteTutors.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {favoriteTutors.map((tutor: FavoriteTutor) => (
-                      <TutorCard 
-                        key={tutor.id} 
-                        tutor={tutor} 
-                        isFavorite={true} 
-                        onRemoveFromFavorites={handleRemoveFromFavorites} 
+                      <TutorCard
+                        key={tutor.id}
+                        tutor={tutor}
+                        isFavorite={true}
+                        onRemoveFromFavorites={handleRemoveFromFavorites}
                       />
                     ))}
                   </div>
                 ) : (
                   <div className="text-center py-12">
                     <Star className="h-12 w-12 mx-auto text-muted-foreground" />
-                    <h2 className="mt-4 text-xl font-medium">Chưa có gia sư yêu thích</h2>
+                    <h2 className="mt-4 text-xl font-medium">
+                      Chưa có gia sư yêu thích
+                    </h2>
                     <p className="mt-2 text-muted-foreground max-w-md mx-auto">
-                      Bạn chưa thêm gia sư nào vào danh sách yêu thích. Tìm kiếm gia sư và nhấp vào biểu tượng ngôi sao để thêm họ vào danh sách yêu thích.
+                      Bạn chưa thêm gia sư nào vào danh sách yêu thích. Tìm kiếm
+                      gia sư và nhấp vào biểu tượng ngôi sao để thêm họ vào danh
+                      sách yêu thích.
                     </p>
-                    <Button className="mt-6 bg-primary hover:bg-primary/90" onClick={() => navigate("/tutors")}>
+                    <Button
+                      className="mt-6 bg-primary hover:bg-primary/90"
+                      onClick={() => navigate("/tutors")}
+                    >
                       Tìm gia sư
                     </Button>
                   </div>
@@ -489,7 +564,7 @@ export default function StudentDashboard() {
               </CardContent>
             </Card>
           </TabsContent>
-          
+
           {/* Messages Tab */}
           <TabsContent value="messages">
             <Card>
@@ -499,35 +574,46 @@ export default function StudentDashboard() {
                   Các cuộc trò chuyện của bạn với gia sư
                 </CardDescription>
               </CardHeader>
-              
+
               <CardContent>
                 {conversations && conversations.length > 0 ? (
                   <div className="space-y-2">
                     {conversations.map((conversation: Conversation) => (
-                      <Link key={conversation.id} href={`/dashboard/student/messages/${conversation.id}`}>
+                      <Link
+                        key={conversation.id}
+                        href={`/dashboard/student/messages/${conversation.id}`}
+                      >
                         <a className="flex items-center p-4 border rounded-lg hover:border-primary transition-colors">
                           <Avatar className="h-10 w-10">
-                            <AvatarImage src={conversation.tutor?.avatar || undefined} alt={conversation.tutor?.first_name || ""} />
+                            <AvatarImage
+                              src={conversation.tutor?.avatar || undefined}
+                              alt={conversation.tutor?.first_name || ""}
+                            />
                             <AvatarFallback>
-                              {conversation.tutor?.first_name?.[0]}{conversation.tutor?.last_name?.[0]}
+                              {conversation.tutor?.first_name?.[0]}
+                              {conversation.tutor?.last_name?.[0]}
                             </AvatarFallback>
                           </Avatar>
-                          
+
                           <div className="ml-4 flex-1">
                             <div className="flex items-center justify-between">
                               <h4 className="font-medium">
-                                {conversation.tutor?.first_name} {conversation.tutor?.last_name}
+                                {conversation.tutor?.first_name}{" "}
+                                {conversation.tutor?.last_name}
                               </h4>
                               <span className="text-sm text-muted-foreground">
-                                {new Date(conversation.lastMessageAt).toLocaleDateString()}
+                                {new Date(
+                                  conversation.lastMessageAt
+                                ).toLocaleDateString()}
                               </span>
                             </div>
-                            
+
                             <p className="text-sm text-muted-foreground truncate">
-                              {conversation.lastMessage?.content || "Bắt đầu cuộc trò chuyện"}
+                              {conversation.lastMessage?.content ||
+                                "Bắt đầu cuộc trò chuyện"}
                             </p>
                           </div>
-                          
+
                           <ChevronRight className="h-5 w-5 text-muted-foreground" />
                         </a>
                       </Link>
@@ -536,11 +622,17 @@ export default function StudentDashboard() {
                 ) : (
                   <div className="text-center py-12">
                     <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground" />
-                    <h2 className="mt-4 text-xl font-medium">Chưa có tin nhắn</h2>
+                    <h2 className="mt-4 text-xl font-medium">
+                      Chưa có tin nhắn
+                    </h2>
                     <p className="mt-2 text-muted-foreground max-w-md mx-auto">
-                      Bạn chưa bắt đầu cuộc trò chuyện nào với gia sư. Tìm kiếm gia sư và nhắn tin cho họ để bắt đầu.
+                      Bạn chưa bắt đầu cuộc trò chuyện nào với gia sư. Tìm kiếm
+                      gia sư và nhắn tin cho họ để bắt đầu.
                     </p>
-                    <Button className="mt-6 bg-primary hover:bg-primary/90" onClick={() => navigate("/tutors")}>
+                    <Button
+                      className="mt-6 bg-primary hover:bg-primary/90"
+                      onClick={() => navigate("/tutors")}
+                    >
                       Tìm gia sư
                     </Button>
                   </div>
