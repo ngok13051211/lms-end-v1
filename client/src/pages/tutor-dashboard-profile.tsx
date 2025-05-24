@@ -62,14 +62,56 @@ import TutorDashboardLayout from "@/components/layout/TutorDashboardLayout";
 import { format } from "date-fns";
 import TeachingRequestsList from "@/components/tutor/TeachingRequestsList";
 
+// Helper function to calculate age from date of birth
+const calculateAge = (dateOfBirth: string): number => {
+  if (!dateOfBirth) return 0;
+  const today = new Date();
+  const birthDate = new Date(dateOfBirth);
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  
+  return age;
+};
+
 // Form schema for tutor profile
 const tutorProfileSchema = z.object({
-  bio: z.string().optional(),
-  date_of_birth: z.string().optional(),
-  address: z.string().optional(),
-  first_name: z.string().min(2, "Tên phải có ít nhất 2 ký tự").optional(),
-  last_name: z.string().min(2, "Họ phải có ít nhất 2 ký tự").optional(),
-  phone: z.string().optional(),
+  first_name: z.string()
+    .min(1, "Tên là bắt buộc")
+    .min(2, "Tên phải có ít nhất 2 ký tự")
+    .max(50, "Tên không được vượt quá 50 ký tự")
+    .regex(/^[a-zA-ZÀ-ỹ\s]+$/, "Tên chỉ được chứa chữ cái và khoảng trắng"),
+  
+  last_name: z.string()
+    .min(1, "Họ là bắt buộc")
+    .min(2, "Họ phải có ít nhất 2 ký tự")
+    .max(50, "Họ không được vượt quá 50 ký tự")
+    .regex(/^[a-zA-ZÀ-ỹ\s]+$/, "Họ chỉ được chứa chữ cái và khoảng trắng"),
+  
+  phone: z.string()
+    .min(1, "Số điện thoại là bắt buộc")
+    .regex(/^(0[3|5|7|8|9])+([0-9]{8})$/, "Số điện thoại không hợp lệ"),
+  
+  bio: z.string()
+    .min(1, "Giới thiệu bản thân là bắt buộc")
+    .min(50, "Giới thiệu phải có ít nhất 50 ký tự")
+    .max(1000, "Giới thiệu không được vượt quá 1000 ký tự"),
+  
+  date_of_birth: z.string()
+    .min(1, "Ngày sinh là bắt buộc")
+    .refine((date) => {
+      if (!date) return false;
+      const age = calculateAge(date);
+      return age >= 18 && age <= 65;
+    }, "Gia sư phải từ 18 đến 65 tuổi"),
+  
+  address: z.string()
+    .min(1, "Địa chỉ là bắt buộc")
+    .min(10, "Địa chỉ phải có ít nhất 10 ký tự")
+    .max(200, "Địa chỉ không được vượt quá 200 ký tự"),
 });
 
 // Schema for teaching requests
@@ -111,22 +153,19 @@ export default function TutorDashboardProfile() {
   const [avatar, setAvatar] = useState<File | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [profileDialogOpen, setProfileDialogOpen] = useState(false); // Teaching request state
-
   // Hàm xử lý khi mở modal chỉnh sửa hồ sơ
   const handleOpenProfileDialog = () => {
     console.log("Mở modal chỉnh sửa hồ sơ");
 
-    // Cập nhật form với dữ liệu hiện tại
-    if (tutorProfile) {
-      profileForm.reset({
-        bio: tutorProfile.bio || "",
-        date_of_birth: tutorProfile.date_of_birth || "",
-        address: tutorProfile.address || "",
-        first_name: user?.first_name || "",
-        last_name: user?.last_name || "",
-        phone: user?.phone || "",
-      });
-    }
+    // Cập nhật form với dữ liệu hiện tại hoặc mặc định
+    profileForm.reset({
+      bio: tutorProfile?.bio || "",
+      date_of_birth: tutorProfile?.date_of_birth || "",
+      address: tutorProfile?.address || "",
+      first_name: user?.first_name || "",
+      last_name: user?.last_name || "",
+      phone: user?.phone || "",
+    });
 
     // Mở modal
     setProfileDialogOpen(true);
@@ -239,21 +278,22 @@ export default function TutorDashboardProfile() {
     retry: false,
     staleTime: 0,
     refetchInterval: 1000,
-  });
-  // Setup profile form
+  });  // Setup profile form
   const profileForm = useForm<z.infer<typeof tutorProfileSchema>>({
     resolver: zodResolver(tutorProfileSchema),
+    mode: "onBlur", // Only validate when the field loses focus
     defaultValues: {
-      bio: "",
-      date_of_birth: "",
-      address: "",
-      first_name: "",
-      last_name: "",
-      phone: "",
+      bio: tutorProfile?.bio || "",
+      date_of_birth: tutorProfile?.date_of_birth || "",
+      address: tutorProfile?.address || "",
+      first_name: user?.first_name || "",
+      last_name: user?.last_name || "",
+      phone: user?.phone || "",
     },
-  }); // Teaching request form
+  });  // Teaching request form
   const teachingRequestForm = useForm<z.infer<typeof teachingRequestSchema>>({
     resolver: zodResolver(teachingRequestSchema),
+    mode: "onBlur", // Only validate when the field loses focus
     defaultValues: {
       subject_id: 0,
       level_id: 0,
@@ -261,7 +301,7 @@ export default function TutorDashboardProfile() {
       experience: "",
       certifications: [],
     },
-  }); // Fetch subjects and education levels for teaching request
+  });// Fetch subjects and education levels for teaching request
   const { data: subjects = [] } = useQuery<any[]>({
     queryKey: [`/api/v1/subjects`],
     enabled: teachingRequestDialogOpen,
@@ -1423,115 +1463,171 @@ export default function TutorDashboardProfile() {
             <form
               onSubmit={profileForm.handleSubmit(onSubmit)}
               className="space-y-6"
-            >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            >              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={profileForm.control}
                   name="first_name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Tên</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Tên của bạn" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  render={({ field }) => {
+                    const error = profileForm.formState.errors.first_name;
+                    return (
+                      <FormItem>
+                        <FormLabel className="flex items-center">
+                          Tên <span className="text-red-500 ml-1">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input placeholder="Nhập tên của bạn" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
                 />
 
                 <FormField
                   control={profileForm.control}
                   name="last_name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Họ</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Họ của bạn" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  render={({ field }) => {
+                    const error = profileForm.formState.errors.last_name;
+                    return (
+                      <FormItem>
+                        <FormLabel className="flex items-center">
+                          Họ <span className="text-red-500 ml-1">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input placeholder="Nhập họ của bạn" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
                 />
               </div>
 
               <FormField
                 control={profileForm.control}
                 name="phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Số điện thoại</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Số điện thoại của bạn" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      Số điện thoại để liên hệ khi cần thiết
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const error = profileForm.formState.errors.phone;
+                  return (
+                    <FormItem>
+                      <FormLabel className="flex items-center">
+                        Số điện thoại <span className="text-red-500 ml-1">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Nhập số điện thoại (VD: 0987654321)" 
+                          {...field} 
+                        />
+                      </FormControl>
+                      {!error && (
+                        <FormDescription>
+                          Số điện thoại để học viên và hệ thống liên hệ khi cần thiết
+                        </FormDescription>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
-
+              
               <FormField
                 control={profileForm.control}
                 name="bio"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Giới thiệu bản thân</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Giới thiệu về bản thân, kinh nghiệm giảng dạy..."
-                        className="min-h-[150px]"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Mô tả ngắn gọn về kinh nghiệm, chuyên môn của bạn
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const error = profileForm.formState.errors.bio;
+                  return (
+                    <FormItem>
+                      <FormLabel className="flex items-center">
+                        Giới thiệu bản thân <span className="text-red-500 ml-1">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Textarea
+                            placeholder="Giới thiệu về bản thân, kinh nghiệm giảng dạy, phong cách dạy học của bạn..."
+                            className="min-h-[150px] pr-16"
+                            {...field}
+                          />
+                          <div className="absolute bottom-2 right-2 text-xs text-muted-foreground bg-background px-1 rounded">
+                            {field.value?.length || 0}/1000
+                          </div>
+                        </div>
+                      </FormControl>
+                      {!error && (
+                        <FormDescription>
+                          Mô tả chi tiết về kinh nghiệm, chuyên môn và phong cách giảng dạy (tối thiểu 50 ký tự)
+                        </FormDescription>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
 
               <FormField
                 control={profileForm.control}
                 name="date_of_birth"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Ngày sinh</FormLabel>
-                    <FormControl>
-                      <Input type="date" placeholder="DD/MM/YYYY" {...field} />
-                    </FormControl>
-                    <FormDescription>Điền ngày sinh của bạn</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const error = profileForm.formState.errors.date_of_birth;
+                  return (
+                    <FormItem>
+                      <FormLabel className="flex items-center">
+                        Ngày sinh <span className="text-red-500 ml-1">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      {!error && (
+                        <FormDescription>
+                          Gia sư phải từ 18 đến 65 tuổi
+                        </FormDescription>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
 
               <FormField
                 control={profileForm.control}
                 name="address"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Địa chỉ</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Địa chỉ liên hệ của bạn..."
-                        className="min-h-24"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Thông tin sẽ chỉ được chia sẻ khi có nhu cầu liên hệ
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <DialogFooter>
+                render={({ field }) => {
+                  const error = profileForm.formState.errors.address;
+                  return (
+                    <FormItem>
+                      <FormLabel className="flex items-center">
+                        Địa chỉ <span className="text-red-500 ml-1">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Nhập địa chỉ liên hệ đầy đủ của bạn..."
+                          className="min-h-24"
+                          {...field}
+                        />
+                      </FormControl>
+                      {!error && (
+                        <FormDescription>
+                          Địa chỉ chi tiết để học viên có thể tham khảo khi học trực tiếp
+                        </FormDescription>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setProfileDialogOpen(false)}
+                  disabled={profileForm.formState.isSubmitting}
+                >
+                  Hủy
+                </Button>
                 <Button
                   type="submit"
-                  disabled={profileForm.formState.isSubmitting}
+                  disabled={
+                    profileForm.formState.isSubmitting || 
+                    !profileForm.formState.isValid
+                  }
                 >
                   {profileForm.formState.isSubmitting && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
