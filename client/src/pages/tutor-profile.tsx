@@ -85,7 +85,6 @@ interface TutorProfile {
     phone?: string;
     address?: string;
     date_of_birth?: string;
-    gender?: string;
     is_verified?: boolean;
   };
   bio?: string;
@@ -733,23 +732,6 @@ export default function TutorProfile() {
                             </div>
                           )}
 
-                          {/* Gender */}
-                          {tutor.user?.gender && (
-                            <div className="flex items-start">
-                              <User className="h-4 w-4 text-muted-foreground mt-1 mr-3" />
-                              <div>
-                                <p className="font-medium text-sm">Giới tính</p>
-                                <p className="text-muted-foreground">
-                                  {tutor.user.gender === "male"
-                                    ? "Nam"
-                                    : tutor.user.gender === "female"
-                                    ? "Nữ"
-                                    : tutor.user.gender}
-                                </p>
-                              </div>
-                            </div>
-                          )}
-
                           {/* Joined date */}
                           {tutor.created_at && (
                             <div className="flex items-start">
@@ -872,7 +854,7 @@ export default function TutorProfile() {
                           </div>
 
                           {/* Certifications */}
-                          {tutor.certifications &&
+                          {/* {tutor.certifications &&
                             tutor.certifications.length > 0 && (
                               <div className="flex items-start">
                                 <Award className="h-4 w-4 text-muted-foreground mt-1 mr-3" />
@@ -887,7 +869,7 @@ export default function TutorProfile() {
                                   </ul>
                                 </div>
                               </div>
-                            )}
+                            )} */}
                         </div>
                       </div>
                     </div>
@@ -1131,7 +1113,7 @@ export default function TutorProfile() {
                 </h3>
 
                 {/* Book button - only for students */}
-                {user && user.role === "student" && (
+                {/* {user && user.role === "student" && (
                   <Button
                     onClick={() => handleBooking(id)}
                     className="w-full mb-3"
@@ -1139,7 +1121,7 @@ export default function TutorProfile() {
                   >
                     <Calendar className="mr-2 h-4 w-4" /> Đặt lịch học
                   </Button>
-                )}
+                )} */}
 
                 {/* Message button */}
                 <Button

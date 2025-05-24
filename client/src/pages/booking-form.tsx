@@ -1203,7 +1203,7 @@ export default function BookingForm() {
                 )}
               </CardContent>
             </Card>
-            {/* Tutor information card
+            {/* Tutor information card */}
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg">Thông tin gia sư</CardTitle>
@@ -1256,11 +1256,11 @@ export default function BookingForm() {
                             ({tutor.total_reviews || 0} đánh giá)
                           </span>
                         </div>
-                        <p className="text-sm text-muted-foreground">
+                        {/* <p className="text-sm text-muted-foreground">
                           {tutor.experience_years
                             ? `${tutor.experience_years} năm kinh nghiệm giảng dạy`
                             : "Chưa có thông tin kinh nghiệm"}
-                        </p>
+                        </p> */}
                       </div>
                     </div>{" "}
                     <div className="space-y-2">
@@ -1268,7 +1268,7 @@ export default function BookingForm() {
                         <span className="font-medium">Email:</span>{" "}
                         {tutor.user?.email || "Chưa có thông tin"}
                       </p>
-                      <p className="text-sm">
+                      {/* <p className="text-sm">
                         <span className="font-medium">Địa điểm:</span>{" "}
                         {tutor.address || "Chưa có thông tin địa điểm"}
                       </p>
@@ -1277,7 +1277,7 @@ export default function BookingForm() {
                         {tutor.date_of_birth
                           ? format(new Date(tutor.date_of_birth), "dd/MM/yyyy")
                           : "Chưa có thông tin"}
-                      </p>
+                      </p> */}
                       <p className="text-sm flex items-center gap-2">
                         <span className="font-medium">Xác minh:</span>{" "}
                         {tutor.is_verified ? (
@@ -1329,7 +1329,7 @@ export default function BookingForm() {
                           )}
                         </div>
                       </div>{" "}
-                      {tutor.certifications && (
+                      {/* {tutor.certifications && (
                         <div className="space-y-1">
                           <p className="text-sm font-medium">Chứng nhận:</p>
                           <div className="text-sm bg-muted/40 p-3 rounded-md">
@@ -1350,7 +1350,7 @@ export default function BookingForm() {
                             })()}
                           </div>
                         </div>
-                      )}
+                      )} */}
                       {tutor.availability && (
                         <div className="space-y-1">
                           <p className="text-sm font-medium">Lịch dạy:</p>
@@ -1367,7 +1367,7 @@ export default function BookingForm() {
                   </p>
                 )}
               </CardContent>
-            </Card> */}
+            </Card>
           </div>
         </div>
       </div>

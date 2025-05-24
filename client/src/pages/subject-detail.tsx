@@ -5,6 +5,8 @@ import { subjects, courses } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import LoginDialog from "@/components/auth/LoginDialog";
+import { useSelector } from "react-redux";
+import { RootState } from "@/store";
 
 // Định nghĩa kiểu Subject dựa trên schema subjects
 type Subject = {
@@ -84,18 +86,11 @@ export default function SubjectDetail() {
     null
   );
 
-  // Get current user
-  const { data: userData } = useQuery<{
-    user?: {
-      id: number;
-      role: string;
-    };
-  }>({
-    queryKey: ["/api/v1/auth/me"],
-  });
+  // Get current user from Redux store
+  const user = useSelector((state: RootState) => state.auth.user);
 
-  const isLoggedIn = !!userData?.user;
-  const isTutor = userData?.user?.role === "tutor";
+  const isLoggedIn = !!user;
+  const isTutor = user?.role === "tutor";
 
   // Handle booking with login check
   const handleBooking = (
@@ -410,7 +405,7 @@ export default function SubjectDetail() {
                     {new Intl.NumberFormat("vi-VN", {
                       style: "currency",
                       currency: "VND",
-                    }).format(Number(course.hourlyRate))}
+                    }).format(Number(course.hourly_rate))}
                     <span className="text-xs sm:text-sm font-normal text-muted-foreground">
                       /giờ
                     </span>
