@@ -432,5 +432,108 @@ export const getUserBookings = async (req: Request, res: Response) => {
   }
 };
 
-// Export controller functions
-export { getTutors, getTutorById };
+/**
+ * @desc    Lấy tổng quan lịch sử học tập của học viên, nhóm theo khóa học
+ * @route   GET /api/v1/admin/users/:userId/booking-summary
+ * @access  Private/Admin
+ */
+export const getUserBookingSummaryByCourse = async (req: Request, res: Response) => {
+  try {
+    // Kiểm tra quyền admin
+    if (req.user?.role !== "admin") {
+      return res.status(403).json({
+        message: "Không có quyền truy cập. Chỉ admin mới có thể xem thông tin này.",
+      });
+    }
+
+    const userId = parseInt(req.params.userId);
+
+    if (isNaN(userId)) {
+      return res.status(400).json({ message: "Invalid user ID" });
+    }
+
+    // Kiểm tra user có tồn tại không
+    const user = await db.query.users.findFirst({
+      where: eq(schema.users.id, userId),
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Lấy tất cả bookings của user này để nhóm theo course_id
+    const bookings = await db.query.bookingRequests.findMany({
+      where: eq(schema.bookingRequests.student_id, userId),
+      with: {
+        course: {
+          with: {
+            subject: true,
+            tutor: {
+              with: {
+                user: true
+              }
+            }
+          }
+        },
+        sessions: true
+      },
+    });
+
+    // Nhóm bookings theo course_id
+    const bookingsByCoursesMap = new Map();
+
+    bookings.forEach(booking => {
+      if (!booking.course_id) return;
+
+      const key = booking.course_id;
+      if (!bookingsByCoursesMap.has(key)) {
+        bookingsByCoursesMap.set(key, {
+          course_id: booking.course_id,
+          course_name: booking.course?.title || "N/A",
+          subject_name: booking.course?.subject?.name || "N/A",
+          tutor_name: booking.course?.tutor?.user
+            ? `${booking.course.tutor.user.first_name} ${booking.course.tutor.user.last_name}`
+            : "N/A",
+          sessions: [],
+          total_sessions: 0,
+          completed_sessions: 0
+        });
+      }
+
+      // Thêm các sessions của booking này vào group
+      if (booking.sessions && Array.isArray(booking.sessions)) {
+        const group = bookingsByCoursesMap.get(key);
+        booking.sessions.forEach(session => {
+          group.sessions.push(session);
+          group.total_sessions++;
+          if (session.status === "completed") {
+            group.completed_sessions++;
+          }
+        });
+      }
+    });
+
+    // Convert Map to Array và thêm overall_status
+    const bookingSummary = Array.from(bookingsByCoursesMap.values()).map(group => ({
+      course_id: group.course_id,
+      course_name: group.course_name,
+      subject_name: group.subject_name,
+      tutor_name: group.tutor_name,
+      total_sessions: group.total_sessions,
+      completed_sessions: group.completed_sessions,
+      overall_status: group.total_sessions === group.completed_sessions && group.total_sessions > 0
+        ? "completed"
+        : "in_progress"
+    }));
+
+    return res.status(200).json(bookingSummary);
+  } catch (error) {
+    console.error("Error in getUserBookingSummaryByCourse:", error);
+    return res.status(500).json({
+      message: "Đã xảy ra lỗi khi lấy thông tin lịch sử học tập",
+      error: (error as Error).message,
+    });
+  }
+};
+
+// Đã export toàn bộ controller functions trước đó

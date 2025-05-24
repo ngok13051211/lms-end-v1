@@ -21,6 +21,7 @@ import adminRoutes from "./routes/admin";
 import adminSummaryRoutes from "./routes/adminSummary";
 import docsRoutes from "./routes/docs";
 import verificationRoutes from "./routes/verification";
+import fixBookingSummaryRoute from "./fix-booking-summary-route";
 
 // Import controllers
 import * as tutorController from "./controllers/tutorController";
@@ -37,7 +38,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Test Cloudinary upload route - DEBUG ONLY
     app.get(`${apiPrefix}/test-cloudinary`, async (req, res) => {
       console.log("Testing Cloudinary connection...");
-
       try {
         // Test Cloudinary credentials by making a simple API call
         const result = await cloudinary.api.ping();
@@ -101,6 +101,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use(`${apiPrefix}/schedules`, scheduleRoutes);
   app.use(`${apiPrefix}/subjects`, subjectRoutes);
   app.use(`${apiPrefix}/admin`, adminRoutes);
+  app.use(`${apiPrefix}/admin`, fixBookingSummaryRoute); // Thêm route fix cho booking-summary
   app.use(`${apiPrefix}/admin/summary`, adminSummaryRoutes); // Admin dashboard summary routes
   app.use(`${apiPrefix}/verify`, verificationRoutes); // Route xác thực email
   app.use(`${apiPrefix}`, docsRoutes); // Route tài liệu API

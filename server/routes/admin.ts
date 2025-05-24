@@ -1,6 +1,8 @@
 import { Router } from "express";
 import * as adminController from "../controllers/adminController";
 import * as tutorController from "../controllers/tutorController";
+import { getTutors } from "../controllers/adminController/getTutors";
+import { getTutorById } from "../controllers/adminController/getTutorById";
 import { authMiddleware, roleMiddleware } from "../middlewares/authMiddleware";
 import { validateParams } from "../middlewares/validationMiddleware";
 import * as schema from "@shared/schema";
@@ -63,12 +65,14 @@ router.get(
   adminController.getUserBookings
 );
 
+// Route booking-summary đã được chuyển sang file fix-booking-summary-route.ts để tránh xung đột
+
 // Lấy danh sách tất cả gia sư
 router.get(
   "/tutors",
   authMiddleware,
   roleMiddleware(["admin"]),
-  adminController.getTutors
+  getTutors
 );
 
 // Lấy chi tiết gia sư theo ID
@@ -77,7 +81,7 @@ router.get(
   authMiddleware,
   roleMiddleware(["admin"]),
   validateParams(schema.idSchema),
-  adminController.getTutorById
+  getTutorById
 );
 
 // DEPRECATED: Phê duyệt gia sư trực tiếp (sử dụng /teaching-requests/:id/approve thay thế)

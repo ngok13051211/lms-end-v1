@@ -37,6 +37,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   Loader2,
   Search,
   Filter,
@@ -75,13 +83,23 @@ interface UserDetailResponse {
   user: User;
 }
 
+interface BookingSummary {
+  course_id: number;
+  course_name: string;
+  subject_name: string;
+  tutor_name: string;
+  total_sessions: number;
+  completed_sessions: number;
+  overall_status: "completed" | "in_progress";
+}
+
 export default function AdminUsers() {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [pageSize] = useState(10); const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [studentBookings, setStudentBookings] = useState<any[]>([]);
+  const [bookingSummary, setBookingSummary] = useState<BookingSummary[]>([]);
   const [isLoadingBookings, setIsLoadingBookings] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
   // Truy vấn danh sách người dùng
@@ -114,10 +132,16 @@ export default function AdminUsers() {
   };  // Xử lý xem chi tiết người dùng
   const handleViewUserDetail = async (userId: number) => {
     try {
-      console.log("User ID FEEE", userId);
+      // Kiểm tra userId hợp lệ
+      if (isNaN(userId) || userId <= 0) {
+        console.error("Invalid userId:", userId);
+        return;
+      }
+      console.log("User ID:", userId, typeof userId);
 
       // Reset states
       setStudentBookings([]);
+      setBookingSummary([]);
       setIsLoadingBookings(true);
       setBookingError(null);
 
@@ -132,9 +156,36 @@ export default function AdminUsers() {
 
       const data: UserDetailResponse = await response.json();
       setSelectedUser(data.user);
-      setIsDetailModalOpen(true);
+      setIsDetailModalOpen(true);      // Gọi API để lấy booking summary theo khóa học
+      try {
+        console.log("Gọi API booking summary với userId:", userId);
+        const apiUrl = `/api/v1/admin/users/${userId}/booking-summary`;
+        console.log("URL API:", apiUrl);
 
-      // Gọi API để lấy danh sách booking của user
+        const summaryResponse = await fetch(apiUrl, {
+          credentials: "include",
+          headers: {
+            "Accept": "application/json"
+          }
+        });
+
+        console.log("Response status:", summaryResponse.status);
+
+        if (!summaryResponse.ok) {
+          const errorText = await summaryResponse.text();
+          console.error("API Error:", errorText);
+          throw new Error(`Không thể lấy lịch sử học tập: ${summaryResponse.status}`);
+        }
+
+        const summaryData = await summaryResponse.json();
+        console.log("Booking summary data:", summaryData);
+        setBookingSummary(summaryData || []);
+      } catch (summaryError) {
+        console.error("Lỗi khi lấy booking summary:", summaryError);
+        setBookingError("Không thể tải lịch sử học tập");
+      }
+
+      // Gọi API để lấy danh sách booking của user (giữ lại để tương thích)
       try {
         const bookingResponse = await fetch(`/api/v1/admin/users/${userId}/bookings`, {
           credentials: "include",
@@ -396,7 +447,7 @@ export default function AdminUsers() {
                               >
                                 Xem chi tiết
                               </DropdownMenuItem>
-                              <DropdownMenuItem>Chỉnh sửa</DropdownMenuItem>
+                              {/* <DropdownMenuItem>Chỉnh sửa</DropdownMenuItem> */}
                               <DropdownMenuSeparator />                              {user.is_active ? (
                                 <DropdownMenuItem
                                   onClick={() =>
@@ -539,24 +590,15 @@ export default function AdminUsers() {
                   </div>
 
                   <div className="space-y-2">
-                    <div>
-                      <span className="font-medium">Tên đăng nhập:</span>
-                      <span className="ml-2">{selectedUser.username}</span>
-                    </div>
-                    <div>
-                      <span className="font-medium">Vai trò:</span>
-                      <span className="ml-2 capitalize">{selectedUser.role}</span>
-                    </div>
+
                     <div>
                       <span className="font-medium">Ngày tham gia:</span>
                       <span className="ml-2">{formatDate(selectedUser.created_at)}</span>
                     </div>
                   </div>
-                </div>
-
-                {/* Lịch sử học */}
+                </div>                {/* Lịch sử học theo khóa học */}
                 <div className="space-y-4">
-                  <h4 className="text-lg font-semibold">Lịch sử học</h4>
+                  <h4 className="text-lg font-semibold">Lịch sử học tập theo khóa học</h4>
 
                   {isLoadingBookings ? (
                     <div className="flex items-center justify-center py-8">
@@ -567,69 +609,57 @@ export default function AdminUsers() {
                     <div className="text-center py-8 text-red-500">
                       <p>{bookingError}</p>
                     </div>
-                  ) : studentBookings.length === 0 ? (
+                  ) : bookingSummary.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <p>Học viên chưa có lịch sử học nào</p>
                     </div>
                   ) : (
                     <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full">
-                        <thead className="bg-muted/50">
-                          <tr>
-                            <th className="text-left py-3 px-4 font-medium">Ngày đặt lịch</th>
-                            <th className="text-left py-3 px-4 font-medium">Môn học</th>
-                            <th className="text-left py-3 px-4 font-medium">Tên khóa học</th>
-                            <th className="text-left py-3 px-4 font-medium">Tên gia sư</th>
-                            <th className="text-left py-3 px-4 font-medium">Trạng thái</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {studentBookings.map((booking, index) => (
-                            <tr key={booking.id || index} className="border-b">
-                              <td className="py-3 px-4">
-                                {formatDate(booking.created_at)}
-                              </td>
-                              <td className="py-3 px-4">
-                                {booking.subject_name}
-                              </td>
-                              <td className="py-3 px-4">
-                                {booking.course_name}
-                              </td>
-                              <td className="py-3 px-4">
-                                {booking.tutor_name}
-                              </td>
-                              <td className="py-3 px-4">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/50">
+                            <TableHead className="font-medium">Môn học</TableHead>
+                            <TableHead className="font-medium">Tên khóa học</TableHead>
+                            <TableHead className="font-medium">Gia sư</TableHead>
+                            <TableHead className="font-medium text-center">Số buổi đã học</TableHead>
+                            <TableHead className="font-medium text-center">Tổng số buổi</TableHead>
+                            <TableHead className="font-medium text-center">Trạng thái chung</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {bookingSummary.map((summary, index) => (
+                            <TableRow key={summary.course_id || index}>
+                              <TableCell className="font-medium">
+                                {summary.subject_name}
+                              </TableCell>
+                              <TableCell>
+                                {summary.course_name}
+                              </TableCell>
+                              <TableCell>
+                                {summary.tutor_name}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {summary.completed_sessions}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {summary.total_sessions}
+                              </TableCell>
+                              <TableCell className="text-center">
                                 <Badge
-                                  variant={
-                                    booking.status === "completed"
-                                      ? "default"
-                                      : booking.status === "confirmed"
-                                        ? "outline"
-                                        : booking.status === "pending"
-                                          ? "secondary"
-                                          : "destructive"
-                                  }
+                                  variant={summary.overall_status === "completed" ? "default" : "outline"}
                                   className={
-                                    booking.status === "completed"
-                                      ? "bg-green-100 text-green-800"
-                                      : booking.status === "confirmed"
-                                        ? "bg-blue-100 text-blue-800"
-                                        : booking.status === "pending"
-                                          ? "bg-yellow-100 text-yellow-800"
-                                          : ""
+                                    summary.overall_status === "completed"
+                                      ? "bg-green-100 text-green-800 border-green-300"
+                                      : "bg-blue-100 text-blue-800 border-blue-300"
                                   }
                                 >
-                                  {booking.status === "completed" && "Hoàn thành"}
-                                  {booking.status === "confirmed" && "Đã xác nhận"}
-                                  {booking.status === "pending" && "Chờ xác nhận"}
-                                  {booking.status === "cancelled" && "Đã hủy"}
-                                  {booking.status === "rejected" && "Từ chối"}
+                                  {summary.overall_status === "completed" ? "Hoàn thành" : "Đang diễn ra"}
                                 </Badge>
-                              </td>
-                            </tr>
+                              </TableCell>
+                            </TableRow>
                           ))}
-                        </tbody>
-                      </table>
+                        </TableBody>
+                      </Table>
                     </div>
                   )}
                 </div>
