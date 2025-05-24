@@ -822,7 +822,7 @@ export default function AdminReports() {
           </CardContent>
         </Card>
         {/* Biểu đồ tổng hợp */}
-        <Card>
+        <Card className="h-[600px]">
           <CardHeader>
             <CardTitle>Biểu đồ tổng hợp</CardTitle>
             <CardDescription>

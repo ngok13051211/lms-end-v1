@@ -35,7 +35,14 @@ export default function PrivateRoute({
         })
         .catch((err: unknown) => {
           console.error("Failed to load user:", err);
-          // Nếu không thể tải user, xóa token và chuyển hướng đến trang đăng nhập
+          
+          // Kiểm tra nếu lỗi do tài khoản bị khóa
+          if (err instanceof Error && err.message === "ACCOUNT_DEACTIVATED") {
+            navigate("/account-deactivated");
+            return;
+          }
+          
+          // Nếu không thể tải user vì lý do khác, xóa token và chuyển hướng đến trang đăng nhập
           localStorage.removeItem("token");
           navigate("/login");
         });

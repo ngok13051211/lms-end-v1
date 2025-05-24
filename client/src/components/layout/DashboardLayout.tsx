@@ -264,8 +264,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       </div>
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto md:ml-64 pt-0 md:pt-0">
-        <div className="pt-16 md:pt-0">{children}</div>
+      <main className="flex-1 overflow-auto md:ml-64 pt-0 md:pt-0 h-full">
+        <div className="pt-16 md:pt-0 h-full">{children}</div>
       </main>
     </div>
   );

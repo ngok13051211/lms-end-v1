@@ -145,6 +145,15 @@ export const login = async (
       );
     }
 
+    // Kiểm tra tài khoản có bị khóa không
+    if (!user.is_active) {
+      throw new ApiError(
+        403,
+        "ACCOUNT_DEACTIVATED",
+        "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên để biết thêm chi tiết."
+      );
+    }
+
     // Kiểm tra tài khoản đã được xác thực chưa
     if (!user.is_verified) {
       let otpMessage = "Tài khoản chưa được xác thực.";
@@ -241,6 +250,15 @@ export const getCurrentUser = async (
 
     if (!user) {
       throw new ApiError(404, "USER_NOT_FOUND", "Không tìm thấy người dùng");
+    }
+
+    // Kiểm tra tài khoản có bị khóa không
+    if (!user.is_active) {
+      throw new ApiError(
+        403,
+        "ACCOUNT_DEACTIVATED",
+        "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên để biết thêm chi tiết."
+      );
     }
 
     // Loại bỏ thông tin nhạy cảm
