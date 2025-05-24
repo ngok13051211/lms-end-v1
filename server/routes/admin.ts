@@ -4,6 +4,7 @@ import * as tutorController from "../controllers/tutorController";
 import { authMiddleware, roleMiddleware } from "../middlewares/authMiddleware";
 import { validateParams } from "../middlewares/validationMiddleware";
 import * as schema from "@shared/schema";
+import { z } from "zod";
 import { getBookingsVolume, getCoursesBySubject } from "../controllers/adminSummaryController";
 
 const router = Router();
@@ -50,6 +51,17 @@ router.patch(
 //   roleMiddleware(["admin"]),
 //   tutorController.getTutorVerifications
 // );
+
+// Lấy danh sách booking của một user
+router.get(
+  "/users/:userId/bookings",
+  authMiddleware,
+  roleMiddleware(["admin"]),
+  validateParams(z.object({
+    userId: schema.idSchema.shape.id,
+  })),
+  adminController.getUserBookings
+);
 
 // Lấy danh sách tất cả gia sư
 router.get(

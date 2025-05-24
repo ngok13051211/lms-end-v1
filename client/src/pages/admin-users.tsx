@@ -81,6 +81,9 @@ export default function AdminUsers() {
   const [pageSize] = useState(10);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [studentBookings, setStudentBookings] = useState<any[]>([]);
+  const [isLoadingBookings, setIsLoadingBookings] = useState(false);
+  const [bookingError, setBookingError] = useState<string | null>(null);
   // Truy vấn danh sách người dùng
   const { data, isLoading, refetch } = useQuery<ApiResponse>({
     queryKey: [`users-list-${searchTerm}-${page}`],
@@ -108,11 +111,17 @@ export default function AdminUsers() {
       month: "2-digit",
       day: "2-digit",
     });
-  };
-  // Xử lý xem chi tiết người dùng
+  };  // Xử lý xem chi tiết người dùng
   const handleViewUserDetail = async (userId: number) => {
     try {
       console.log("User ID FEEE", userId);
+
+      // Reset states
+      setStudentBookings([]);
+      setIsLoadingBookings(true);
+      setBookingError(null);
+
+      // Gọi API để lấy thông tin chi tiết user
       const response = await fetch(`/api/v1/admin/users/${userId}`, {
         credentials: "include",
       });
@@ -124,8 +133,29 @@ export default function AdminUsers() {
       const data: UserDetailResponse = await response.json();
       setSelectedUser(data.user);
       setIsDetailModalOpen(true);
+
+      // Gọi API để lấy danh sách booking của user
+      try {
+        const bookingResponse = await fetch(`/api/v1/admin/users/${userId}/bookings`, {
+          credentials: "include",
+        });
+
+        if (!bookingResponse.ok) {
+          throw new Error("Không thể lấy danh sách booking");
+        }
+
+        const bookingData = await bookingResponse.json();
+        setStudentBookings(bookingData.data || []);
+      } catch (bookingError) {
+        console.error("Lỗi khi lấy danh sách booking:", bookingError);
+        setBookingError("Không thể tải danh sách booking");
+      } finally {
+        setIsLoadingBookings(false);
+      }
+
     } catch (error) {
       console.error("Lỗi khi lấy thông tin chi tiết người dùng:", error);
+      setIsLoadingBookings(false);
     }
   };
   // State cho dialog xác nhận khóa/mở khóa tài khoản
@@ -421,9 +451,7 @@ export default function AdminUsers() {
                 )}              </div>
             )}
           </CardContent>
-        </Card>
-
-        {/* Confirmation Dialog for Account Actions */}
+        </Card>        {/* Confirmation Dialog for Account Actions */}
         <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
           <DialogContent>
             <DialogHeader>
@@ -462,6 +490,158 @@ export default function AdminUsers() {
                 }}
               >
                 Có
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* User Detail Modal */}
+        <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Chi tiết học viên</DialogTitle>
+              <DialogDescription>
+                Thông tin cá nhân và lịch sử học của học viên
+              </DialogDescription>
+            </DialogHeader>
+
+            {selectedUser && (
+              <div className="space-y-6">
+                {/* Thông tin cá nhân */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center space-x-4">
+                    <Avatar className="h-16 w-16">
+                      <AvatarImage
+                        src={selectedUser.avatar}
+                        alt={`${selectedUser.first_name} ${selectedUser.last_name}`}
+                      />
+                      <AvatarFallback className="text-lg">
+                        {selectedUser.first_name[0]}
+                        {selectedUser.last_name[0]}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <h3 className="text-xl font-semibold">
+                        {selectedUser.first_name} {selectedUser.last_name}
+                      </h3>
+                      <p className="text-muted-foreground">{selectedUser.email}</p>
+                      <Badge
+                        variant={selectedUser.is_active ? "outline" : "destructive"}
+                        className={
+                          selectedUser.is_active
+                            ? "bg-green-100 text-green-800"
+                            : ""
+                        }
+                      >
+                        {selectedUser.is_active ? "Đang hoạt động" : "Bị khóa"}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div>
+                      <span className="font-medium">Tên đăng nhập:</span>
+                      <span className="ml-2">{selectedUser.username}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium">Vai trò:</span>
+                      <span className="ml-2 capitalize">{selectedUser.role}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium">Ngày tham gia:</span>
+                      <span className="ml-2">{formatDate(selectedUser.created_at)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Lịch sử học */}
+                <div className="space-y-4">
+                  <h4 className="text-lg font-semibold">Lịch sử học</h4>
+
+                  {isLoadingBookings ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                      <span>Đang tải lịch sử học...</span>
+                    </div>
+                  ) : bookingError ? (
+                    <div className="text-center py-8 text-red-500">
+                      <p>{bookingError}</p>
+                    </div>
+                  ) : studentBookings.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p>Học viên chưa có lịch sử học nào</p>
+                    </div>
+                  ) : (
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full">
+                        <thead className="bg-muted/50">
+                          <tr>
+                            <th className="text-left py-3 px-4 font-medium">Ngày đặt lịch</th>
+                            <th className="text-left py-3 px-4 font-medium">Môn học</th>
+                            <th className="text-left py-3 px-4 font-medium">Tên khóa học</th>
+                            <th className="text-left py-3 px-4 font-medium">Tên gia sư</th>
+                            <th className="text-left py-3 px-4 font-medium">Trạng thái</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {studentBookings.map((booking, index) => (
+                            <tr key={booking.id || index} className="border-b">
+                              <td className="py-3 px-4">
+                                {formatDate(booking.created_at)}
+                              </td>
+                              <td className="py-3 px-4">
+                                {booking.subject_name}
+                              </td>
+                              <td className="py-3 px-4">
+                                {booking.course_name}
+                              </td>
+                              <td className="py-3 px-4">
+                                {booking.tutor_name}
+                              </td>
+                              <td className="py-3 px-4">
+                                <Badge
+                                  variant={
+                                    booking.status === "completed"
+                                      ? "default"
+                                      : booking.status === "confirmed"
+                                        ? "outline"
+                                        : booking.status === "pending"
+                                          ? "secondary"
+                                          : "destructive"
+                                  }
+                                  className={
+                                    booking.status === "completed"
+                                      ? "bg-green-100 text-green-800"
+                                      : booking.status === "confirmed"
+                                        ? "bg-blue-100 text-blue-800"
+                                        : booking.status === "pending"
+                                          ? "bg-yellow-100 text-yellow-800"
+                                          : ""
+                                  }
+                                >
+                                  {booking.status === "completed" && "Hoàn thành"}
+                                  {booking.status === "confirmed" && "Đã xác nhận"}
+                                  {booking.status === "pending" && "Chờ xác nhận"}
+                                  {booking.status === "cancelled" && "Đã hủy"}
+                                  {booking.status === "rejected" && "Từ chối"}
+                                </Badge>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsDetailModalOpen(false)}
+              >
+                Đóng
               </Button>
             </DialogFooter>
           </DialogContent>

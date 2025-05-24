@@ -62,10 +62,12 @@ export default function AdminTutorDetail() {
   const [, params] = useRoute("/admin-dashboard/tutors/:id");
   const tutorId = params?.id;
   const [, navigate] = useLocation();
-  const { toast } = useToast(); const [rejectionReason, setRejectionReason] = useState("");
+  const { toast } = useToast();
+  const [rejectionReason, setRejectionReason] = useState("");
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
   const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState("teaching-requests");
+  const [selectedTeachingRequest, setSelectedTeachingRequest] = useState<any>(null);
 
   // Gọi hook query để lấy thông tin gia sư
   const {
@@ -540,13 +542,17 @@ export default function AdminTutorDetail() {
               value={activeTab}
               onValueChange={setActiveTab}
             >
-              <TabsList className="mb-4">
-                <TabsTrigger value="teaching-requests">
-                  Yêu cầu dạy học ({tutorDetail.teaching_requests.length})
-                </TabsTrigger>
+              <TabsList className="mb-4">                <TabsTrigger value="teaching-requests">
+                Yêu cầu dạy học ({tutorDetail.teaching_requests.length})
+              </TabsTrigger>
                 <TabsTrigger value="courses">
                   Khóa học ({tutorDetail.courses.length})
                 </TabsTrigger>
+                {selectedTeachingRequest && (
+                  <TabsTrigger value="teaching-request-detail">
+                    Chi tiết: {selectedTeachingRequest.subject.name} - {selectedTeachingRequest.level.name}
+                  </TabsTrigger>
+                )}
               </TabsList>
 
               <TabsContent value="teaching-requests">
@@ -600,17 +606,18 @@ export default function AdminTutorDetail() {
                               </TableCell>
                               <TableCell>{formatDate(request.created_at)}</TableCell>
                               <TableCell className="text-right">
-                                <div className="flex justify-end gap-2">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => {
-                                      setActiveTab("teaching-request-detail");
-                                      // Lưu request hiện tại vào state
-                                    }}
-                                  >
-                                    Chi tiết
-                                  </Button>
+                                <div className="flex justify-end gap-2">                                  <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    // Lưu request hiện tại vào state
+                                    setSelectedTeachingRequest(request);
+                                    setSelectedRequestId(request.id);
+                                    setActiveTab("teaching-request-detail");
+                                  }}
+                                >
+                                  Chi tiết
+                                </Button>
                                 </div>
                               </TableCell>
                             </TableRow>
@@ -688,58 +695,84 @@ export default function AdminTutorDetail() {
                       <CardDescription>
                         Xem chi tiết yêu cầu đăng ký dạy học
                       </CardDescription>
-                    </div>
-                    <Button
+                    </div>                    <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setActiveTab("teaching-requests")}
+                      onClick={() => {
+                        setActiveTab("teaching-requests");
+                        setSelectedTeachingRequest(null);
+                      }}
                     >
                       <ArrowLeft className="h-4 w-4 mr-1" />
                       Quay lại
                     </Button>
-                  </CardHeader>
-                  <CardContent>
-                    {/* Chi tiết yêu cầu dạy học sẽ được hiển thị tại đây khi người dùng chọn "Chi tiết" */}
-                    <div className="space-y-6">
-                      {tutorDetail.teaching_requests.map((request, index) => (
-                        <div key={index} className="space-y-4 border-b pb-4 last:border-b-0">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <h4 className="font-medium mb-1">Môn học</h4>
-                              <p>{request.subject.name}</p>
-                            </div>
-                            <div>
-                              <h4 className="font-medium mb-1">Cấp độ</h4>
-                              <p>{request.level.name}</p>
-                            </div>
-                          </div>
-
-                          <div>
-                            <h4 className="font-medium mb-1">Giới thiệu</h4>
-                            <p className="text-sm">{request.introduction}</p>
-                          </div>
-
-                          <div>
-                            <h4 className="font-medium mb-1">Kinh nghiệm</h4>
-                            <p className="text-sm">{request.experience}</p>
-                          </div>
-
-                          <div>
-                            <h4 className="font-medium mb-1">Chứng chỉ</h4>
-                            <div className="text-sm">
-                              {renderCertifications(request.certifications)}
-                            </div>
-                          </div>
-
-                          {request.status === "rejected" && request.rejection_reason && (
-                            <div>
-                              <h4 className="font-medium mb-1 text-red-600">Lý do từ chối</h4>
-                              <p className="text-sm text-red-600">{request.rejection_reason}</p>
-                            </div>
-                          )}                          {/* Approval/rejection buttons have been removed as requested */}
+                  </CardHeader>                  <CardContent>
+                    {selectedTeachingRequest ? (
+                      <div className="space-y-6">                        <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                          <h3 className="text-lg font-semibold">
+                            {selectedTeachingRequest.subject.name} - {selectedTeachingRequest.level.name}
+                          </h3>
+                          <Badge
+                            variant={
+                              selectedTeachingRequest.status === "approved" ? "default" :
+                                selectedTeachingRequest.status === "pending" ? "outline" : "destructive"
+                            }
+                            className={selectedTeachingRequest.status === "pending" ? "bg-yellow-50 text-yellow-800 border-yellow-200" : ""}
+                          >
+                            {selectedTeachingRequest.status === "approved" && <CheckCircle className="h-3 w-3 mr-1" />}
+                            {selectedTeachingRequest.status === "pending" && <Clock className="h-3 w-3 mr-1" />}
+                            {selectedTeachingRequest.status === "rejected" && <XCircle className="h-3 w-3 mr-1" />}
+                            {selectedTeachingRequest.status === "approved" && "Đã duyệt"}
+                            {selectedTeachingRequest.status === "pending" && "Chờ duyệt"}
+                            {selectedTeachingRequest.status === "rejected" && "Từ chối"}
+                          </Badge>
                         </div>
-                      ))}
-                    </div>
+
+                        <div className="text-sm text-muted-foreground mb-2">
+                          <Calendar className="h-4 w-4 inline mr-1" />
+                          Ngày đăng ký: {formatDate(selectedTeachingRequest.created_at)}
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <h4 className="font-medium mb-1">Môn học</h4>
+                            <p>{selectedTeachingRequest.subject.name}</p>
+                          </div>
+                          <div>
+                            <h4 className="font-medium mb-1">Cấp độ</h4>
+                            <p>{selectedTeachingRequest.level.name}</p>
+                          </div>
+                        </div>
+
+                        <div>
+                          <h4 className="font-medium mb-1">Giới thiệu</h4>
+                          <p className="text-sm">{selectedTeachingRequest.introduction}</p>
+                        </div>
+
+                        <div>
+                          <h4 className="font-medium mb-1">Kinh nghiệm</h4>
+                          <p className="text-sm">{selectedTeachingRequest.experience}</p>
+                        </div>
+
+                        <div>
+                          <h4 className="font-medium mb-1">Chứng chỉ</h4>
+                          <div className="text-sm">
+                            {renderCertifications(selectedTeachingRequest.certifications)}
+                          </div>
+                        </div>                          {selectedTeachingRequest.status === "rejected" && selectedTeachingRequest.rejection_reason && (
+                          <div>
+                            <h4 className="font-medium mb-1 text-red-600">Lý do từ chối</h4>
+                            <p className="text-sm text-red-600">{selectedTeachingRequest.rejection_reason}</p>
+                          </div>
+                        )}
+                      </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        Không tìm thấy thông tin chi tiết của yêu cầu dạy học
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
