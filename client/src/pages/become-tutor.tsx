@@ -65,7 +65,7 @@ export default function BecomeTutor() {
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!user) {
-      navigate("/login?redirect=/become-tutor");
+      navigate("/register");
     }
   }, [user, navigate]);
 
@@ -161,7 +161,7 @@ export default function BecomeTutor() {
   }
 
   return (
-    <MainLayout>
+    <>
       <div className="py-12 max-w-4xl mx-auto px-4">
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-medium mb-2">Đăng ký làm gia sư</h1>
@@ -648,6 +648,6 @@ export default function BecomeTutor() {
           </div>
         )}
       </div>
-    </MainLayout>
+    </>
   );
 }

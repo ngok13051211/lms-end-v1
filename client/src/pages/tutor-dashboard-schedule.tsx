@@ -67,8 +67,6 @@ interface Schedule {
   date: string;
   start_time: string;
   end_time: string;
-  mode: "online" | "offline";
-  location?: string;
   is_recurring: boolean;
   status: "available" | "booked" | "completed" | "cancelled";
   created_at: string;
@@ -85,17 +83,13 @@ interface ScheduleEvent {
   student?: string;
   time: string;
   date: Date;
-  location?: string;
   type: "available" | "booked" | "cancelled";
-  sessionType?: "online" | "offline";
 }
 
 interface CreateSingleSessionInput {
   date: Date;
   startTime: string;
   endTime: string;
-  sessionType: "online" | "offline";
-  location?: string;
 }
 
 interface CreateRecurringSessionInput {
@@ -107,8 +101,6 @@ interface CreateRecurringSessionInput {
       endTime: string;
     }[];
   };
-  sessionType: "online" | "offline";
-  location?: string;
 }
 
 // API function to create a single session schedule
@@ -123,8 +115,6 @@ const createSingleSession = async (data: CreateSingleSessionInput) => {
       date: format(data.date, "yyyy-MM-dd"),
       start_time: data.startTime,
       end_time: data.endTime,
-      mode: data.sessionType,
-      location: data.location || "",
       is_recurring: false,
     }),
   });
@@ -175,8 +165,6 @@ const createRecurringSessions = async (data: CreateRecurringSessionInput) => {
       start_date: startDateStr,
       end_date: endDateStr,
       repeat_schedule: data.schedule || {}, // Đảm bảo không undefined
-      mode: data.sessionType || "online", // Đảm bảo không undefined
-      location: data.location || "",
       // Các trường bắt buộc cho schema validation
       date: startDateStr,
       start_time: firstTimeSlot.startTime,
@@ -279,44 +267,6 @@ const cancelSchedule = async (scheduleId: number) => {
 
   return response.json();
 };
-// API function hủy lịch
-// const cancelSchedule = async (scheduleId: number) => {
-//   const token = localStorage.getItem("token");
-//   if (!token) {
-//     throw new Error("No authentication token found");
-//   }
-
-//   // Sử dụng URL tương đối hoặc tuyệt đối, nhưng đảm bảo có tiền tố /api
-//   // Lưu ý: Không dùng window.location.origin kết hợp với pathname
-//   const url = `/api/v1/schedules/${scheduleId}`;
-
-//   console.log("Sending DELETE request to:", url);
-
-//   try {
-//     const response = await fetch(url, {
-//       method: "DELETE",
-//       headers: {
-//         "Content-Type": "application/json",
-//         Authorization: `Bearer ${token}`,
-//       },
-//       credentials: "include",
-//     });
-
-//     console.log("Response status:", response.status);
-//     console.log("Response headers:", [...response.headers.entries()]);
-
-//     if (!response.ok) {
-//       const errorData = await response.json();
-//       console.error("Cancel schedule error:", errorData);
-//       throw new Error(errorData.error?.message || "Failed to cancel schedule");
-//     }
-
-//     return response.json();
-//   } catch (error) {
-//     console.error("Fetch error:", error);
-//     throw error;
-//   }
-// };
 
 // API function xóa lịch đã hủy
 const deleteSchedule = async (scheduleId: number) => {
@@ -406,16 +356,12 @@ export default function TutorSchedulePage() {
       date: new Date(),
       startTime: "08:00",
       endTime: "10:00",
-      sessionType: "online",
-      location: "",
     }); // Recurring session form state
   const [recurringSessionForm, setRecurringSessionForm] =
     useState<CreateRecurringSessionInput>({
       startDate: new Date(),
       endDate: addDays(new Date(), 30),
       schedule: {},
-      sessionType: "online",
-      location: "",
     });
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -535,9 +481,7 @@ export default function TutorSchedulePage() {
     title: schedule.course?.title || "Lịch trống",
     time: `${schedule.start_time} - ${schedule.end_time}`,
     date: parseISO(schedule.date),
-    location: schedule.location,
     type: schedule.status === "available" ? "available" : "booked",
-    sessionType: schedule.mode,
   }));
 
   // Filter events for selected date in calendar view
@@ -561,18 +505,6 @@ export default function TutorSchedulePage() {
       toast({
         title: "Lỗi",
         description: "Thời gian bắt đầu phải trước thời gian kết thúc",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (
-      singleSessionForm.sessionType === "offline" &&
-      !singleSessionForm.location
-    ) {
-      toast({
-        title: "Lỗi",
-        description: "Vui lòng nhập địa điểm học đối với hình thức offline",
         variant: "destructive",
       });
       return;
@@ -664,19 +596,6 @@ export default function TutorSchedulePage() {
       });
 
       if (hasError) return;
-
-      // Kiểm tra địa điểm nếu là lịch offline
-      if (
-        recurringSessionForm.sessionType === "offline" &&
-        !recurringSessionForm.location
-      ) {
-        toast({
-          title: "Lỗi",
-          description: "Vui lòng nhập địa điểm học đối với hình thức offline",
-          variant: "destructive",
-        });
-        return;
-      }
 
       // Sau khi đã validate kỹ, chuẩn bị dữ liệu và gọi API
       // In ra thông tin trước khi gọi API để debug
@@ -865,9 +784,7 @@ export default function TutorSchedulePage() {
                       <TableRow>
                         <TableHead>Ngày</TableHead>
                         <TableHead>Thời gian</TableHead>
-                        <TableHead>Hình thức</TableHead>
                         <TableHead>Khóa học</TableHead>
-                        <TableHead>Địa điểm</TableHead>
                         <TableHead>Trạng thái</TableHead>
                         <TableHead className="text-right">Hành động</TableHead>
                       </TableRow>
@@ -881,15 +798,7 @@ export default function TutorSchedulePage() {
                           <TableCell>
                             {schedule.start_time} - {schedule.end_time}
                           </TableCell>
-                          <TableCell>
-                            <Badge variant="outline">
-                              {schedule.mode === "online"
-                                ? "Online"
-                                : "Offline"}
-                            </Badge>
-                          </TableCell>
                           <TableCell>{schedule.course?.title || "-"}</TableCell>
-                          <TableCell>{schedule.location || "-"}</TableCell>
                           <TableCell>
                             <Badge
                               variant={getStatusBadgeVariant(schedule.status)}
@@ -1028,28 +937,10 @@ export default function TutorSchedulePage() {
                                   </div>
                                   <div className="grid grid-cols-4 items-center gap-4">
                                     <Label className="text-right font-medium">
-                                      Hình thức
-                                    </Label>
-                                    <div className="col-span-3">
-                                      {schedule.mode === "online"
-                                        ? "Online"
-                                        : "Offline"}
-                                    </div>
-                                  </div>
-                                  <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label className="text-right font-medium">
                                       Khóa học
                                     </Label>
                                     <div className="col-span-3">
                                       {schedule.course?.title || "-"}
-                                    </div>
-                                  </div>
-                                  <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label className="text-right font-medium">
-                                      Địa điểm
-                                    </Label>
-                                    <div className="col-span-3">
-                                      {schedule.location || "-"}
                                     </div>
                                   </div>
                                   <div className="grid grid-cols-4 items-center gap-4">
@@ -1205,20 +1096,10 @@ export default function TutorSchedulePage() {
                                   ? "Lịch trống"
                                   : "Đã đặt"}
                               </Badge>
-                              <Badge variant="outline">
-                                {event.sessionType === "online"
-                                  ? "Online"
-                                  : "Offline"}
-                              </Badge>
                             </div>
                             {event.student && (
                               <p className="text-sm text-muted-foreground">
                                 Học sinh: {event.student}
-                              </p>
-                            )}
-                            {event.location && (
-                              <p className="text-sm text-muted-foreground">
-                                Địa điểm: {event.location}
                               </p>
                             )}
                           </div>
@@ -1387,49 +1268,6 @@ export default function TutorSchedulePage() {
                     />
                   </div>
                 </div>
-
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label className="text-right">Hình thức học</Label>
-                  <RadioGroup
-                    className="col-span-3"
-                    value={singleSessionForm.sessionType}
-                    onValueChange={(value) =>
-                      setSingleSessionForm({
-                        ...singleSessionForm,
-                        sessionType: value as "online" | "offline",
-                      })
-                    }
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="online" id="online" />
-                      <Label htmlFor="online">Online</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="offline" id="offline" />
-                      <Label htmlFor="offline">Offline</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-
-                {singleSessionForm.sessionType === "offline" && (
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="location" className="text-right">
-                      Địa điểm
-                    </Label>
-                    <Input
-                      id="location"
-                      className="col-span-3"
-                      placeholder="Nhập địa điểm dạy học"
-                      value={singleSessionForm.location || ""}
-                      onChange={(e) =>
-                        setSingleSessionForm({
-                          ...singleSessionForm,
-                          location: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                )}
               </div>
             </TabsContent>
             {/* Recurring sessions form */}{" "}
@@ -1672,47 +1510,6 @@ export default function TutorSchedulePage() {
                     </div>
                   )}
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label className="text-right">Hình thức học</Label>
-                  <RadioGroup
-                    className="col-span-3"
-                    value={recurringSessionForm.sessionType}
-                    onValueChange={(value) =>
-                      setRecurringSessionForm({
-                        ...recurringSessionForm,
-                        sessionType: value as "online" | "offline",
-                      })
-                    }
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="online" id="recurring-online" />
-                      <Label htmlFor="recurring-online">Online</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="offline" id="recurring-offline" />
-                      <Label htmlFor="recurring-offline">Offline</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-                {recurringSessionForm.sessionType === "offline" && (
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="recurringLocation" className="text-right">
-                      Địa điểm
-                    </Label>
-                    <Input
-                      id="recurringLocation"
-                      className="col-span-3"
-                      placeholder="Nhập địa điểm dạy học"
-                      value={recurringSessionForm.location || ""}
-                      onChange={(e) =>
-                        setRecurringSessionForm({
-                          ...recurringSessionForm,
-                          location: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                )}
               </div>
             </TabsContent>
           </Tabs>

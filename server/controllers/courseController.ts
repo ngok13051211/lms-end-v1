@@ -132,11 +132,11 @@ export const getTutorCourses = async (req: Request, res: Response) => {
       with: {
         subject: true,
         level: true,
-        course_levels: {
-          with: {
-            level: true,
-          },
-        },
+        // course_levels: {
+        //   with: {
+        //     level: true,
+        //   },
+        // },
       },
       orderBy: desc(schema.courses.created_at),
     });
@@ -165,13 +165,13 @@ export const getTutorCourses = async (req: Request, res: Response) => {
         // chúng ta sẽ sử dụng level đầu tiên từ course_levels
         let courseWithProcessedLevel = { ...course };
 
-        if (
-          !courseWithProcessedLevel.level &&
-          course.course_levels &&
-          course.course_levels.length > 0
-        ) {
-          courseWithProcessedLevel.level = course.course_levels[0].level;
-        }
+        // if (
+        //   !courseWithProcessedLevel.level &&
+        //   course.course_levels &&
+        //   course.course_levels.length > 0
+        // ) {
+        //   courseWithProcessedLevel.level = course.course_levels[0].level;
+        // }
 
         return {
           ...courseWithProcessedLevel,

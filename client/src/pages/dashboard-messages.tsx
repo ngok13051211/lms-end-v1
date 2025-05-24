@@ -2,12 +2,12 @@ import { useState, useEffect, useRef } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useLocation, useParams } from "wouter";
 import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardFooter,
-    CardHeader,
-    CardTitle,
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
 } from "@/components/ui/card";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store";
@@ -35,35 +35,35 @@ import { useToast } from "@/hooks/use-toast";
 
 // Định nghĩa cấu trúc dữ liệu
 interface ConversationUser {
-    id: number;
-    first_name?: string;
-    firstName?: string;
-    last_name?: string;
-    lastName?: string;
-    avatar?: string;
-    email?: string;
-    role?: string;
+  id: number;
+  first_name?: string;
+  firstName?: string;
+  last_name?: string;
+  lastName?: string;
+  avatar?: string;
+  email?: string;
+  role?: string;
 }
 
 interface ConversationMessage {
-    id: number;
-    sender_id: number;
-    content: string;
-    attachment_url?: string;
-    created_at: string;
-    read: boolean;
+  id: number;
+  sender_id: number;
+  content: string;
+  attachment_url?: string;
+  created_at: string;
+  read: boolean;
 }
 
 interface Conversation {
-    id: string | number;
-    student?: ConversationUser;
-    tutor?: ConversationUser;
-    messages?: ConversationMessage[];
-    last_message_at?: string;
-    last_message?: {
-        content?: string;
-    };
-    unread_count?: number;
+  id: string | number;
+  student?: ConversationUser;
+  tutor?: ConversationUser;
+  messages?: ConversationMessage[];
+  last_message_at?: string;
+  last_message?: {
+    content?: string;
+  };
+  unread_count?: number;
 }
 
 // Interface cho kết quả tìm kiếm người dùng

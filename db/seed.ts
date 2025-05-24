@@ -7,559 +7,10 @@ import { sql } from "drizzle-orm";
 
 async function seed() {
   try {
-    console.log("Seeding database...");
+    console.log("🌱 Seeding database...");
 
-    // Helper functions to generate realistic Vietnamese data
-    const generateVietnameseName = (
-      gender: "male" | "female" | null = null
-    ) => {
-      const maleFirstNames = [
-        "Minh",
-        "Hùng",
-        "Đức",
-        "Tuấn",
-        "Nam",
-        "Hoàng",
-        "Long",
-        "Thành",
-        "Dũng",
-        "Trung",
-        "Quang",
-        "Hải",
-        "Khoa",
-        "Tâm",
-        "Phong",
-        "Khải",
-        "Vinh",
-        "Hiếu",
-        "Thắng",
-        "Đạt",
-        "Tùng",
-        "Thanh",
-        "Sơn",
-        "Phúc",
-        "Bảo",
-        "Trí",
-        "Tú",
-        "Mạnh",
-        "Tiến",
-        "Lâm",
-        "Việt",
-        "Công",
-        "Vũ",
-      ];
-      const femaleFirstNames = [
-        "Hương",
-        "Lan",
-        "Linh",
-        "Phương",
-        "Thảo",
-        "Hà",
-        "Mai",
-        "Trang",
-        "Huyền",
-        "Quỳnh",
-        "Ngọc",
-        "Nhung",
-        "Yến",
-        "Thu",
-        "Hiền",
-        "Hoa",
-        "Hạnh",
-        "Trâm",
-        "Giang",
-        "Vân",
-        "Loan",
-        "Thanh",
-        "Thúy",
-        "Ngân",
-        "Diệp",
-        "Mỹ",
-        "Kim",
-        "Chi",
-        "Ánh",
-        "Dung",
-        "Đào",
-      ];
-      const middleNames = [
-        "Thị",
-        "Văn",
-        "Đức",
-        "Hữu",
-        "Như",
-        "Quang",
-        "Minh",
-        "Hoàng",
-        "Thị Thanh",
-        "Thị Hoài",
-        "Văn Minh",
-        "Đình",
-        "Thị Thu",
-        "Phương",
-        "Thị Hồng",
-        "Thị Mai",
-        "Thị Ngọc",
-        "Thị Hương",
-        "Thị Lan",
-        "Mạnh",
-        "Thúy",
-        "Tuấn",
-        "Thu",
-        "Thị Thủy",
-        "",
-      ];
-      const lastNames = [
-        "Nguyễn",
-        "Trần",
-        "Lê",
-        "Phạm",
-        "Hoàng",
-        "Huỳnh",
-        "Phan",
-        "Vũ",
-        "Võ",
-        "Đặng",
-        "Bùi",
-        "Đỗ",
-        "Hồ",
-        "Ngô",
-        "Dương",
-        "Lý",
-        "Đào",
-        "Đinh",
-        "Mai",
-        "Trịnh",
-        "Lương",
-        "Phùng",
-        "Tô",
-        "Hà",
-        "Cao",
-        "Đoàn",
-        "Lưu",
-      ];
-
-      const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
-      const middleName =
-        middleNames[Math.floor(Math.random() * middleNames.length)];
-
-      if (gender === "male") {
-        const firstName =
-          maleFirstNames[Math.floor(Math.random() * maleFirstNames.length)];
-        return { firstName, middleName, lastName };
-      } else if (gender === "female") {
-        const firstName =
-          femaleFirstNames[Math.floor(Math.random() * femaleFirstNames.length)];
-        return { firstName, middleName, lastName };
-      } else {
-        const isMale = Math.random() > 0.5;
-        const firstNameArray = isMale ? maleFirstNames : femaleFirstNames;
-        const firstName =
-          firstNameArray[Math.floor(Math.random() * firstNameArray.length)];
-        return {
-          firstName,
-          middleName,
-          lastName,
-          gender: isMale ? "male" : "female",
-        };
-      }
-    };
-
-    const generateVietnameseAddress = () => {
-      const cities = [
-        "Hà Nội",
-        "Thành phố Hồ Chí Minh",
-        "Đà Nẵng",
-        "Hải Phòng",
-        "Cần Thơ",
-        "Huế",
-        "Nha Trang",
-        "Hạ Long",
-        "Vũng Tàu",
-        "Đà Lạt",
-        "Biên Hòa",
-        "Buôn Ma Thuột",
-        "Vinh",
-        "Quy Nhơn",
-        "Nam Định",
-        "Long Xuyên",
-        "Pleiku",
-        "Thái Nguyên",
-        "Hải Dương",
-      ];
-
-      const districts: Record<string, string[]> = {
-        "Hà Nội": [
-          "Hoàn Kiếm",
-          "Ba Đình",
-          "Đống Đa",
-          "Hai Bà Trưng",
-          "Hoàng Mai",
-          "Thanh Xuân",
-          "Tây Hồ",
-          "Long Biên",
-          "Nam Từ Liêm",
-          "Bắc Từ Liêm",
-          "Cầu Giấy",
-        ],
-        "Thành phố Hồ Chí Minh": [
-          "Quận 1",
-          "Quận 3",
-          "Quận 4",
-          "Quận 5",
-          "Quận 6",
-          "Quận 7",
-          "Quận 8",
-          "Quận 10",
-          "Quận 11",
-          "Quận 12",
-          "Bình Thạnh",
-          "Phú Nhuận",
-          "Tân Bình",
-          "Thủ Đức",
-        ],
-        "Đà Nẵng": [
-          "Hải Châu",
-          "Thanh Khê",
-          "Liên Chiểu",
-          "Ngũ Hành Sơn",
-          "Sơn Trà",
-          "Cẩm Lệ",
-        ],
-        "Hải Phòng": [
-          "Hồng Bàng",
-          "Lê Chân",
-          "Ngô Quyền",
-          "Kiến An",
-          "Hải An",
-          "Đồ Sơn",
-          "Dương Kinh",
-        ],
-        "Cần Thơ": ["Ninh Kiều", "Bình Thủy", "Cái Răng", "Ô Môn", "Thốt Nốt"],
-        Huế: ["Phú Nhuận", "Phú Hậu", "Vĩ Dạ", "An Cựu", "Xuân Phú"],
-        "Nha Trang": [
-          "Lộc Thọ",
-          "Phương Sài",
-          "Vĩnh Phước",
-          "Vĩnh Hải",
-          "Vĩnh Thọ",
-          "Xương Huân",
-        ],
-        "Hạ Long": ["Hồng Hải", "Hà Tu", "Cao Thắng", "Hà Khẩu"],
-        "Vũng Tàu": [
-          "Phường 1",
-          "Phường 2",
-          "Phường 3",
-          "Phường 4",
-          "Thắng Nhất",
-          "Thắng Nhì",
-        ],
-        "Đà Lạt": [
-          "Phường 1",
-          "Phường 2",
-          "Phường 3",
-          "Phường 4",
-          "Phường 5",
-          "Phường 6",
-          "Phường 7",
-          "Phường 8",
-        ],
-        "Biên Hòa": [
-          "Tân Mai",
-          "Quang Vinh",
-          "Tân Tiến",
-          "Tam Hiệp",
-          "Trảng Dài",
-        ],
-        "Buôn Ma Thuột": [
-          "Ea Tam",
-          "Tân Lợi",
-          "Tân An",
-          "Tân Hòa",
-          "Thống Nhất",
-          "Thành Công",
-        ],
-        Vinh: [
-          "Lê Lợi",
-          "Quang Trung",
-          "Trường Thi",
-          "Hưng Bình",
-          "Hưng Dũng",
-          "Bến Thủy",
-        ],
-        "Quy Nhơn": [
-          "Đống Đa",
-          "Trần Phú",
-          "Lê Lợi",
-          "Ngô Mây",
-          "Thị Nại",
-          "Ghềnh Ráng",
-        ],
-        "Nam Định": [
-          "Trần Tế Xương",
-          "Lộc Vượng",
-          "Phan Đình Phùng",
-          "Bà Triệu",
-          "Trần Đăng Ninh",
-        ],
-        "Long Xuyên": ["Mỹ Bình", "Mỹ Long", "Mỹ Xuyên", "Mỹ Quý", "Mỹ Phước"],
-        Pleiku: [
-          "Trà Bá",
-          "Thắng Lợi",
-          "Ia Kring",
-          "Hội Thương",
-          "Thống Nhất",
-          "Yên Đổ",
-        ],
-        "Thái Nguyên": [
-          "Trưng Vương",
-          "Quang Trung",
-          "Phan Đình Phùng",
-          "Thịnh Đán",
-          "Hoàng Văn Thụ",
-          "Tân Thịnh",
-        ],
-        "Hải Dương": [
-          "Trần Hưng Đạo",
-          "Trần Phú",
-          "Nguyễn Trãi",
-          "Phạm Ngũ Lão",
-          "Quang Trung",
-          "Tân Bình",
-        ],
-      };
-
-      const streets = [
-        "Lê Duẩn",
-        "Trần Phú",
-        "Lê Lợi",
-        "Nguyễn Huệ",
-        "Nguyễn Thái Học",
-        "Huỳnh Thúc Kháng",
-        "Nguyễn Công Trứ",
-        "Phan Chu Trinh",
-        "Võ Văn Tần",
-        "Lý Thường Kiệt",
-        "Phan Đình Phùng",
-        "Trần Hưng Đạo",
-        "Đinh Công Tráng",
-        "Nguyễn Đình Chiểu",
-        "Nguyễn Trãi",
-        "Hai Bà Trưng",
-        "Ngô Quyền",
-        "Hoàng Diệu",
-        "Bạch Đằng",
-        "Nguyễn Thị Minh Khai",
-        "Điện Biên Phủ",
-        "Trần Quốc Toản",
-        "Lê Văn Sỹ",
-        "Phạm Văn Đồng",
-        "Cách Mạng Tháng Tám",
-      ];
-
-      const randomStreetNumbers = Math.floor(Math.random() * 200) + 1;
-      const city = cities[Math.floor(Math.random() * cities.length)];
-      const district =
-        districts[city][Math.floor(Math.random() * districts[city].length)];
-      const street = streets[Math.floor(Math.random() * streets.length)];
-
-      return `${randomStreetNumbers} ${street}, ${district}, ${city}`;
-    };
-
-    const generateVietnamesePhoneNumber = () => {
-      const prefixes = [
-        "086",
-        "096",
-        "097",
-        "098",
-        "032",
-        "033",
-        "034",
-        "035",
-        "036",
-        "037",
-        "038",
-        "039",
-        "090",
-        "091",
-        "092",
-        "093",
-        "094",
-        "070",
-        "079",
-        "077",
-        "076",
-        "078",
-        "089",
-        "088",
-        "083",
-        "084",
-        "085",
-        "081",
-        "082",
-      ];
-      const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
-      let number = "";
-      for (let i = 0; i < 7; i++) {
-        number += Math.floor(Math.random() * 10);
-      }
-      return prefix + number;
-    };
-
-    const generateVietnameseEmail = (
-      firstName: string,
-      lastName: string
-    ): string => {
-      const providers = [
-        "gmail.com",
-        "yahoo.com",
-        "hotmail.com",
-        "outlook.com",
-        "homitutor.vn",
-      ];
-      const provider = providers[Math.floor(Math.random() * providers.length)];
-
-      // Convert Vietnamese characters to non-accented
-      const normalizeText = (text: string) => {
-        return text
-          .toLowerCase()
-          .replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a")
-          .replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, "e")
-          .replace(/ì|í|ị|ỉ|ĩ/g, "i")
-          .replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, "o")
-          .replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, "u")
-          .replace(/ỳ|ý|ỵ|ỷ|ỹ/g, "y")
-          .replace(/đ/g, "d")
-          .replace(/\s+/g, "");
-      };
-
-      const normalizedFirstName = normalizeText(firstName);
-      const normalizedLastName = normalizeText(lastName);
-
-      // Different email formats
-      const formats = [
-        `${normalizedFirstName}${normalizedLastName}@${provider}`,
-        `${normalizedFirstName}.${normalizedLastName}@${provider}`,
-        `${normalizedLastName}${normalizedFirstName}@${provider}`,
-        `${normalizedFirstName}${normalizedLastName}${Math.floor(
-          Math.random() * 100
-        )}@${provider}`,
-        `${normalizedFirstName[0]}${normalizedLastName}@${provider}`,
-      ];
-
-      return formats[Math.floor(Math.random() * formats.length)];
-    };
-
-    const generateAvatarUrl = () => {
-      // Generate a realistic avatar URL
-      const avatarIds = [
-        "1c55ae9a7a0744e5a65fa2c1e5d2c831",
-        "54983eb9bd7b43029a1dfe1b7e64917b",
-        "4ce8b2d5fa79422b96904a9ae6cc9bd4",
-        "e8643b9351ca444c92ac75d86661b7d9",
-        "33e58897c19242c5941cba50a494d59b",
-        "9acf2d3ca4334612b1b330e411e1e3fa",
-        "52368a93b0d149d3b05b7a42c9bf260a",
-        "97a58fa275754127ab4c125ed0a1db4c",
-        "5c4dfcb1d5934d42a3231a63f1d4281c",
-        "0cdf1d3b1c7e4a67902eb7ad3913b0fc",
-        "ca21efb5a90b457da8cefded97133e9f",
-        "f65dc4a68a4a4c6cace7118ae7d70b3d",
-        "21434c74dbff4bd884a204092b74ad89",
-        "b494001b595e4ffc879825d6e356376e",
-      ];
-
-      return `https://res.cloudinary.com/homitutor/image/upload/v1683241476/avatars/${
-        avatarIds[Math.floor(Math.random() * avatarIds.length)]
-      }.jpg`;
-    };
-
-    const generateBio = () => {
-      const bios = [
-        "Tốt nghiệp chuyên ngành Toán ứng dụng tại Đại học Khoa học Tự nhiên Hà Nội. Có hơn 5 năm kinh nghiệm giảng dạy Toán cho học sinh THCS và THPT. Phương pháp dạy học tập trung vào xây dựng nền tảng kiến thức vững chắc và phát triển tư duy logic.",
-        "Giáo viên tiếng Anh có chứng chỉ IELTS 8.0 và TESOL. Đã có kinh nghiệm giảng dạy tiếng Anh giao tiếp và luyện thi chứng chỉ quốc tế cho nhiều học sinh đạt kết quả cao.",
-        "Giảng viên khoa Vật lý, Đại học Bách Khoa Hà Nội với hơn 8 năm kinh nghiệm. Chuyên sâu về Vật lý đại cương và Vật lý lượng tử. Giảng dạy theo phương pháp trực quan, gắn liền lý thuyết với thực tiễn.",
-        "Tốt nghiệp loại giỏi ngành Ngữ văn, Đại học Sư phạm Hà Nội. Có kinh nghiệm luyện thi đại học môn Văn với phương pháp phân tích văn học sâu sắc, giúp học sinh nắm vững kỹ năng làm văn nghị luận.",
-        "Thạc sĩ Hóa học tại Đại học Quốc gia TP.HCM. Có kinh nghiệm 6 năm giảng dạy Hóa học cho học sinh THPT và luyện thi đại học. Phương pháp giảng dạy tập trung vào hiểu nguyên lý và áp dụng vào giải bài tập.",
-        "Giáo viên có 10 năm kinh nghiệm giảng dạy Tiếng Anh theo phương pháp giao tiếp. Từng du học tại Mỹ và có chứng chỉ CELTA. Chuyên dạy Tiếng Anh giao tiếp và luyện thi IELTS, TOEFL.",
-        "Kỹ sư Công nghệ thông tin tại FPT Software. Có kinh nghiệm giảng dạy lập trình cho người mới bắt đầu. Chuyên về Java, Python và phát triển ứng dụng web. Hướng dẫn học sinh theo phương pháp thực hành và làm dự án thực tế.",
-        "Tốt nghiệp Thạc sĩ Toán học ứng dụng tại Đại học Sư phạm TP.HCM. Có 7 năm kinh nghiệm giảng dạy Toán cho học sinh từ lớp 6 đến lớp 12. Phương pháp giảng dạy tập trung vào rèn luyện tư duy và kỹ năng giải quyết vấn đề.",
-        "Giáo viên âm nhạc tốt nghiệp Học viện Âm nhạc Quốc gia Việt Nam. Chuyên dạy đàn piano, guitar và thanh nhạc. Có kinh nghiệm đào tạo học sinh tham gia các cuộc thi âm nhạc cấp quốc gia.",
-        "Giảng viên tiếng Pháp tại Trung tâm Văn hóa Pháp. Có chứng chỉ DALF C2 và kinh nghiệm 5 năm giảng dạy tiếng Pháp cho mọi trình độ. Phương pháp giảng dạy tương tác, khuyến khích học viên giao tiếp ngay từ buổi học đầu tiên.",
-        "Cử nhân Sinh học, Đại học Khoa học Tự nhiên TP.HCM. Có kinh nghiệm 4 năm dạy Sinh học cho học sinh THCS và THPT. Phương pháp giảng dạy trực quan với nhiều thí nghiệm minh họa, giúp học sinh hiểu sâu kiến thức.",
-        "Thạc sĩ Lịch sử tại Đại học Khoa học Xã hội và Nhân văn. Đã có 9 năm kinh nghiệm giảng dạy Lịch sử và ôn thi đại học. Phương pháp dạy học sinh động, kết hợp phim tài liệu và câu chuyện lịch sử, giúp học sinh hiểu sâu và nhớ lâu.",
-        "Giáo viên dạy Vẽ và Mỹ thuật với hơn 6 năm kinh nghiệm. Tốt nghiệp Đại học Mỹ thuật TP.HCM. Chuyên dạy kỹ thuật vẽ cơ bản, phác họa, vẽ màu nước và vẽ sơn dầu cho mọi lứa tuổi.",
-        "Kỹ sư Điện tử - Viễn thông, có chứng chỉ sư phạm kỹ thuật. Chuyên dạy môn Tin học và Lập trình cho học sinh THPT và sinh viên đại học. Phương pháp giảng dạy tập trung vào thực hành và áp dụng kiến thức vào các dự án thực tế.",
-        "Thạc sĩ Địa lý tại Đại học Sư phạm Hà Nội. Có kinh nghiệm giảng dạy Địa lý cho học sinh THPT và luyện thi đại học. Phương pháp giảng dạy trực quan với bản đồ, mô hình và hình ảnh, giúp học sinh dễ dàng nắm bắt kiến thức.",
-        "Cử nhân Kinh tế đối ngoại, Đại học Ngoại thương. Có 5 năm kinh nghiệm giảng dạy Toán và Tiếng Anh cho học sinh THCS. Phương pháp giảng dạy tương tác, kết hợp với các trò chơi học tập để tạo hứng thú cho học sinh.",
-        "Giáo viên dạy Tiếng Nhật với chứng chỉ JLPT N1. Đã có 7 năm kinh nghiệm giảng dạy tại các trung tâm ngoại ngữ. Phương pháp giảng dạy chú trọng vào giao tiếp và ngữ pháp thực hành.",
-        "Thạc sĩ Vật lý thiên văn, Đại học Khoa học Tự nhiên Hà Nội. Có kinh nghiệm 6 năm giảng dạy Vật lý và Toán. Phương pháp giảng dạy tập trung vào hiểu bản chất vấn đề và áp dụng kiến thức giải quyết các bài toán thực tiễn.",
-        "Giáo viên dạy Hóa học với 8 năm kinh nghiệm. Tốt nghiệp Thạc sĩ Hóa hữu cơ tại Đại học Khoa học Tự nhiên TP.HCM. Chuyên luyện thi đại học và ôn thi học sinh giỏi với phương pháp giảng dạy dễ hiểu và hiệu quả.",
-      ];
-
-      return bios[Math.floor(Math.random() * bios.length)];
-    };
-
-    const generateAvailability = () => {
-      const days = [
-        "monday",
-        "tuesday",
-        "wednesday",
-        "thursday",
-        "friday",
-        "saturday",
-        "sunday",
-      ];
-      const timeSlots = [
-        "08:00-10:00",
-        "10:00-12:00",
-        "13:00-15:00",
-        "15:00-17:00",
-        "17:00-19:00",
-        "19:00-21:00",
-      ];
-
-      const availability: Record<string, string[]> = {};
-      const numberOfDays = Math.floor(Math.random() * 5) + 2; // 2-6 days
-      const selectedDays: string[] = [];
-
-      while (selectedDays.length < numberOfDays) {
-        const day = days[Math.floor(Math.random() * days.length)];
-        if (!selectedDays.includes(day)) {
-          selectedDays.push(day);
-        }
-      }
-
-      selectedDays.forEach((day) => {
-        const numberOfSlots = Math.floor(Math.random() * 3) + 1; // 1-3 slots per day
-        const slots = [];
-
-        // Select unique time slots for this day
-        const dailyTimeSlots = [...timeSlots]; // Copy the array
-        for (let i = 0; i < numberOfSlots; i++) {
-          if (dailyTimeSlots.length === 0) break;
-          const index = Math.floor(Math.random() * dailyTimeSlots.length);
-          slots.push(dailyTimeSlots[index]);
-          dailyTimeSlots.splice(index, 1); // Remove the selected slot
-        }
-
-        availability[day] = slots;
-      });
-
-      return JSON.stringify(availability);
-    };
-
-    const generateRandomDate = (start: Date, end: Date): Date => {
-      return new Date(
-        start.getTime() + Math.random() * (end.getTime() - start.getTime())
-      );
-    };
-
-    const formatDate = (date: Date) => {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, "0");
-      const day = String(date.getDate()).padStart(2, "0");
-      return `${year}-${month}-${day}`;
-    };
+    // Create a common password hash for all users
+    const passwordHash = await bcrypt.hash("123123", 10);
 
     // Admin
     let [admin] = await db
@@ -578,8 +29,7 @@ async function seed() {
           role: "admin",
           is_verified: true,
           is_active: true,
-          avatar:
-            "https://res.cloudinary.com/homitutor/image/upload/v1683241476/avatars/admin-avatar.jpg",
+          avatar: "",
           phone: "0987654321",
           created_at: new Date(),
           updated_at: new Date(),
@@ -587,7 +37,387 @@ async function seed() {
         .returning();
     }
 
-    // Subjects
+    // ======= INSERT USERS =======
+    // Create 10 tutors and 10 students with realistic Vietnamese information
+    const tutors = [
+      {
+        username: "nguyenthanhminh",
+        email: "nguyenthanhminh@gmail.com",
+        password: passwordHash,
+        first_name: "Minh",
+        last_name: "Nguyễn Thanh",
+        role: "tutor",
+        date_of_birth: new Date("1990-05-15").toISOString(),
+        address: "123 Lê Lợi, Quận 1, TP. Hồ Chí Minh",
+        phone: "0901234567",
+        avatar: "https://randomuser.me/api/portraits/men/1.jpg",
+        is_verified: false,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        username: "phamthihuong",
+        email: "phamthihuong@gmail.com",
+        password: passwordHash,
+        first_name: "Hương",
+        last_name: "Phạm Thị",
+        role: "tutor",
+        date_of_birth: new Date("1988-09-23").toISOString(),
+        address: "45 Nguyễn Huệ, Quận 3, TP. Hồ Chí Minh",
+        phone: "0912345678",
+        avatar: "https://randomuser.me/api/portraits/women/2.jpg",
+        is_verified: false,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        username: "tranthiha",
+        email: "tranthiha@gmail.com",
+        password: passwordHash,
+        first_name: "Hà",
+        last_name: "Trần Thị",
+        role: "tutor",
+        date_of_birth: new Date("1992-03-12").toISOString(),
+        address: "78 Đồng Khởi, Quận 1, TP. Hồ Chí Minh",
+        phone: "0923456789",
+        avatar: "https://randomuser.me/api/portraits/women/3.jpg",
+        is_verified: false,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        username: "levantrung",
+        email: "levantrung@gmail.com",
+        password: passwordHash,
+        first_name: "Trung",
+        last_name: "Lê Văn",
+        role: "tutor",
+        date_of_birth: new Date("1985-11-07").toISOString(),
+        address: "234 Nguyễn Trãi, Quận 5, TP. Hồ Chí Minh",
+        phone: "0934567890",
+        avatar: "https://randomuser.me/api/portraits/men/4.jpg",
+        is_verified: false,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        username: "vuthihien",
+        email: "vuthihien@gmail.com",
+        password: passwordHash,
+        first_name: "Hiền",
+        last_name: "Vũ Thị",
+        role: "tutor",
+        date_of_birth: new Date("1991-04-25").toISOString(),
+        address: "56 Lý Tự Trọng, Quận 1, TP. Hồ Chí Minh",
+        phone: "0945678901",
+        avatar: "https://randomuser.me/api/portraits/women/5.jpg",
+        is_verified: false,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        username: "nguyenvanhai",
+        email: "nguyenvanhai@gmail.com",
+        password: passwordHash,
+        first_name: "Hải",
+        last_name: "Nguyễn Văn",
+        role: "tutor",
+        date_of_birth: new Date("1989-07-30").toISOString(),
+        address: "102 Điện Biên Phủ, Quận Bình Thạnh, TP. Hồ Chí Minh",
+        phone: "0956789012",
+        avatar: "https://randomuser.me/api/portraits/men/6.jpg",
+        is_verified: false,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        username: "hoangthilan",
+        email: "hoangthilan@gmail.com",
+        password: passwordHash,
+        first_name: "Lan",
+        last_name: "Hoàng Thị",
+        role: "tutor",
+        date_of_birth: new Date("1993-02-14").toISOString(),
+        address: "75 Trần Hưng Đạo, Quận 1, TP. Hồ Chí Minh",
+        phone: "0967890123",
+        avatar: "https://randomuser.me/api/portraits/women/7.jpg",
+        is_verified: false,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        username: "tranvanduc",
+        email: "tranvanduc@gmail.com",
+        password: passwordHash,
+        first_name: "Đức",
+        last_name: "Trần Văn",
+        role: "tutor",
+        date_of_birth: new Date("1987-10-05").toISOString(),
+        address: "321 Võ Văn Ngân, Quận Thủ Đức, TP. Hồ Chí Minh",
+        phone: "0978901234",
+        avatar: "https://randomuser.me/api/portraits/men/8.jpg",
+        is_verified: false,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        username: "phamthithanh",
+        email: "phamthithanh@gmail.com",
+        password: passwordHash,
+        first_name: "Thanh",
+        last_name: "Phạm Thị",
+        role: "tutor",
+        date_of_birth: new Date("1994-06-18").toISOString(),
+        address: "189 Cách Mạng Tháng 8, Quận 3, TP. Hồ Chí Minh",
+        phone: "0989012345",
+        avatar: "https://randomuser.me/api/portraits/women/9.jpg",
+        is_verified: false,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        username: "dangvantuan",
+        email: "dangvantuan@gmail.com",
+        password: passwordHash,
+        first_name: "Tuấn",
+        last_name: "Đặng Văn",
+        role: "tutor",
+        date_of_birth: new Date("1986-12-22").toISOString(),
+        address: "67 Phạm Ngọc Thạch, Quận 3, TP. Hồ Chí Minh",
+        phone: "0990123456",
+        avatar: "https://randomuser.me/api/portraits/men/10.jpg",
+        is_verified: false,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+    ];
+
+    const students = [
+      {
+        username: "nguyenthinguyen",
+        email: "nguyenthinguyen@gmail.com",
+        password: passwordHash,
+        first_name: "Nguyên",
+        last_name: "Nguyễn Thị",
+        role: "student",
+        date_of_birth: new Date("2000-02-10").toISOString(),
+        address: "45 Trần Phú, Quận 5, TP. Hồ Chí Minh",
+        phone: "0801234567",
+        avatar: "https://randomuser.me/api/portraits/women/11.jpg",
+        is_verified: false,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        username: "tranvanbinh",
+        email: "tranvanbinh@gmail.com",
+        password: passwordHash,
+        first_name: "Bình",
+        last_name: "Trần Văn",
+        role: "student",
+        date_of_birth: new Date("1998-08-15").toISOString(),
+        address: "123 Bà Hạt, Quận 10, TP. Hồ Chí Minh",
+        phone: "0812345678",
+        avatar: "https://randomuser.me/api/portraits/men/12.jpg",
+        is_verified: false,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        username: "levanthanh",
+        email: "levanthanh@gmail.com",
+        password: passwordHash,
+        first_name: "Thành",
+        last_name: "Lê Văn",
+        role: "student",
+        date_of_birth: new Date("1999-04-20").toISOString(),
+        address: "56 Lê Văn Sỹ, Quận Phú Nhuận, TP. Hồ Chí Minh",
+        phone: "0823456789",
+        avatar: "https://randomuser.me/api/portraits/men/13.jpg",
+        is_verified: false,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        username: "vothihong",
+        email: "vothihong@gmail.com",
+        password: passwordHash,
+        first_name: "Hồng",
+        last_name: "Võ Thị",
+        role: "student",
+        date_of_birth: new Date("2001-07-05").toISOString(),
+        address: "234 Nguyễn Văn Cừ, Quận 5, TP. Hồ Chí Minh",
+        phone: "0834567890",
+        avatar: "https://randomuser.me/api/portraits/women/14.jpg",
+        is_verified: false,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        username: "nguyenminhquang",
+        email: "nguyenminhquang@gmail.com",
+        password: passwordHash,
+        first_name: "Quang",
+        last_name: "Nguyễn Minh",
+        role: "student",
+        date_of_birth: new Date("2002-11-30").toISOString(),
+        address: "78 Đinh Tiên Hoàng, Quận 1, TP. Hồ Chí Minh",
+        phone: "0845678901",
+        avatar: "https://randomuser.me/api/portraits/men/15.jpg",
+        is_verified: false,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        username: "tranthihue",
+        email: "tranthihue@gmail.com",
+        password: passwordHash,
+        first_name: "Huệ",
+        last_name: "Trần Thị",
+        role: "student",
+        date_of_birth: new Date("2000-09-12").toISOString(),
+        address: "90 Bà Triệu, Quận 1, TP. Hồ Chí Minh",
+        phone: "0856789012",
+        avatar: "https://randomuser.me/api/portraits/women/16.jpg",
+        is_verified: false,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        username: "phamvanthanh",
+        email: "phamvanthanh@gmail.com",
+        password: passwordHash,
+        first_name: "Thành",
+        last_name: "Phạm Văn",
+        role: "student",
+        date_of_birth: new Date("1997-03-25").toISOString(),
+        address: "123 Lý Thường Kiệt, Quận 10, TP. Hồ Chí Minh",
+        phone: "0867890123",
+        avatar: "https://randomuser.me/api/portraits/men/17.jpg",
+        is_verified: false,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        username: "hoangthuhuong",
+        email: "hoangthuhuong@gmail.com",
+        password: passwordHash,
+        first_name: "Hương",
+        last_name: "Hoàng Thu",
+        role: "student",
+        date_of_birth: new Date("1999-01-15").toISOString(),
+        address: "45 Hai Bà Trưng, Quận 1, TP. Hồ Chí Minh",
+        phone: "0878901234",
+        avatar: "https://randomuser.me/api/portraits/women/18.jpg",
+        is_verified: false,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        username: "lethihoa",
+        email: "lethihoa@gmail.com",
+        password: passwordHash,
+        first_name: "Hoa",
+        last_name: "Lê Thị",
+        role: "student",
+        date_of_birth: new Date("2002-05-20").toISOString(),
+        address: "67 Phan Đình Phùng, Quận Phú Nhuận, TP. Hồ Chí Minh",
+        phone: "0889012345",
+        avatar: "https://randomuser.me/api/portraits/women/19.jpg",
+        is_verified: false,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        username: "nguyenduchuy",
+        email: "nguyenduchuy@gmail.com",
+        password: passwordHash,
+        first_name: "Huy",
+        last_name: "Nguyễn Đức",
+        role: "student",
+        date_of_birth: new Date("2001-10-10").toISOString(),
+        address: "34 Nguyễn Đình Chiểu, Quận 3, TP. Hồ Chí Minh",
+        phone: "0890123456",
+        avatar: "https://randomuser.me/api/portraits/men/20.jpg",
+        is_verified: false,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+    ];
+
+    // Check for existing users first to avoid duplicates
+    const existingUsers = await db
+      .select({ email: schema.users.email })
+      .from(schema.users)
+      .where(
+        sql`${schema.users.email} IN (${[...tutors, ...students]
+          .map((user) => user.email)
+          .join(",")})`
+      );
+
+    const existingEmails = new Set(existingUsers.map((user) => user.email));
+
+    // Filter out any users that already exist in the database
+    const newTutors = tutors.filter(
+      (tutor) => !existingEmails.has(tutor.email)
+    );
+    const newStudents = students.filter(
+      (student) => !existingEmails.has(student.email)
+    );
+    // Combine the filtered arrays
+    const usersToInsert = [...newTutors, ...newStudents]; // Map through your users and convert dates properly according to schema expectations
+    const usersWithProperDates = usersToInsert.map((user) => {
+      // Create a base user object with the date fields converted
+      const userWithDates = {
+        ...user,
+        created_at: new Date(user.created_at), // Convert string to Date object
+        updated_at: new Date(user.updated_at), // Convert string to Date object
+      };
+
+      // Handle date_of_birth specially based on its expected type in the schema
+      if (user.date_of_birth) {
+        // In the schema, date_of_birth is a text field, so we keep it as string
+        userWithDates.date_of_birth = user.date_of_birth; // Keep as string since schema expects text type
+      }
+
+      return userWithDates;
+    });
+
+    // Use the converted array for insertion
+    const insertedUsers =
+      usersWithProperDates.length > 0
+        ? await db.insert(schema.users).values(usersWithProperDates).returning({
+            id: schema.users.id,
+            email: schema.users.email,
+            role: schema.users.role,
+          })
+        : [];
+
+    console.log(
+      `✅ Inserted ${insertedUsers.length} users. ${existingEmails.size} users already existed.`
+    );
+
+    // ======= INSERT SUBJECTS =======
     const subjects = [
       // Các môn cơ bản (cho mọi cấp học)
       {
@@ -604,7 +434,7 @@ async function seed() {
       },
       {
         name: "Ngữ văn",
-        icon: "book-open",
+        icon: "book_open",
         description:
           "Rèn luyện kỹ năng phân tích, cảm thụ văn học và phát triển tư duy phản biện",
       },
@@ -698,19 +528,43 @@ async function seed() {
       },
     ];
 
+    // Insert subjects and record their IDs for later association
+    const insertedSubjectsMap = new Map();
     for (const sub of subjects) {
-      await db
-        .insert(schema.subjects)
-        .values({
-          ...sub,
-          hourly_rate: "150000",
-          created_at: new Date(),
-          updated_at: new Date(),
-        })
-        .onConflictDoNothing();
+      // Add the created_at and updated_at fields to the subject data
+      const subjectData = {
+        ...sub,
+        created_at: new Date(), // Use Date object directly, not string
+        updated_at: new Date(), // Use Date object directly, not string
+      };
+
+      try {
+        // Try to insert the subject
+        const [insertedSub] = await db
+          .insert(schema.subjects)
+          .values(subjectData)
+          .onConflictDoNothing()
+          .returning();
+
+        if (insertedSub) {
+          insertedSubjectsMap.set(insertedSub.name, insertedSub.id);
+        } else {
+          // If not inserted (already exists), get the existing subject ID
+          const [existingSub] = await db
+            .select()
+            .from(schema.subjects)
+            .where(eq(schema.subjects.name, sub.name));
+
+          if (existingSub) {
+            insertedSubjectsMap.set(existingSub.name, existingSub.id);
+          }
+        }
+      } catch (error) {
+        console.error(`Error inserting subject ${sub.name}:`, error);
+      }
     }
 
-    // Education Levels
+    // ======= INSERT EDUCATION LEVELS =======
     const levels = [
       {
         name: "Tiểu học",
@@ -737,488 +591,157 @@ async function seed() {
         description:
           "Phát triển tài năng và đam mê trong các lĩnh vực nghệ thuật, thể thao và công nghệ",
       },
-    ];
-
+    ]; // Insert education levels and record their IDs for later association
+    const insertedLevelsMap = new Map();
     for (const level of levels) {
-      await db
-        .insert(schema.educationLevels)
-        .values({
-          ...level,
-          created_at: new Date(),
-          updated_at: new Date(),
-        })
-        .onConflictDoNothing();
-    } // Task 1: Create 40 students
-    console.log("Creating 40 students...");
-    const studentUserIds = [];
-    for (let i = 1; i <= 40; i++) {
-      const nameData = generateVietnameseName();
-      const { firstName, lastName, gender } = nameData;
-
-      // Generate a birth date between 2003 and 2008
-      const birthDate = formatDate(
-        generateRandomDate(new Date(2003, 0, 1), new Date(2008, 11, 31))
-      );
-
-      const address = generateVietnameseAddress();
-      const email = generateVietnameseEmail(firstName, lastName);
-      const phone = generateVietnamesePhoneNumber();
-      const avatar = generateAvatarUrl();
+      const currentDate = new Date();
+      // Add the created_at and updated_at fields to the level data
+      const levelData = {
+        ...level,
+        created_at: currentDate, // Use Date object directly, not string
+        updated_at: currentDate, // Use Date object directly, not string
+      };
 
       try {
-        const [student] = await db
-          .insert(schema.users)
-          .values({
-            username: `student${i}`,
-            email: email,
-            password: await bcrypt.hash("123123", 10),
-            first_name: firstName,
-            last_name: lastName,
-            role: "student",
-            date_of_birth: birthDate,
-            address: address,
-            phone: phone,
-            avatar: avatar,
-            is_verified: true,
-            is_active: true,
-            created_at: new Date(),
-            updated_at: new Date(),
-          })
+        // Try to insert the education level
+        const [insertedLevel] = await db
+          .insert(schema.educationLevels)
+          .values(levelData)
           .onConflictDoNothing()
           .returning();
 
-        if (student) {
-          studentUserIds.push(student.id);
-        }
-      } catch (error) {
-        console.error(`Error creating student ${i}:`, error);
-      }
-    }
+        if (insertedLevel) {
+          insertedLevelsMap.set(insertedLevel.name, insertedLevel.id);
+        } else {
+          // If not inserted (already exists), get the existing level ID
+          const [existingLevel] = await db
+            .select()
+            .from(schema.educationLevels)
+            .where(eq(schema.educationLevels.name, level.name));
 
-    // Task 1 & 2: Create 80 tutors and 60 tutor profiles
-    console.log("Creating 80 tutors...");
-    const tutorUserIds = [];
-    const verifiedTutorIds = [];
-    const unverifiedTutorIds = [];
-
-    const tutorOccupations = [
-      "Giáo viên",
-      "Giảng viên",
-      "Sinh viên",
-      "Kỹ sư",
-      "Tiến sĩ",
-      "Thạc sĩ",
-      "Nhà nghiên cứu",
-      "Chuyên viên",
-      "Cử nhân",
-    ];
-
-    for (let i = 1; i <= 80; i++) {
-      // Determine gender with roughly equal distribution
-      const gender = i % 2 === 0 ? "male" : "female";
-      const nameData = generateVietnameseName(gender);
-      const { firstName, lastName } = nameData;
-
-      // Generate a birth date between 1985 and 1995
-      const birthDate = formatDate(
-        generateRandomDate(new Date(1985, 0, 1), new Date(1995, 11, 31))
-      );
-
-      const address = generateVietnameseAddress();
-      const email = generateVietnameseEmail(firstName, lastName);
-      const phone = generateVietnamesePhoneNumber();
-      const avatar = generateAvatarUrl();
-
-      try {
-        const [tutor] = await db
-          .insert(schema.users)
-          .values({
-            username: `tutor${i}`,
-            email: email,
-            password: await bcrypt.hash("123123", 10),
-            first_name: firstName,
-            last_name: lastName,
-            role: "tutor",
-            date_of_birth: birthDate,
-            address: address,
-            phone: phone,
-            avatar: avatar,
-            is_verified: true,
-            is_active: true,
-            created_at: new Date(),
-            updated_at: new Date(),
-          })
-          .onConflictDoNothing()
-          .returning();
-
-        if (tutor) {
-          tutorUserIds.push(tutor.id);
-
-          // Create tutor profile for the first 60 tutors
-          if (i <= 60) {
-            const isVerified = i <= 40;
-            const bio = generateBio();
-            const availability = generateAvailability();
-            const rating = (Math.random() * 1 + 3.5).toFixed(1); // Random rating between 3.5 and 4.5
-            const totalReviews = Math.floor(Math.random() * 30); // Random number of reviews
-
-            const [tutorProfile] = await db
-              .insert(schema.tutorProfiles)
-              .values({
-                user_id: tutor.id,
-                bio: bio,
-                availability: availability,
-                is_verified: isVerified,
-                is_featured: i <= 10, // First 10 tutors are featured
-                rating: rating,
-                total_reviews: totalReviews,
-                created_at: new Date(),
-                updated_at: new Date(),
-              })
-              .onConflictDoNothing()
-              .returning();
-
-            if (tutorProfile) {
-              if (isVerified) {
-                verifiedTutorIds.push(tutorProfile.id);
-              } else {
-                unverifiedTutorIds.push(tutorProfile.id);
-              }
-            }
+          if (existingLevel) {
+            insertedLevelsMap.set(existingLevel.name, existingLevel.id);
           }
         }
       } catch (error) {
-        console.error(`Error creating tutor ${i}:`, error);
+        console.error(`Error inserting education level ${level.name}:`, error);
       }
-    } // Task 3: Create ~120 courses
-    console.log("Creating courses for verified tutors...");
+    }
 
-    // Get all subjects and education levels for reference
-    const allSubjects = await db.select().from(schema.subjects);
-    const allLevels = await db.select().from(schema.educationLevels);
+    // ======= ASSOCIATE SUBJECTS WITH EDUCATION LEVELS =======
+    // Define which subjects are applicable to which education levels
+    const subjectLevelAssociations = [
+      // Các môn cơ bản - Tất cả các cấp học
+      {
+        subjectName: "Toán học",
+        levels: ["Tiểu học", "THCS", "THPT", "Đại học"],
+      },
+      {
+        subjectName: "Tiếng Anh",
+        levels: ["Tiểu học", "THCS", "THPT", "Đại học"],
+      },
+      {
+        subjectName: "Ngữ văn",
+        levels: ["Tiểu học", "THCS", "THPT", "Đại học"],
+      },
 
-    // Generate realistic course titles for different subjects
-    const courseTitleTemplates = {
-      "Toán học": [
-        "Luyện thi THPT Quốc gia môn Toán",
-        "Toán học nâng cao cho học sinh THPT",
-        "Bồi dưỡng học sinh giỏi Toán",
-        "Ôn thi vào lớp 10 môn Toán",
-        "Toán cấp tốc cho kỳ thi đại học",
-        "Phương pháp giải Toán trắc nghiệm hiệu quả",
-      ],
-      "Tiếng Anh": [
-        "Tiếng Anh giao tiếp cơ bản",
-        "Luyện thi IELTS 6.0+",
-        "Tiếng Anh học thuật cho sinh viên đại học",
-        "Tiếng Anh luyện thi THPT Quốc gia",
-        "Ngữ pháp và từ vựng nâng cao",
-        "Kỹ năng viết và đọc hiểu tiếng Anh",
-      ],
-      "Ngữ văn": [
-        "Phân tích tác phẩm văn học Việt Nam",
-        "Kỹ năng làm bài văn nghị luận",
-        "Ôn tập văn học trung đại",
-        "Phương pháp làm bài văn nghị luận xã hội",
-        "Văn học hiện đại Việt Nam",
-        "Rèn luyện kỹ năng viết sáng tạo",
-      ],
-      "Vật lý": [
-        "Vật lý đại cương cho học sinh THPT",
-        "Giải bài tập Vật lý nâng cao",
-        "Luyện thi đại học môn Vật lý",
-        "Phương pháp giải nhanh bài tập Vật lý",
-        "Vật lý cho học sinh chuyên",
-        "Ôn tập kiến thức trọng tâm Vật lý 12",
-      ],
-      "Hóa học": [
-        "Hóa học cơ bản và nâng cao",
-        "Phương pháp giải bài tập Hóa học THPT",
-        "Luyện thi đại học môn Hóa",
-        "Hóa học hữu cơ chuyên sâu",
-        "Hóa học vô cơ và phân tích",
-        "Kỹ năng làm bài thi trắc nghiệm môn Hóa",
-      ],
-      "Sinh học": [
-        "Sinh học cơ bản cho học sinh THPT",
-        "Ôn thi đại học môn Sinh học",
-        "Di truyền học và ứng dụng",
-        "Giải phẫu và sinh lý học người",
-        "Sinh thái học và môi trường",
-        "Sinh học phân tử cơ bản",
-      ],
-      "Lịch sử": [
-        "Lịch sử Việt Nam từ nguồn gốc đến hiện đại",
-        "Phương pháp học Lịch sử hiệu quả",
-        "Ôn tập Lịch sử thế giới hiện đại",
-        "Kỹ năng làm bài thi trắc nghiệm môn Lịch sử",
-        "Các triều đại phong kiến Việt Nam",
-        "Lịch sử Việt Nam hiện đại",
-      ],
-      "Địa lý": [
-        "Địa lý tự nhiên Việt Nam",
-        "Địa lý kinh tế xã hội",
-        "Ôn tập Địa lý cho kỳ thi THPT Quốc gia",
-        "Địa lý thế giới và khu vực",
-        "Phương pháp làm bài thi Địa lý đạt điểm cao",
-        "Địa lý du lịch Việt Nam",
-      ],
-      "Tin học": [
-        "Tin học văn phòng cơ bản",
-        "Lập trình C++ cho người mới bắt đầu",
-        "Thiết kế web cơ bản với HTML và CSS",
-        "Excel nâng cao cho công việc",
-        "Lập trình Python cơ bản",
-        "Công nghệ thông tin đại cương",
-      ],
-      "Lập trình": [
-        "Lập trình Java từ cơ bản đến nâng cao",
-        "Phát triển ứng dụng web với React",
-        "Lập trình game với Unity",
-        "Phân tích và thiết kế hệ thống",
-        "Lập trình hướng đối tượng với C#",
-        "Phát triển ứng dụng di động",
-      ],
-      "Kinh tế học": [
-        "Kinh tế vĩ mô cơ bản",
-        "Phân tích tài chính doanh nghiệp",
-        "Marketing căn bản",
-        "Nguyên lý kế toán",
-        "Quản trị nhân sự",
-        "Kinh tế quốc tế",
-      ],
-      "Kỹ năng mềm": [
-        "Kỹ năng giao tiếp hiệu quả",
-        "Thuyết trình chuyên nghiệp",
-        "Quản lý thời gian và năng suất",
-        "Tư duy phản biện và giải quyết vấn đề",
-        "Kỹ năng làm việc nhóm",
-        "Kỹ năng lãnh đạo bản thân",
-      ],
-      "Âm nhạc": [
-        "Học đàn Guitar cơ bản",
-        "Piano cho người mới bắt đầu",
-        "Nhạc lý cơ bản",
-        "Thanh nhạc và phát âm",
-        "Sáng tác nhạc đơn giản",
-        "Học đọc và viết nhạc",
-      ],
-      "Mỹ thuật": [
-        "Vẽ phác họa cơ bản",
-        "Hội họa màu nước",
-        "Vẽ chân dung và tĩnh vật",
-        "Nghệ thuật trang trí nội thất",
-        "Thiết kế đồ họa cơ bản",
-        "Điêu khắc và nặn tượng",
-      ],
-    };
+      // Khoa học tự nhiên - Từ THCS trở lên
+      { subjectName: "Vật lý", levels: ["THCS", "THPT", "Đại học"] },
+      { subjectName: "Hóa học", levels: ["THCS", "THPT", "Đại học"] },
+      { subjectName: "Sinh học", levels: ["THCS", "THPT", "Đại học"] },
 
-    // Helper function to get course templates for a subject
-    const getCourseTemplatesForSubject = (subjectName: string) => {
-      // Find the exact match first
-      for (const [key, templates] of Object.entries(courseTitleTemplates)) {
-        if (key === subjectName) return templates;
-      }
+      // Khoa học xã hội
+      {
+        subjectName: "Lịch sử",
+        levels: ["Tiểu học", "THCS", "THPT", "Đại học"],
+      },
+      {
+        subjectName: "Địa lý",
+        levels: ["Tiểu học", "THCS", "THPT", "Đại học"],
+      },
+      {
+        subjectName: "Giáo dục công dân",
+        levels: ["Tiểu học", "THCS", "THPT"],
+      },
 
-      // If no exact match, use defaults
-      return [
-        `Khóa học ${subjectName} cơ bản`,
-        `${subjectName} nâng cao`,
-        `Luyện thi ${subjectName} hiệu quả`,
-        `Phương pháp học ${subjectName} đạt điểm cao`,
-        `${subjectName} cho học sinh yếu và trung bình`,
-        `${subjectName} chuyên sâu`,
-      ];
-    };
+      // Các môn năng khiếu
+      {
+        subjectName: "Âm nhạc",
+        levels: ["Tiểu học", "THCS", "THPT", "Năng khiếu"],
+      },
+      {
+        subjectName: "Mỹ thuật",
+        levels: ["Tiểu học", "THCS", "THPT", "Năng khiếu"],
+      },
+      {
+        subjectName: "Thể dục thể thao",
+        levels: ["Tiểu học", "THCS", "THPT", "Năng khiếu"],
+      },
 
-    // Helper function to generate course description
-    const generateCourseDescription = (
-      title: string,
-      subjectName: string
-    ): string => {
-      const descriptions = [
-        `Khóa học ${title} được thiết kế dành riêng cho học sinh muốn nâng cao kiến thức về ${subjectName}. Giáo viên sẽ hướng dẫn từng bước, giúp học sinh nắm vững kiến thức nền tảng và phát triển kỹ năng giải quyết vấn đề. Khóa học bao gồm nhiều bài tập thực hành và đề thi mẫu để học sinh làm quen với các dạng câu hỏi thường gặp.`,
+      // Môn công nghệ
+      {
+        subjectName: "Tin học",
+        levels: ["Tiểu học", "THCS", "THPT", "Đại học"],
+      },
+      {
+        subjectName: "Lập trình",
+        levels: ["THCS", "THPT", "Đại học", "Năng khiếu"],
+      },
 
-        `${title} là chương trình học được biên soạn kỹ lưỡng, tập trung vào việc phát triển tư duy logic và khả năng tự học của học sinh. Qua khóa học này, học sinh sẽ được trang bị những phương pháp học tập hiệu quả, kỹ năng phân tích và giải quyết bài toán một cách hệ thống. Đặc biệt chú trọng đến việc áp dụng kiến thức vào thực tiễn.`,
+      // Dành cho sinh viên đại học
+      { subjectName: "Kinh tế học", levels: ["Đại học"] },
+      { subjectName: "Kỹ năng mềm", levels: ["THPT", "Đại học"] },
+    ];
 
-        `Với phương pháp giảng dạy tương tác, khóa học ${title} giúp học sinh tiếp thu kiến thức nhanh chóng và hiệu quả. Giáo viên sẽ sử dụng nhiều phương tiện trực quan, bài tập đa dạng và tình huống thực tế để minh họa các khái niệm phức tạp, giúp học sinh dễ dàng nắm bắt và ghi nhớ lâu dài.`,
+    // Create subject-level associations in the database
+    for (const assoc of subjectLevelAssociations) {
+      const subjectId = insertedSubjectsMap.get(assoc.subjectName);
 
-        `Khóa học ${title} đặc biệt phù hợp cho các em học sinh đang chuẩn bị cho kỳ thi quan trọng. Nội dung được thiết kế bám sát chương trình học và cấu trúc đề thi mới nhất. Học sinh sẽ được hướng dẫn các chiến lược làm bài hiệu quả, kỹ thuật giải nhanh và chính xác, cùng với nhiều bí quyết để đạt điểm cao trong các kỳ thi.`,
-
-        `${title} là khóa học toàn diện giúp học sinh xây dựng nền tảng kiến thức vững chắc về ${subjectName}. Khóa học không chỉ truyền đạt kiến thức học thuật mà còn phát triển kỹ năng tư duy phản biện, khả năng giải quyết vấn đề và tinh thần học tập suốt đời. Với phương pháp "học đi đôi với hành", học sinh sẽ được thực hành ngay sau mỗi bài học lý thuyết.`,
-
-        `Được thiết kế bởi đội ngũ giáo viên giàu kinh nghiệm, khóa học ${title} cung cấp một lộ trình học tập khoa học và hiệu quả. Từ kiến thức cơ bản đến nâng cao, mỗi bài học đều được xây dựng một cách cẩn thận nhằm giúp học sinh tiến bộ từng ngày. Khóa học còn tích hợp các kỹ thuật ghi nhớ và ôn tập định kỳ để củng cố kiến thức.`,
-      ];
-
-      return descriptions[Math.floor(Math.random() * descriptions.length)];
-    };
-
-    // Create courses for verified tutors
-    let courseCount = 0;
-    for (const tutorId of verifiedTutorIds) {
-      // Each verified tutor will have 1-4 courses
-      const numberOfCourses = Math.floor(Math.random() * 4) + 1;
-
-      for (let i = 0; i < numberOfCourses; i++) {
-        // Select random subject and level
-        const subject =
-          allSubjects[Math.floor(Math.random() * allSubjects.length)];
-        const level = allLevels[Math.floor(Math.random() * allLevels.length)];
-
-        // Get course templates for this subject
-        const courseTemplates = getCourseTemplatesForSubject(subject.name);
-        const courseTitle =
-          courseTemplates[Math.floor(Math.random() * courseTemplates.length)];
-
-        // Generate course description
-        const courseDescription = generateCourseDescription(
-          courseTitle,
-          subject.name
+      if (!subjectId) {
+        console.warn(
+          `Subject "${assoc.subjectName}" not found. Skipping associations.`
         );
+        continue;
+      }
 
-        // Generate random hourly rate between 120,000 and 250,000 VND
-        const hourlyRate = (Math.floor(Math.random() * 14) + 12) * 10000;
+      for (const levelName of assoc.levels) {
+        const levelId = insertedLevelsMap.get(levelName);
 
-        // Random teaching mode
-        const teachingMode = Math.random() > 0.5 ? "online" : "offline";
+        if (!levelId) {
+          console.warn(
+            `Education level "${levelName}" not found. Skipping association.`
+          );
+          continue;
+        }
 
         try {
+          // Insert subject-education level association
           await db
-            .insert(schema.courses)
+            .insert(schema.subjectEducationLevels)
             .values({
-              tutor_id: tutorId,
-              subject_id: subject.id,
-              level_id: level.id,
-              title: courseTitle,
-              description: courseDescription,
-              hourly_rate: hourlyRate.toString(),
-              teaching_mode: teachingMode,
-              status: "active",
-              created_at: new Date(),
-              updated_at: new Date(),
+              subject_id: subjectId,
+              level_id: levelId,
+              created_at: new Date(), // Use Date object directly, not string
             })
             .onConflictDoNothing();
-
-          courseCount++;
         } catch (error) {
-          console.error(`Error creating course for tutor ${tutorId}:`, error);
+          console.error(
+            `Error associating subject ${assoc.subjectName} with level ${levelName}:`,
+            error
+          );
         }
       }
     }
-
-    console.log(`Created ${courseCount} courses successfully.`);
-
-    // Task 4: Create 20 teaching requests from unverified tutors
-    console.log("Creating teaching requests for unverified tutors...");
-
-    // Generate introduction and experience texts
-    const generateIntroduction = (subjectName: string) => {
-      const introductions = [
-        `Tôi là giáo viên có 5 năm kinh nghiệm giảng dạy ${subjectName} tại các trường THPT và trung tâm gia sư. Tôi muốn đăng ký làm gia sư trên nền tảng để chia sẻ kiến thức và giúp đỡ các em học sinh tiến bộ trong môn học này.`,
-
-        `Sau khi tốt nghiệp đại học chuyên ngành ${subjectName}, tôi đã có 3 năm kinh nghiệm dạy kèm cho học sinh từ lớp 6 đến lớp 12. Phương pháp giảng dạy của tôi tập trung vào việc giúp học sinh hiểu rõ bản chất vấn đề thay vì học vẹt.`,
-
-        `Tôi là sinh viên năm cuối chuyên ngành ${subjectName} tại Đại học Quốc gia Hà Nội. Tôi đã có kinh nghiệm dạy kèm và muốn trở thành gia sư chuyên nghiệp trên nền tảng này để chia sẻ kiến thức và phương pháp học hiệu quả cho các em học sinh.`,
-
-        `Với bề dày kinh nghiệm giảng dạy ${subjectName} và thành tích đạt giải trong các kỳ thi học sinh giỏi, tôi tin rằng mình có thể giúp học sinh tiến bộ nhanh chóng và đạt kết quả cao trong học tập.`,
-
-        `Tôi muốn đăng ký làm gia sư môn ${subjectName} vì đam mê giảng dạy và mong muốn truyền đạt kiến thức cho thế hệ trẻ. Tôi có thể dạy từ cơ bản đến nâng cao, với phương pháp trực quan và dễ hiểu.`,
-      ];
-
-      return introductions[Math.floor(Math.random() * introductions.length)];
-    };
-
-    const generateExperience = (subjectName: string) => {
-      const experiences = [
-        `Tôi có kinh nghiệm giảng dạy ${subjectName} trong 4 năm qua. Học sinh của tôi đã đạt được nhiều thành tích cao trong các kỳ thi học sinh giỏi cấp trường và cấp quận. Tôi thường xuyên cập nhật phương pháp giảng dạy hiện đại và áp dụng công nghệ vào bài giảng.`,
-
-        `Trước đây, tôi từng dạy ${subjectName} tại Trung tâm Gia sư Thành Công trong 2 năm. Đồng thời, tôi cũng có kinh nghiệm dạy kèm tại nhà cho học sinh từ lớp 6 đến lớp 12. Tôi hiểu rõ chương trình học và cách tiếp cận phù hợp với từng độ tuổi học sinh.`,
-
-        `Tôi đã có 3 năm kinh nghiệm dạy ${subjectName} tại trường THPT và 2 năm làm gia sư. Phương pháp giảng dạy của tôi là "học thông qua hành", giúp học sinh hiểu sâu kiến thức thông qua các bài tập thực hành và ứng dụng thực tế.`,
-
-        `Kinh nghiệm giảng dạy ${subjectName} của tôi bao gồm việc biên soạn giáo trình, thiết kế bài giảng và đề thi cho các trung tâm gia sư. Tôi có khả năng phân tích điểm mạnh, điểm yếu của học sinh để đưa ra phương pháp học tập phù hợp nhất.`,
-
-        `Tôi đã tốt nghiệp loại giỏi chuyên ngành ${subjectName} và có 2 năm kinh nghiệm dạy kèm. Tôi đặc biệt giỏi trong việc giúp học sinh yếu và trung bình tiến bộ nhanh chóng thông qua các phương pháp học tập trực quan và dễ nhớ.`,
-      ];
-
-      return experiences[Math.floor(Math.random() * experiences.length)];
-    };
-
-    // Generate certification URLs
-    const generateCertificationUrls = () => {
-      const certificationImages = [
-        "https://res.cloudinary.com/homitutor/image/upload/v1684241476/certifications/cert1.jpg",
-        "https://res.cloudinary.com/homitutor/image/upload/v1684241476/certifications/cert2.jpg",
-        "https://res.cloudinary.com/homitutor/image/upload/v1684241476/certifications/cert3.jpg",
-        "https://res.cloudinary.com/homitutor/image/upload/v1684241476/certifications/cert4.jpg",
-        "https://res.cloudinary.com/homitutor/image/upload/v1684241476/certifications/cert5.jpg",
-      ];
-
-      // 50% chance to have certifications
-      if (Math.random() > 0.5) {
-        const numberOfCerts = Math.floor(Math.random() * 3) + 1;
-        const selectedCerts: string[] = [];
-
-        for (let i = 0; i < numberOfCerts; i++) {
-          const certImage =
-            certificationImages[
-              Math.floor(Math.random() * certificationImages.length)
-            ];
-          if (!selectedCerts.includes(certImage)) {
-            selectedCerts.push(certImage);
-          }
-        }
-
-        return JSON.stringify(selectedCerts);
-      }
-
-      return null;
-    };
-
-    // Create teaching requests
-    let requestCount = 0;
-    for (const tutorId of unverifiedTutorIds) {
-      if (requestCount >= 20) break;
-
-      // Select random subject and level
-      const subject =
-        allSubjects[Math.floor(Math.random() * allSubjects.length)];
-      const level = allLevels[Math.floor(Math.random() * allLevels.length)];
-
-      const introduction = generateIntroduction(subject.name);
-      const experience = generateExperience(subject.name);
-      const certifications = generateCertificationUrls();
-
-      try {
-        await db
-          .insert(schema.teachingRequests)
-          .values({
-            tutor_id: tutorId,
-            subject_id: subject.id,
-            level_id: level.id,
-            introduction: introduction,
-            experience: experience,
-            certifications: certifications,
-            status: "pending",
-            created_at: new Date(),
-            updated_at: new Date(),
-          })
-          .onConflictDoNothing();
-
-        requestCount++;
-      } catch (error) {
-        console.error(
-          `Error creating teaching request for tutor ${tutorId}:`,
-          error
-        );
-      }
-    }
-
-    console.log(`Created ${requestCount} teaching requests successfully.`);
-
-    console.log("✅ Seeding completed successfully.");
+    console.log("✅ Database seeding completed successfully!");
   } catch (error) {
     console.error("❌ Error seeding database:", error);
+    console.error(
+      "Error details:",
+      error instanceof Error ? error.message : String(error)
+    );
+
+    // Exit with error code to indicate failure
+    process.exit(1);
   }
 }
 

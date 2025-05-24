@@ -32,9 +32,7 @@
 //             ))}
 //           </div>
 //         </div>
-//         <p className="text-muted-foreground">
-//           "{testimonial.comment}"
-//         </p>
+//         <p className="text-muted-foreground">"{testimonial.comment}"</p>
 //       </CardContent>
 //     </Card>
 //   );

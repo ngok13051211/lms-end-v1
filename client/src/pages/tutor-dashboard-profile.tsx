@@ -111,6 +111,27 @@ export default function TutorDashboardProfile() {
   const [avatar, setAvatar] = useState<File | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [profileDialogOpen, setProfileDialogOpen] = useState(false); // Teaching request state
+
+  // Hàm xử lý khi mở modal chỉnh sửa hồ sơ
+  const handleOpenProfileDialog = () => {
+    console.log("Mở modal chỉnh sửa hồ sơ");
+
+    // Cập nhật form với dữ liệu hiện tại
+    if (tutorProfile) {
+      profileForm.reset({
+        bio: tutorProfile.bio || "",
+        date_of_birth: tutorProfile.date_of_birth || "",
+        address: tutorProfile.address || "",
+        first_name: user?.first_name || "",
+        last_name: user?.last_name || "",
+        phone: user?.phone || "",
+      });
+    }
+
+    // Mở modal
+    setProfileDialogOpen(true);
+  };
+
   const [teachingRequestDialogOpen, setTeachingRequestDialogOpen] =
     useState(false);
   const [requestCertifications, setRequestCertifications] = useState<File[]>(
@@ -120,6 +141,21 @@ export default function TutorDashboardProfile() {
   const [certificateUrls, setCertificateUrls] = useState<string[]>([]);
   const [requestWarnings, setRequestWarnings] = useState<string[]>([]);
   const [requestExists, setRequestExists] = useState<boolean>(false);
+  // State để lưu trữ preview của các chứng chỉ đã chọn
+  const [requestCertificationPreviews, setRequestCertificationPreviews] =
+    useState<
+      Array<{
+        id: string;
+        file: File;
+        name: string;
+        size: number;
+        type: string;
+        previewUrl: string;
+      }>
+    >([]);
+  // Thêm state để theo dõi yêu cầu giảng dạy hiện tại (nếu có)
+  const [existingTeachingRequest, setExistingTeachingRequest] =
+    useState<any>(null);
   // Reset certificate state when dialog closes
   const handleTeachingRequestDialogChange = (open: boolean) => {
     console.log("Dialog thay đổi trạng thái:", open);
@@ -133,7 +169,6 @@ export default function TutorDashboardProfile() {
       });
       return; // Không cho phép đóng dialog
     }
-
     setTeachingRequestDialogOpen(open);
 
     if (!open) {
@@ -143,6 +178,16 @@ export default function TutorDashboardProfile() {
       setCertificateUrls([]);
       setRequestWarnings([]);
       setRequestExists(false);
+
+      // Cleanup preview URLs before removing the references
+      requestCertificationPreviews.forEach((preview) => {
+        if (preview.previewUrl) {
+          URL.revokeObjectURL(preview.previewUrl);
+        }
+      });
+
+      // Reset preview state
+      setRequestCertificationPreviews([]);
 
       // Reset form values
       teachingRequestForm.reset({
@@ -162,6 +207,24 @@ export default function TutorDashboardProfile() {
     } else {
       // Khi mở dialog, log ra trạng thái hiện tại
       console.log("Mở dialog, trạng thái certificateUrls:", certificateUrls);
+
+      // Nếu có request hiện tại và mở dialog, check xem đã có certificateUrls chưa
+      if (certificateUrls.length === 0) {
+        try {
+          const savedUrls = localStorage.getItem("temp_certificate_urls");
+          if (savedUrls) {
+            const parsedUrls = JSON.parse(savedUrls);
+            if (parsedUrls.length > 0) {
+              // Cập nhật state và form
+              setCertificateUrls(parsedUrls);
+              teachingRequestForm.setValue("certifications", parsedUrls);
+              teachingRequestForm.clearErrors("certifications");
+            }
+          }
+        } catch (e) {
+          console.error("Lỗi khi đọc certificateUrls từ localStorage:", e);
+        }
+      }
     }
   };
 
@@ -177,7 +240,6 @@ export default function TutorDashboardProfile() {
     staleTime: 0,
     refetchInterval: 1000,
   });
-
   // Setup profile form
   const profileForm = useForm<z.infer<typeof tutorProfileSchema>>({
     resolver: zodResolver(tutorProfileSchema),
@@ -185,6 +247,9 @@ export default function TutorDashboardProfile() {
       bio: "",
       date_of_birth: "",
       address: "",
+      first_name: "",
+      last_name: "",
+      phone: "",
     },
   }); // Teaching request form
   const teachingRequestForm = useForm<z.infer<typeof teachingRequestSchema>>({
@@ -196,18 +261,29 @@ export default function TutorDashboardProfile() {
       experience: "",
       certifications: [],
     },
-  });
-
-  // Fetch subjects and education levels for teaching request
+  }); // Fetch subjects and education levels for teaching request
   const { data: subjects = [] } = useQuery<any[]>({
     queryKey: [`/api/v1/subjects`],
     enabled: teachingRequestDialogOpen,
   });
 
-  const { data: educationLevels = [] } = useQuery<any[]>({
-    queryKey: [`/api/v1/education-levels`],
-    enabled: teachingRequestDialogOpen,
-  });
+  // State to store filtered education levels based on selected subject
+  const [filteredEducationLevels, setFilteredEducationLevels] = useState<any[]>(
+    []
+  );
+  const [selectedSubjectId, setSelectedSubjectId] = useState<number | null>(
+    null
+  );
+  // Fetch education levels by subject ID when a subject is selected
+  const { data: subjectEducationLevels, refetch: refetchSubjectLevels } =
+    useQuery<any>({
+      queryKey: [`/api/v1/subjects/${selectedSubjectId}/education-levels`],
+      enabled:
+        teachingRequestDialogOpen &&
+        selectedSubjectId !== null &&
+        selectedSubjectId > 0,
+      select: (data) => data?.educationLevels || [],
+    });
   // State để lưu preview URL của avatar đã chọn
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
@@ -222,9 +298,9 @@ export default function TutorDashboardProfile() {
       setAvatarPreview(previewUrl);
     }
   };
-
   // Handle certificate file change for teaching request
-  const handleCertificationsChange = async (
+  // Updated to store files in preview state rather than uploading immediately
+  const handleCertificationsChange = (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -236,10 +312,16 @@ export default function TutorDashboardProfile() {
       );
 
       // Check if we would exceed the maximum allowed files (5)
-      if (certificateUrls.length + files.length > 5) {
+      const totalFiles =
+        certificateUrls.length +
+        requestCertificationPreviews.length +
+        files.length;
+      if (totalFiles > 5) {
         toast({
           title: "Quá nhiều tệp",
-          description: `Bạn chỉ có thể tải lên tối đa 5 chứng chỉ. Đã có ${certificateUrls.length} chứng chỉ.`,
+          description: `Bạn chỉ có thể tải lên tối đa 5 chứng chỉ. Đã có ${
+            certificateUrls.length + requestCertificationPreviews.length
+          } chứng chỉ.`,
           variant: "destructive",
         });
         return;
@@ -260,118 +342,41 @@ export default function TutorDashboardProfile() {
       // Xóa lỗi validation nếu đã có
       teachingRequestForm.clearErrors("certifications");
 
-      setRequestCertifications((prev) => [...prev, ...files]);
+      // Lưu files vào state để khi submit sẽ tải lên
+      setRequestCertifications((prev) => [...prev, ...files]); // Tạo preview cho các file
+      const newPreviews = files.map((file) => {
+        // Tạo ID ngẫu nhiên cho file
+        const id = `file_${Date.now()}_${Math.random()
+          .toString(36)
+          .substring(2, 9)}`;
 
-      // Start upload immediately
-      setUploadingCertifications(true);
-      try {
-        const formData = new FormData();
-        files.forEach((file) => {
-          formData.append("documents", file);
-        });
+        // Tạo URL preview cho file hình ảnh
+        const previewUrl = file.type.startsWith("image/")
+          ? URL.createObjectURL(file)
+          : ""; // Không tạo preview cho file PDF
 
-        console.log("Đang gửi request upload chứng chỉ...");
-        const res = await fetch("/api/v1/tutors/certifications", {
-          method: "POST",
-          body: formData,
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        });
+        return {
+          id,
+          file,
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          previewUrl,
+        };
+      });
 
-        if (!res.ok) {
-          const errorData = await res.json().catch(() => ({}));
-          console.error("Upload lỗi:", errorData);
-          throw new Error(errorData.message || "Không thể tải lên chứng chỉ");
-        }
-        const data = await res.json();
-        // Truy cập URLs một cách chính xác dựa trên cấu trúc response từ server
-        let uploadedUrls = [];
+      // Cập nhật state previews
+      setRequestCertificationPreviews((prev) => [...prev, ...newPreviews]);
 
+      // Cập nhật form field certifications để nó biết là đã có file được chọn
+      // Đặt một mảng dummy để báo hiệu có files chờ upload
+      teachingRequestForm.setValue("certifications", ["pending_upload"]);
 
-
-        if (data.urls && Array.isArray(data.urls)) {
-          uploadedUrls = data.urls;
-        } else if (data.certifications && Array.isArray(data.certifications)) {
-          uploadedUrls = data.certifications;
-        } else if (
-          data.data &&
-          data.data.urls &&
-          Array.isArray(data.data.urls)
-        ) {
-          uploadedUrls = data.data.urls;
-        } else {
-          // Nếu không tìm thấy theo cấu trúc dự đoán, tìm kiếm bất kỳ trường nào là mảng URL
-          for (const key in data) {
-            if (
-              Array.isArray(data[key]) &&
-              data[key].length > 0 &&
-              typeof data[key][0] === "string" &&
-              data[key][0].startsWith("http")
-            ) {
-              console.log(`Tìm thấy mảng URL trong trường: ${key}`);
-              uploadedUrls = data[key];
-              break;
-            }
-          }
-        }
-        console.log("URLs trích xuất từ response:", uploadedUrls);
-
-        // Add the new URLs to the existing ones
-        setCertificateUrls((prev) => {
-          const newUrls = [...prev, ...uploadedUrls];
-
-          // Cập nhật giá trị vào form control
-          teachingRequestForm.setValue("certifications", newUrls);
-
-          // Xóa lỗi validation
-          teachingRequestForm.clearErrors("certifications");
-
-          if (newUrls.length > 0) {
-            teachingRequestForm.clearErrors("certifications");
-          }
-
-          // Lưu vào localStorage để đảm bảo không mất dữ liệu
-          try {
-            localStorage.setItem(
-              "temp_certificate_urls",
-              JSON.stringify(newUrls)
-            );
-          } catch (e) {
-            console.error("Không thể lưu vào localStorage:", e);
-          }
-          return newUrls;
-        });
-
-        toast({
-          title: "Tải lên thành công",
-          description: `${files.length} tệp đã được tải lên thành công`,
-          variant: "default",
-        });
-      } catch (error) {
-        console.error("Lỗi upload chi tiết:", error);
-        toast({
-          title: "Tải lên thất bại",
-          description:
-            error instanceof Error
-              ? error.message
-              : "Không thể tải lên chứng chỉ",
-          variant: "destructive",
-        });
-
-        // Remove the files that failed to upload
-        setRequestCertifications((prev) =>
-          prev.filter(
-            (prevFile) =>
-              !files.some(
-                (file) =>
-                  file.name === prevFile.name && file.size === prevFile.size
-              )
-          )
-        );
-      } finally {
-        setUploadingCertifications(false);
-      }
+      toast({
+        title: `Đã chọn ${files.length} tệp`,
+        description: "Các tệp sẽ được tải lên khi bạn gửi yêu cầu giảng dạy",
+        variant: "default",
+      });
     }
   };
 
@@ -632,8 +637,9 @@ export default function TutorDashboardProfile() {
         title: "Yêu cầu đã gửi thành công",
         description:
           data.certificationsCount > 0
-            ? `Yêu cầu giảng dạy của bạn với ${data.certificationsCount || 0
-            } chứng chỉ đã được gửi và đang chờ duyệt`
+            ? `Yêu cầu giảng dạy của bạn với ${
+                data.certificationsCount || 0
+              } chứng chỉ đã được gửi và đang chờ duyệt`
             : "Yêu cầu giảng dạy của bạn đã được gửi và đang chờ duyệt",
         variant: "default",
       });
@@ -655,8 +661,7 @@ export default function TutorDashboardProfile() {
     } catch (error) {
       console.error("Lỗi khi cập nhật hồ sơ:", error);
     }
-  };
-  // Submit teaching request handler
+  }; // Submit teaching request handler
   const onSubmitTeachingRequest = async (
     values: z.infer<typeof teachingRequestSchema>
   ) => {
@@ -674,117 +679,270 @@ export default function TutorDashboardProfile() {
           variant: "destructive",
         });
         return;
-      }
+      } // Lấy danh sách chứng chỉ từ form values và các state khác
+      // Khởi tạo với một mảng rỗng, không dùng values.certifications vì có thể có giá trị ["pending_upload"]
+      let currentCertificateUrls: string[] = [];
 
-      // Lấy danh sách chứng chỉ từ form values
-      let currentCertificateUrls = values.certifications || [];
-
-      // Nếu form đã báo lỗi validation cho certifications, hiển thị toast
-      if (teachingRequestForm.formState.errors.certifications) {
-        toast({
-          title: "Thiếu chứng chỉ",
-          description: "Vui lòng tải lên ít nhất 1 chứng chỉ để gửi yêu cầu",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (currentCertificateUrls.length === 0) {
-        // Nếu không có chứng chỉ trong form, thử lấy từ state
+      // Thêm chứng chỉ từ state hiện tại (các URL đã tải lên)
+      if (certificateUrls.length > 0) {
         currentCertificateUrls = [...certificateUrls];
+      }
 
-        // Nếu vẫn trống, thử lấy từ localStorage
-        if (currentCertificateUrls.length === 0) {
-          try {
-            const savedUrls = localStorage.getItem("temp_certificate_urls");
-            if (savedUrls) {
-              const parsedUrls = JSON.parse(savedUrls);
-              console.log(
-                "Khôi phục certificateUrls từ localStorage:",
-                parsedUrls
-              );
-
-              if (parsedUrls.length === 0) {
-                // Hiển thị thông báo lỗi nếu không có chứng chỉ
-                teachingRequestForm.setError("certifications", {
-                  type: "manual",
-                  message: "Vui lòng tải lên ít nhất 1 chứng chỉ",
-                });
-
-                toast({
-                  title: "Thiếu chứng chỉ",
-                  description:
-                    "Vui lòng tải lên ít nhất 1 chứng chỉ để gửi yêu cầu",
-                  variant: "destructive",
-                });
-
-                return;
-              }
-
-              currentCertificateUrls = parsedUrls;
-              // Cập nhật lại state và form
-              setCertificateUrls(parsedUrls);
-              teachingRequestForm.setValue("certifications", parsedUrls);
-            } else {
-              // Hiển thị thông báo lỗi nếu không có chứng chỉ
-              teachingRequestForm.setError("certifications", {
-                type: "manual",
-                message: "Vui lòng tải lên ít nhất 1 chứng chỉ",
-              });
-
-              toast({
-                title: "Thiếu chứng chỉ",
-                description:
-                  "Vui lòng tải lên ít nhất 1 chứng chỉ để gửi yêu cầu",
-                variant: "destructive",
-              });
-
-              return;
-            }
-          } catch (e) {
-            console.error("Lỗi khi đọc từ localStorage:", e);
-
-            // Hiển thị thông báo lỗi
-            teachingRequestForm.setError("certifications", {
-              type: "manual",
-              message: "Vui lòng tải lên ít nhất 1 chứng chỉ",
-            });
-
-            return;
+      // Thêm chứng chỉ từ localStorage nếu có
+      try {
+        const savedUrls = localStorage.getItem("temp_certificate_urls");
+        if (savedUrls) {
+          const parsedUrls = JSON.parse(savedUrls);
+          // Chỉ thêm những URL chưa có trong danh sách hiện tại
+          const uniqueUrls = parsedUrls.filter(
+            (url: string) => !currentCertificateUrls.includes(url)
+          );
+          if (uniqueUrls.length > 0) {
+            currentCertificateUrls = [...currentCertificateUrls, ...uniqueUrls];
           }
         }
+      } catch (e) {
+        console.error("Lỗi khi đọc từ localStorage:", e);
       }
 
-      // Tạo payload - không cần parseInt vì schema đã xử lý coerce.number()
-      const payload = {
-        subject_id: values.subject_id,
-        level_id: values.level_id,
-        introduction: values.introduction,
-        experience: values.experience,
-        certifications:
-          currentCertificateUrls.length > 0
-            ? JSON.stringify(currentCertificateUrls)
-            : JSON.stringify([]), // Luôn gửi mảng rỗng dưới dạng JSON, không gửi null
-      };
+      console.log("certificateUrls hiện tại:", certificateUrls);
+      console.log(
+        "requestCertificationPreviews hiện tại:",
+        requestCertificationPreviews.length
+      );
+      // Kiểm tra xem có preview files cần upload trước không
+      if (requestCertificationPreviews.length > 0) {
+        setUploadingCertifications(true);
 
-      console.log("Payload gửi đi:", payload);
-      console.log("Các chứng chỉ gửi kèm:", currentCertificateUrls);
-
-      // Hiển thị xác nhận
-      if (currentCertificateUrls.length > 0) {
         toast({
-          title: "Đang gửi yêu cầu",
-          description: `Gửi yêu cầu với ${currentCertificateUrls.length} chứng chỉ đã tải lên`,
+          title: "Đang tải lên chứng chỉ",
+          description: `Đang tải lên ${requestCertificationPreviews.length} chứng chỉ trước khi gửi yêu cầu...`,
           variant: "default",
         });
-      }
 
-      // Submit the teaching request with the certification URLs
-      const result = await teachingRequestMutation.mutateAsync(payload);
-      console.log("Kết quả gửi yêu cầu:", result);
+        try {
+          // Tải lên các chứng chỉ trước - backend sẽ tạo request tạm thời nếu cần
+          const filesToUpload = requestCertificationPreviews.map(
+            (preview) => preview.file
+          );
+
+          if (filesToUpload.length > 0) {
+            const formData = new FormData();
+            filesToUpload.forEach((file) => {
+              formData.append("documents", file);
+            });
+
+            console.log(
+              "Đang gửi request upload chứng chỉ trước khi tạo teaching request..."
+            );
+            const res = await fetch("/api/v1/tutors/certifications", {
+              method: "POST",
+              body: formData,
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+              },
+            });
+
+            if (!res.ok) {
+              const errorData = await res.json().catch(() => ({}));
+              console.error("Upload lỗi:", errorData);
+              throw new Error(
+                errorData.message || "Không thể tải lên chứng chỉ"
+              );
+            }
+
+            const data = await res.json();
+            // Xử lý response để lấy URLs
+            let uploadedUrls: string[] = [];
+
+            if (data.urls && Array.isArray(data.urls)) {
+              uploadedUrls = data.urls;
+            } else if (
+              data.certifications &&
+              Array.isArray(data.certifications)
+            ) {
+              uploadedUrls = data.certifications;
+            } else if (
+              data.data &&
+              data.data.urls &&
+              Array.isArray(data.data.urls)
+            ) {
+              uploadedUrls = data.data.urls;
+            }
+
+            // Thêm các URL mới vào danh sách
+            if (uploadedUrls.length > 0) {
+              currentCertificateUrls = [
+                ...currentCertificateUrls,
+                ...uploadedUrls,
+              ];
+
+              // Bây giờ tạo hoặc cập nhật teaching request với tất cả URLs
+              const finalPayload = {
+                subject_id: values.subject_id,
+                level_id: values.level_id,
+                introduction: values.introduction,
+                experience: values.experience,
+                certifications: JSON.stringify(currentCertificateUrls),
+              };
+
+              // Gửi teaching request
+              const finalResult = await teachingRequestMutation.mutateAsync(
+                finalPayload
+              );
+              console.log("Kết quả gửi yêu cầu cuối cùng:", finalResult);
+
+              // Xóa dữ liệu preview sau khi hoàn thành
+              setRequestCertificationPreviews([]);
+            }
+          }
+        } catch (error) {
+          console.error(
+            "Lỗi khi upload chứng chỉ trước khi gửi yêu cầu:",
+            error
+          );
+          toast({
+            title: "Lỗi tải lên chứng chỉ",
+            description:
+              error instanceof Error
+                ? error.message
+                : "Có lỗi xảy ra khi tải lên chứng chỉ",
+            variant: "destructive",
+          });
+        } finally {
+          setUploadingCertifications(false);
+        }
+      } else {
+        // Kiểm tra nếu không có chứng chỉ nào (cả đã tải lên và đang chờ)
+        if (
+          currentCertificateUrls.length === 0 &&
+          requestCertificationPreviews.length === 0
+        ) {
+          teachingRequestForm.setError("certifications", {
+            type: "manual",
+            message: "Vui lòng tải lên ít nhất 1 chứng chỉ",
+          });
+
+          toast({
+            title: "Thiếu chứng chỉ",
+            description: "Vui lòng tải lên ít nhất 1 chứng chỉ để gửi yêu cầu",
+            variant: "destructive",
+          });
+
+          return;
+        }
+
+        // Nếu có preview files nhưng chưa upload và không có files đã upload
+        if (
+          requestCertificationPreviews.length > 0 &&
+          currentCertificateUrls.length === 0
+        ) {
+          // Chuyển đến xử lý ở nhánh if trước đó (nơi xử lý upload file)
+          setUploadingCertifications(true);
+
+          toast({
+            title: "Đang tải lên chứng chỉ",
+            description: `Đang tải lên ${requestCertificationPreviews.length} chứng chỉ trước khi gửi yêu cầu...`,
+            variant: "default",
+          });
+
+          try {
+            const filesToUpload = requestCertificationPreviews.map(
+              (preview) => preview.file
+            );
+
+            if (filesToUpload.length > 0) {
+              const formData = new FormData();
+              filesToUpload.forEach((file) => {
+                formData.append("documents", file);
+              });
+
+              console.log(
+                "Đang gửi request upload chứng chỉ trước khi tạo teaching request..."
+              );
+              const res = await fetch("/api/v1/tutors/certifications", {
+                method: "POST",
+                body: formData,
+                headers: {
+                  Authorization: `Bearer ${localStorage.getItem("token")}`,
+                },
+              });
+
+              if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                console.error("Upload lỗi:", errorData);
+                throw new Error(
+                  errorData.message || "Không thể tải lên chứng chỉ"
+                );
+              }
+
+              const data = await res.json();
+              let uploadedUrls: string[] = [];
+
+              if (data.urls && Array.isArray(data.urls)) {
+                uploadedUrls = data.urls;
+              } else if (
+                data.certifications &&
+                Array.isArray(data.certifications)
+              ) {
+                uploadedUrls = data.certifications;
+              } else if (
+                data.data &&
+                data.data.urls &&
+                Array.isArray(data.data.urls)
+              ) {
+                uploadedUrls = data.data.urls;
+              }
+
+              // Thêm các URL mới vào danh sách
+              currentCertificateUrls = [
+                ...currentCertificateUrls,
+                ...uploadedUrls,
+              ];
+
+              // Tiếp tục với flow hiện tại (tạo teaching request với URLs đã tải)
+            }
+          } catch (error) {
+            console.error("Lỗi khi upload chứng chỉ:", error);
+            toast({
+              title: "Lỗi tải lên chứng chỉ",
+              description:
+                error instanceof Error
+                  ? error.message
+                  : "Có lỗi xảy ra khi tải lên chứng chỉ",
+              variant: "destructive",
+            });
+            setUploadingCertifications(false);
+            return;
+          }
+
+          setUploadingCertifications(false);
+        }
+
+        // Nếu không có file cần upload, chỉ gửi yêu cầu với các URLs hiện có
+        const payload = {
+          subject_id: values.subject_id,
+          level_id: values.level_id,
+          introduction: values.introduction,
+          experience: values.experience,
+          certifications: JSON.stringify(currentCertificateUrls),
+        };
+
+        console.log("Payload gửi đi (không có file mới):", payload);
+
+        // Submit the teaching request with the certification URLs
+        const result = await teachingRequestMutation.mutateAsync(payload);
+        console.log("Kết quả gửi yêu cầu:", result);
+      }
 
       // Xóa dữ liệu localStorage sau khi gửi thành công
       localStorage.removeItem("temp_certificate_urls");
+
+      toast({
+        title: "Yêu cầu đã gửi",
+        description: "Yêu cầu giảng dạy của bạn đã được gửi thành công!",
+        variant: "default",
+      });
     } catch (error) {
       console.error("Lỗi khi gửi yêu cầu giảng dạy:", error);
       if (error instanceof Error) {
@@ -819,23 +977,40 @@ export default function TutorDashboardProfile() {
         profileForm.setValue("phone", user.phone || "");
       }
     }
-  }, [tutorProfile, profileForm, user]);
-
-  // Tự động điền thông tin từ Redux khi chưa có profile và mở dialog
+  }, [tutorProfile, profileForm, user]); // Form setup effect - Handle validation for certificates
   useEffect(() => {
-    // Chỉ thực hiện khi dialog đang mở và chưa có hồ sơ
-    if (profileDialogOpen && !tutorProfile && user) {
-      console.log("Tự động điền thông tin từ user vào form");
-      profileForm.setValue("first_name", user.first_name || "");
-      profileForm.setValue("last_name", user.last_name || "");
-      profileForm.setValue("phone", user.phone || "");
+    // Validate certificates whenever state changes
+    const totalCertificates =
+      certificateUrls.length + requestCertificationPreviews.length;
+
+    if (totalCertificates > 0) {
+      // Clear any certificate validation errors
+      teachingRequestForm.clearErrors("certifications");
+
+      // Nếu có file đang chờ tải lên, cập nhật form field certifications để nó biết là đã có file
+      if (requestCertificationPreviews.length > 0) {
+        // Đặt một mảng dummy để báo hiệu có files chờ upload
+        teachingRequestForm.setValue("certifications", ["pending_upload"]);
+      } else if (certificateUrls.length > 0) {
+        // Đặt giá trị thực tế nếu đã tải lên
+        teachingRequestForm.setValue("certifications", certificateUrls);
+      }
+    } else {
+      // Set validation error if no certificates
+      if (teachingRequestForm.getValues("certifications")?.length === 0) {
+        teachingRequestForm.setError("certifications", {
+          type: "manual",
+          message: "Vui lòng tải lên ít nhất 1 chứng chỉ",
+        });
+      }
     }
-  }, [profileDialogOpen, tutorProfile, user, profileForm]);
 
-  // Theo dõi thay đổi của certificateUrls
-  useEffect(() => {
-    console.log("certificateUrls đã thay đổi:", certificateUrls);
-  }, [certificateUrls]); // Khôi phục certificateUrls từ localStorage khi component mount
+    console.log(
+      "Validate effect running, totalCertificates:",
+      totalCertificates
+    );
+    console.log("Form values:", teachingRequestForm.getValues());
+  }, [certificateUrls, requestCertificationPreviews, teachingRequestForm]); // Khôi phục certificateUrls từ localStorage khi component mount
   useEffect(() => {
     // Chỉ thực hiện khi dialog mở để tránh ghi đè state khi không cần thiết
     if (teachingRequestDialogOpen) {
@@ -859,16 +1034,57 @@ export default function TutorDashboardProfile() {
       }
     }
   }, [teachingRequestDialogOpen, teachingRequestForm]);
-
   // Cleanup avatar preview URL khi component unmount
   useEffect(() => {
     return () => {
+      // Cleanup avatar preview URL
       if (avatarPreview) {
         URL.revokeObjectURL(avatarPreview);
       }
+
+      // Cleanup certificate preview URLs
+      requestCertificationPreviews.forEach((preview) => {
+        if (preview.previewUrl) {
+          URL.revokeObjectURL(preview.previewUrl);
+        }
+      });
     };
-  }, [avatarPreview]);
-  // Function to handle certificate removal
+  }, [avatarPreview, requestCertificationPreviews]); // Function to handle certificate removal from preview state
+  const handleRemovePendingCertificate = (idToRemove: string) => {
+    setRequestCertificationPreviews((prev) => {
+      const fileToRemove = prev.find((item) => item.id === idToRemove);
+
+      // Release object URL if it exists
+      if (fileToRemove && fileToRemove.previewUrl) {
+        URL.revokeObjectURL(fileToRemove.previewUrl);
+      }
+
+      // Remove the preview from state
+      return prev.filter((item) => item.id !== idToRemove);
+    });
+    // Also remove the file from requestCertifications array
+    setRequestCertifications((prev) => {
+      const previewToRemove = requestCertificationPreviews.find(
+        (p) => p.id === idToRemove
+      );
+      if (!previewToRemove) return prev;
+
+      return prev.filter(
+        (file) =>
+          !(
+            file.name === previewToRemove.name &&
+            file.size === previewToRemove.size
+          )
+      );
+    });
+
+    toast({
+      title: "Chứng chỉ đã xóa",
+      description: "Bạn đã xóa chứng chỉ đang chờ tải lên",
+    });
+  };
+
+  // Function to handle certificate removal from uploaded URLs
   const handleRemoveCertificate = (urlToRemove: string) => {
     setCertificateUrls((prev) => {
       const updatedUrls = prev.filter((url) => url !== urlToRemove);
@@ -877,7 +1093,10 @@ export default function TutorDashboardProfile() {
       teachingRequestForm.setValue("certifications", updatedUrls);
 
       // Xóa lỗi cũ (nếu có) và để validation xử lý khi submit
-      if (updatedUrls.length === 0) {
+      if (
+        updatedUrls.length === 0 &&
+        requestCertificationPreviews.length === 0
+      ) {
         toast({
           title: "Đã xóa chứng chỉ",
           description:
@@ -886,7 +1105,7 @@ export default function TutorDashboardProfile() {
       } else {
         toast({
           title: "Đã xóa chứng chỉ",
-          description: `Còn ${updatedUrls.length} chứng chỉ trong danh sách`,
+          description: `Còn ${updatedUrls.length} chứng chỉ đã tải lên và ${requestCertificationPreviews.length} chứng chỉ đang chờ`,
         });
       }
 
@@ -902,7 +1121,38 @@ export default function TutorDashboardProfile() {
 
       return updatedUrls;
     });
-  };
+  }; // Effect to handle subject changes and filter education levels
+  useEffect(() => {
+    const selectedSubjectId = teachingRequestForm.watch("subject_id");
+
+    if (selectedSubjectId && selectedSubjectId > 0) {
+      setSelectedSubjectId(selectedSubjectId);
+      // Reset level_id when subject changes
+      teachingRequestForm.setValue("level_id", 0);
+    } else {
+      // Reset filtered levels when no subject is selected
+      setFilteredEducationLevels([]);
+      setSelectedSubjectId(null);
+    }
+  }, [teachingRequestForm.watch("subject_id")]);
+
+  // Update filtered education levels when subjectEducationLevels changes
+  useEffect(() => {
+    if (subjectEducationLevels) {
+      setFilteredEducationLevels(subjectEducationLevels);
+
+      // Reset level_id if the current selection is not in the filtered list
+      const currentLevelId = teachingRequestForm.watch("level_id");
+      if (currentLevelId && currentLevelId > 0) {
+        const isLevelValid = subjectEducationLevels.some(
+          (level: any) => level.id === currentLevelId
+        );
+        if (!isLevelValid) {
+          teachingRequestForm.setValue("level_id", 0);
+        }
+      }
+    }
+  }, [subjectEducationLevels, teachingRequestForm]);
 
   if (profileLoading) {
     return (
@@ -933,16 +1183,18 @@ export default function TutorDashboardProfile() {
                 <div className="flex-shrink-0">
                   <div className="relative">
                     <Avatar
-                      className={`h-32 w-32 border-2 ${uploadingAvatar
-                        ? "border-warning animate-pulse"
-                        : "border-primary"
-                        }`}
+                      className={`h-32 w-32 border-2 ${
+                        uploadingAvatar
+                          ? "border-warning animate-pulse"
+                          : "border-primary"
+                      }`}
                     >
                       <AvatarImage
                         src={user?.avatar ?? undefined}
                         alt={user?.first_name ?? ""}
-                        className={`transition-opacity duration-300 ${uploadingAvatar ? "opacity-50" : ""
-                          }`}
+                        className={`transition-opacity duration-300 ${
+                          uploadingAvatar ? "opacity-50" : ""
+                        }`}
                       />
                       {uploadingAvatar && (
                         <div className="absolute inset-0 flex items-center justify-center bg-background/40 z-10">
@@ -1069,8 +1321,8 @@ export default function TutorDashboardProfile() {
                       <p className="text-base">
                         {tutorProfile?.date_of_birth
                           ? new Date(
-                            tutorProfile.date_of_birth
-                          ).toLocaleDateString("vi-VN")
+                              tutorProfile.date_of_birth
+                            ).toLocaleDateString("vi-VN")
                           : "Chưa cập nhật"}
                       </p>
                     </div>
@@ -1086,14 +1338,16 @@ export default function TutorDashboardProfile() {
                   </div>
 
                   <div className="mt-6 flex flex-wrap gap-x-6 gap-y-4">
+                    {" "}
                     <Button
                       variant="outline"
                       className="flex items-center"
-                      onClick={() => setProfileDialogOpen(true)}
+                      onClick={handleOpenProfileDialog}
                     >
                       <Edit className="mr-2 h-4 w-4" />
                       Chỉnh sửa thông tin
-                    </Button>                    <Button
+                    </Button>
+                    <Button
                       variant="secondary"
                       className="flex items-center"
                       onClick={() => {
@@ -1365,14 +1619,18 @@ export default function TutorDashboardProfile() {
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Chọn cấp độ" />
-                          </SelectTrigger>
+                          </SelectTrigger>{" "}
                           <SelectContent>
-                            {educationLevels.length === 0 ? (
+                            {!selectedSubjectId ? (
+                              <SelectItem value="no_subject" disabled>
+                                Chọn môn học trước
+                              </SelectItem>
+                            ) : filteredEducationLevels.length === 0 ? (
                               <SelectItem value="no_levels" disabled>
-                                Không có cấp độ nào
+                                Không có cấp độ nào cho môn học này
                               </SelectItem>
                             ) : (
-                              educationLevels.map((level) => (
+                              filteredEducationLevels.map((level) => (
                                 <SelectItem
                                   key={level.id}
                                   value={String(level.id)}
@@ -1427,15 +1685,27 @@ export default function TutorDashboardProfile() {
                   name="certifications"
                   render={({ field }) => (
                     <FormItem>
+                      {" "}
                       <div className="flex items-center justify-between">
                         <FormLabel className="flex items-center">
                           <span>Chứng chỉ</span>
                           <span className="text-red-500 ml-1 text-lg">*</span>
-                          {certificateUrls.length > 0 && (
-                            <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full flex items-center">
-                              <BadgeCheck className="h-3 w-3 mr-1" />
-                              {certificateUrls.length} chứng chỉ
-                            </span>
+                          {(certificateUrls.length > 0 ||
+                            requestCertificationPreviews.length > 0) && (
+                            <div className="flex ml-2 gap-1">
+                              {certificateUrls.length > 0 && (
+                                <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full flex items-center">
+                                  <BadgeCheck className="h-3 w-3 mr-1" />
+                                  {certificateUrls.length} đã tải lên
+                                </span>
+                              )}
+                              {requestCertificationPreviews.length > 0 && (
+                                <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs rounded-full flex items-center">
+                                  <Upload className="h-3 w-3 mr-1" />
+                                  {requestCertificationPreviews.length} chờ tải
+                                </span>
+                              )}
+                            </div>
                           )}
                         </FormLabel>
                       </div>{" "}
@@ -1454,11 +1724,13 @@ export default function TutorDashboardProfile() {
                               <label
                                 htmlFor="certification-upload"
                                 className={`flex items-center px-4 py-2.5 text-sm border-2 rounded-md cursor-pointer transition-all duration-200 
-                                  ${uploadingCertifications
-                                    ? "opacity-50 pointer-events-none bg-muted"
-                                    : "border-primary bg-primary/5 hover:bg-primary/10 text-primary hover:shadow-sm"
+                                  ${
+                                    uploadingCertifications
+                                      ? "opacity-50 pointer-events-none bg-muted"
+                                      : "border-primary bg-primary/5 hover:bg-primary/10 text-primary hover:shadow-sm"
                                   }`}
                               >
+                                {" "}
                                 {uploadingCertifications ? (
                                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                 ) : (
@@ -1466,114 +1738,149 @@ export default function TutorDashboardProfile() {
                                 )}
                                 {uploadingCertifications
                                   ? "Đang tải lên..."
-                                  : certificateUrls.length === 0
-                                    ? "Tải lên chứng chỉ"
-                                    : "Thêm chứng chỉ khác"}
+                                  : certificateUrls.length === 0 &&
+                                    requestCertificationPreviews.length === 0
+                                  ? "Tải lên chứng chỉ"
+                                  : "Thêm chứng chỉ khác"}
                               </label>
-
                               {uploadingCertifications && (
                                 <div className="flex items-center text-amber-500">
                                   <span className="text-sm">
                                     Đang tải lên, vui lòng đợi...
                                   </span>
                                 </div>
-                              )}
+                              )}{" "}
                             </div>
 
-                            {(requestCertifications.length > 0 ||
+                            {(requestCertificationPreviews.length > 0 ||
                               certificateUrls.length > 0) && (
-                                <div className="space-y-3 mt-2">
-                                  {requestCertifications.length > 0 && (
-                                    <div>
-                                      <p className="text-sm font-medium mb-1">
-                                        Tệp đã chọn:
-                                      </p>
-                                      <ul className="space-y-1 text-sm text-muted-foreground">
-                                        {requestCertifications.map(
-                                          (file, index) => (
-                                            <li
-                                              key={index}
-                                              className="flex items-center justify-between"
-                                            >
-                                              <span className="flex items-center">
-                                                <FileCheck className="h-3 w-3 mr-1" />
-                                                {file.name} (
-                                                {(file.size / 1024).toFixed(1)}{" "}
-                                                KB)
-                                              </span>
-                                            </li>
-                                          )
-                                        )}
-                                      </ul>
-                                    </div>
-                                  )}
+                              <div className="space-y-3 mt-2">
+                                {requestCertificationPreviews.length > 0 && (
+                                  <div>
+                                    <p className="text-sm font-medium mb-1 flex items-center">
+                                      <Upload className="h-4 w-4 text-amber-600 mr-1" />
+                                      Tệp chờ tải lên (
+                                      {requestCertificationPreviews.length}):
+                                    </p>
+                                    <div className="flex flex-wrap gap-2">
+                                      {requestCertificationPreviews.map(
+                                        (preview) => {
+                                          const isPdf =
+                                            preview.type === "application/pdf";
+                                          const isImage =
+                                            preview.type.startsWith("image/");
 
-                                  {certificateUrls.length > 0 && (
-                                    <div>
-                                      <p className="text-sm font-medium mb-1 flex items-center">
-                                        <BadgeCheck className="h-4 w-4 text-green-600 mr-1" />
-                                        Đã tải lên thành công (
-                                        {certificateUrls.length}):
-                                      </p>
-                                      <div className="flex flex-wrap gap-2">
-                                        {certificateUrls.map((url, index) => {
-                                          const fileName =
-                                            getFileNameFromUrl(url);
-                                          const isPdf = fileName
-                                            .toLowerCase()
-                                            .endsWith(".pdf");
                                           return (
                                             <div
-                                              key={index}
+                                              key={preview.id}
                                               className="flex items-center gap-1"
                                             >
-                                              <a
-                                                href={url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="flex items-center px-3 py-1 text-xs rounded bg-background hover:bg-accent transition-colors border"
-                                              >
+                                              <div className="flex items-center px-3 py-1 text-xs rounded bg-amber-50 border border-amber-200 text-amber-800">
                                                 {isPdf ? (
-                                                  <FileText className="h-3 w-3 mr-1 text-blue-500" />
+                                                  <FileText className="h-3 w-3 mr-1 text-amber-600" />
+                                                ) : isImage ? (
+                                                  <FileCheck className="h-3 w-3 mr-1 text-amber-600" />
                                                 ) : (
-                                                  <FileCheck className="h-3 w-3 mr-1 text-green-500" />
+                                                  <FileCheck className="h-3 w-3 mr-1 text-amber-600" />
                                                 )}
-                                                {fileName.length > 20
-                                                  ? fileName.substring(0, 17) +
-                                                  "..."
-                                                  : fileName}
-                                              </a>
+                                                <span className="flex items-center">
+                                                  {preview.name.length > 20
+                                                    ? preview.name.substring(
+                                                        0,
+                                                        17
+                                                      ) + "..."
+                                                    : preview.name}
+                                                  <span className="ml-1 text-amber-500 text-[10px]">
+                                                    (chờ gửi)
+                                                  </span>
+                                                </span>
+                                              </div>
                                               <button
                                                 type="button"
                                                 onClick={() =>
-                                                  handleRemoveCertificate(url)
+                                                  handleRemovePendingCertificate(
+                                                    preview.id
+                                                  )
                                                 }
                                                 className="p-1 rounded-full hover:bg-red-100 text-red-500"
                                                 title="Xóa chứng chỉ"
                                               >
-                                                <svg
-                                                  xmlns="http://www.w3.org/2000/svg"
-                                                  width="12"
-                                                  height="12"
-                                                  viewBox="0 0 24 24"
-                                                  fill="none"
-                                                  stroke="currentColor"
-                                                  strokeWidth="2"
-                                                  strokeLinecap="round"
-                                                  strokeLinejoin="round"
-                                                >
-                                                  <path d="M18 6 6 18"></path>
-                                                  <path d="m6 6 12 12"></path>
-                                                </svg>
+                                                <IconX className="h-3 w-3" />
                                               </button>
                                             </div>
                                           );
-                                        })}
-                                      </div>
+                                        }
+                                      )}
                                     </div>
-                                  )}
-                                </div>
-                              )}
+                                  </div>
+                                )}
+
+                                {certificateUrls.length > 0 && (
+                                  <div>
+                                    <p className="text-sm font-medium mb-1 flex items-center">
+                                      <BadgeCheck className="h-4 w-4 text-green-600 mr-1" />
+                                      Đã tải lên thành công (
+                                      {certificateUrls.length}):
+                                    </p>
+                                    <div className="flex flex-wrap gap-2">
+                                      {certificateUrls.map((url, index) => {
+                                        const fileName =
+                                          getFileNameFromUrl(url);
+                                        const isPdf = fileName
+                                          .toLowerCase()
+                                          .endsWith(".pdf");
+                                        return (
+                                          <div
+                                            key={index}
+                                            className="flex items-center gap-1"
+                                          >
+                                            <a
+                                              href={url}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="flex items-center px-3 py-1 text-xs rounded bg-background hover:bg-accent transition-colors border"
+                                            >
+                                              {isPdf ? (
+                                                <FileText className="h-3 w-3 mr-1 text-blue-500" />
+                                              ) : (
+                                                <FileCheck className="h-3 w-3 mr-1 text-green-500" />
+                                              )}
+                                              {fileName.length > 20
+                                                ? fileName.substring(0, 17) +
+                                                  "..."
+                                                : fileName}
+                                            </a>
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                handleRemoveCertificate(url)
+                                              }
+                                              className="p-1 rounded-full hover:bg-red-100 text-red-500"
+                                              title="Xóa chứng chỉ"
+                                            >
+                                              <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                width="12"
+                                                height="12"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="2"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                              >
+                                                <path d="M18 6 6 18"></path>
+                                                <path d="m6 6 12 12"></path>
+                                              </svg>
+                                            </button>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </FormControl>
@@ -1622,13 +1929,22 @@ export default function TutorDashboardProfile() {
                 >
                   {(teachingRequestForm.formState.isSubmitting ||
                     uploadingCertifications) && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    )}
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
                   {uploadingCertifications
                     ? "Đang tải lên chứng chỉ..."
                     : requestExists
-                      ? "Gửi lại yêu cầu"
-                      : "Gửi yêu cầu"}
+                    ? "Gửi lại yêu cầu"
+                    : `Gửi yêu cầu ${
+                        certificateUrls.length +
+                          requestCertificationPreviews.length >
+                        0
+                          ? `(${
+                              certificateUrls.length +
+                              requestCertificationPreviews.length
+                            } chứng chỉ)`
+                          : ""
+                      }`}
                 </Button>
               </DialogFooter>
             </form>

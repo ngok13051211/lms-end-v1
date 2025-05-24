@@ -89,14 +89,14 @@ const tutorProfileSchema = z.object({
 
 // Form schema for course
 const courseSchema = z.object({
-  title: z.string().min(5, "Title must be at least 5 characters"),
-  description: z.string().min(20, "Description must be at least 20 characters"),
-  subjectId: z.string().min(1, "Subject is required"),
-  levelId: z.string().min(1, "Education level is required"),
+  title: z.string().min(5, "Tiêu đề phải có ít nhất 5 ký tự"),
+  description: z.string().min(20, "Mô tả phải có ít nhất 20 ký tự"),
+  subjectId: z.string().min(1, "Môn học là bắt buộc"),
+  levelId: z.string().min(1, "Cấp độ giáo dục là bắt buộc"),
   hourlyRate: z.coerce
     .number()
-    .min(10000, "Hourly rate must be at least 10,000 VND")
-    .max(99999999, "Hourly rate must be less than 100,000,000 VND"),
+    .min(10000, "Giá theo giờ phải ít nhất 10.000 VND")
+    .max(99999999, "Giá theo giờ phải ít hơn 100.000.000 VND"),
   teachingMode: z.enum(["online", "offline", "both"]),
 });
 
@@ -308,8 +308,8 @@ export default function TutorDashboard() {
 
       // Show success notification
       toast({
-        title: "Course created",
-        description: "Your teaching course has been created successfully.",
+        title: "Khóa học đã tạo",
+        description: "Khóa học giảng dạy của bạn đã được tạo thành công.",
         variant: "default",
       });
     },
@@ -318,11 +318,11 @@ export default function TutorDashboard() {
 
       // Show error notification
       toast({
-        title: "Course creation failed",
+        title: "Tạo khóa học thất bại",
         description:
           error instanceof Error
             ? error.message
-            : "Failed to create your teaching course. Please try again.",
+            : "Không thể tạo khóa học giảng dạy của bạn. Vui lòng thử lại.",
         variant: "destructive",
       });
     },
@@ -343,8 +343,8 @@ export default function TutorDashboard() {
 
       // Show success notification
       toast({
-        title: "Course deleted",
-        description: "Your teaching course has been deleted successfully.",
+        title: "Khóa học đã xóa",
+        description: "Khóa học giảng dạy của bạn đã được xóa thành công.",
         variant: "default",
       });
     },
@@ -353,11 +353,11 @@ export default function TutorDashboard() {
 
       // Show error notification
       toast({
-        title: "Deletion failed",
+        title: "Xóa thất bại",
         description:
           error instanceof Error
             ? error.message
-            : "Failed to delete your teaching course. Please try again.",
+            : "Không thể xóa khóa học giảng dạy của bạn. Vui lòng thử lại.",
         variant: "destructive",
       });
     },
@@ -431,8 +431,8 @@ export default function TutorDashboard() {
 
       // Show success notification
       toast({
-        title: "Avatar updated",
-        description: "Your profile photo has been updated successfully.",
+        title: "Ảnh đại diện đã cập nhật",
+        description: "Ảnh hồ sơ của bạn đã được cập nhật thành công.",
         variant: "default",
       });
     } catch (error) {
@@ -440,11 +440,11 @@ export default function TutorDashboard() {
 
       // Show error notification
       toast({
-        title: "Upload failed",
+        title: "Tải lên thất bại",
         description:
           error instanceof Error
             ? error.message
-            : "Failed to upload profile photo. Please try again.",
+            : "Không thể tải lên ảnh hồ sơ. Vui lòng thử lại.",
         variant: "destructive",
       });
     } finally {
@@ -559,40 +559,6 @@ export default function TutorDashboard() {
     return (
       <DashboardLayout>
         <div className="p-6 max-w-7xl mx-auto">
-          <div className="mb-8">
-            <h1 className="text-2xl font-medium mb-4">
-              Complete Your Tutor Profile
-            </h1>
-            <Alert className="mb-8">
-              <AlertCircle className="h-5 w-5" />
-              <AlertTitle>Profile Required</AlertTitle>
-              <AlertDescription>
-                You've registered as a tutor, but you need to complete your
-                profile before students can find you. Please fill out your
-                profile information to start teaching.
-              </AlertDescription>
-            </Alert>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Complete Your Tutor Profile</CardTitle>
-                <CardDescription>
-                  Tell students about yourself, your teaching style, and your
-                  expertise
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button
-                  onClick={handleOpenProfileDialog}
-                  className="w-full sm:w-auto"
-                >
-                  <FileText className="mr-2 h-4 w-4" />
-                  Create Your Profile
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
@@ -691,21 +657,11 @@ export default function TutorDashboard() {
       <div className="p-6 max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-medium mb-1">Tutor Dashboard</h1>
+            <h1 className="text-2xl font-medium mb-1">Dashboard</h1>
             <p className="text-muted-foreground">
-              Manage your profile, ads, and student communications
+              Quản lý hồ sơ, quảng cáo và thông tin sinh viên của bạn
             </p>
           </div>
-
-          {!tutorProfile && (
-            <Alert className="mt-4 md:mt-0 md:w-auto">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Please complete your tutor profile to start receiving student
-                inquiries.
-              </AlertDescription>
-            </Alert>
-          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -715,10 +671,10 @@ export default function TutorDashboard() {
                 <UserCircle className="h-8 w-8 text-primary" />
                 <div className="ml-4">
                   <p className="text-sm text-muted-foreground">
-                    Profile Status
+                    Trạng thái hồ sơ
                   </p>
                   <p className="text-lg font-medium">
-                    {tutorProfile ? "Complete" : "Incomplete"}
+                    {tutorProfile ? "Hoàn thành" : "Chưa hoàn thành"}
                   </p>
                 </div>
               </div>
@@ -731,7 +687,7 @@ export default function TutorDashboard() {
                 <BookOpen className="h-8 w-8 text-primary" />
                 <div className="ml-4">
                   <p className="text-sm text-muted-foreground">
-                    Active Courses
+                    Các khóa học đang hoạt động
                   </p>
                   <p className="text-lg font-medium">{courses?.length || 0}</p>
                 </div>
@@ -744,7 +700,9 @@ export default function TutorDashboard() {
               <div className="flex items-center">
                 <MessageSquare className="h-8 w-8 text-primary" />
                 <div className="ml-4">
-                  <p className="text-sm text-muted-foreground">Conversations</p>
+                  <p className="text-sm text-muted-foreground">
+                    Cuộc trò chuyện
+                  </p>
                   <p className="text-lg font-medium">
                     {conversations?.length || 0}
                   </p>
@@ -756,19 +714,19 @@ export default function TutorDashboard() {
 
         <Tabs defaultValue="profile">
           <TabsList className="mb-8">
-            <TabsTrigger value="profile">Profile</TabsTrigger>
+            <TabsTrigger value="profile">Hồ sơ</TabsTrigger>
             <TabsTrigger value="courses">Khóa học</TabsTrigger>
-            <TabsTrigger value="messages">Messages</TabsTrigger>
-            <TabsTrigger value="stats">Statistics</TabsTrigger>
+            <TabsTrigger value="messages">Tin nhắn</TabsTrigger>
+            <TabsTrigger value="stats">Thống kê</TabsTrigger>
           </TabsList>
 
           {/* Profile Tab */}
           <TabsContent value="profile">
             <Card>
               <CardHeader>
-                <CardTitle>Tutor Profile</CardTitle>
+                <CardTitle>Hồ sơ gia sư</CardTitle>
                 <CardDescription>
-                  Your profile information visible to students
+                  Thông tin hồ sơ của bạn hiển thị cho sinh viên
                 </CardDescription>
               </CardHeader>
 
@@ -912,14 +870,6 @@ export default function TutorDashboard() {
                   </div>
                 )}
               </CardContent>
-
-              {!tutorProfile && (
-                <CardFooter>
-                  <Button onClick={handleOpenProfileDialog}>
-                    <PlusCircle className="mr-2 h-4 w-4" /> Tạo hồ sơ
-                  </Button>
-                </CardFooter>
-              )}
             </Card>
           </TabsContent>
 
@@ -933,200 +883,6 @@ export default function TutorDashboard() {
                     Tạo và quản lý các khóa học của bạn
                   </CardDescription>
                 </div>
-
-                <Dialog
-                  open={courseDialogOpen}
-                  onOpenChange={setCourseDialogOpen}
-                >
-                  <DialogTrigger asChild>
-                    <Button>
-                      <PlusCircle className="mr-2 h-4 w-4" /> Tạo khóa học
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-md">
-                    <DialogHeader>
-                      <DialogTitle>Tạo khóa học mới</DialogTitle>
-                      <DialogDescription>
-                        Tạo một khóa học mới để thu hút học viên
-                      </DialogDescription>
-                    </DialogHeader>
-
-                    <Form {...courseForm}>
-                      <form
-                        onSubmit={courseForm.handleSubmit((data) =>
-                          createCourseMutation.mutate(data)
-                        )}
-                        className="space-y-4"
-                      >
-                        <FormField
-                          control={courseForm.control}
-                          name="title"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Title</FormLabel>
-                              <FormControl>
-                                <Input
-                                  placeholder="e.g., Math Tutoring for High School Students"
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={courseForm.control}
-                          name="description"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Description</FormLabel>
-                              <FormControl>
-                                <Textarea
-                                  placeholder="Describe your class, teaching style, and what students can expect"
-                                  className="min-h-[120px]"
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <FormField
-                            control={courseForm.control}
-                            name="subjectId"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Subject</FormLabel>
-                                <Select
-                                  onValueChange={field.onChange}
-                                  defaultValue={field.value}
-                                >
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Select subject" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    {subjects?.map((subject) => (
-                                      <SelectItem
-                                        key={subject.id}
-                                        value={subject.id.toString()}
-                                      >
-                                        {subject.name}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          <FormField
-                            control={courseForm.control}
-                            name="levelId"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Education Level</FormLabel>
-                                <Select
-                                  onValueChange={field.onChange}
-                                  defaultValue={field.value}
-                                >
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Select level" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    {educationLevels?.map((level) => (
-                                      <SelectItem
-                                        key={level.id}
-                                        value={level.id.toString()}
-                                      >
-                                        {level.name}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-
-                        {/* form hourlyRate and teachingMode */}
-                        {/* <div className="grid grid-cols-2 gap-4">
-                          <FormField
-                            control={courseForm.control}
-                            name="hourlyRate"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Hourly Rate (VND)</FormLabel>
-                                <FormControl>
-                                  <div className="relative">
-                                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                    <Input
-                                      type="number"
-                                      className="pl-9"
-                                      {...field}
-                                    />
-                                  </div>
-                                </FormControl>
-                                <FormDescription>
-                                  Amount in VND per hour
-                                </FormDescription>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          
-                          <FormField
-                            control={courseForm.control}
-                            name="teachingMode"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Teaching Mode</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Select mode" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    <SelectItem value="online">Online</SelectItem>
-                                    <SelectItem value="offline">In-person</SelectItem>
-                                    <SelectItem value="both">Both</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div> */}
-
-                        <DialogFooter>
-                          <Button
-                            type="submit"
-                            disabled={createCourseMutation.isPending}
-                          >
-                            {createCourseMutation.isPending ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Creating...
-                              </>
-                            ) : (
-                              "Tạo khóa học"
-                            )}
-                          </Button>
-                        </DialogFooter>
-                      </form>
-                    </Form>
-                  </DialogContent>
-                </Dialog>
               </CardHeader>
 
               <CardContent>
@@ -1236,9 +992,9 @@ export default function TutorDashboard() {
           <TabsContent value="messages">
             <Card>
               <CardHeader>
-                <CardTitle>Messages</CardTitle>
+                <CardTitle>Tin nhắn</CardTitle>
                 <CardDescription>
-                  Your conversations with students
+                  Cuộc trò chuyện của bạn với sinh viên
                 </CardDescription>
               </CardHeader>
 
@@ -1289,12 +1045,12 @@ export default function TutorDashboard() {
                   <div className="text-center py-12">
                     <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground" />
                     <h2 className="mt-4 text-xl font-medium">
-                      No messages yet
+                      Chưa có tin nhắn
                     </h2>
                     <p className="mt-2 text-muted-foreground max-w-md mx-auto">
-                      You haven't received any messages from students yet.
-                      Complete your profile and create courses to attract
-                      students.
+                      Bạn chưa nhận được bất kỳ tin nhắn nào từ các sinh viên.
+                      Hoàn thành hồ sơ của bạn và tạo các khóa học để thu hút
+                      sinh viên
                     </p>
                   </div>
                 )}
@@ -1306,9 +1062,9 @@ export default function TutorDashboard() {
           <TabsContent value="stats">
             <Card>
               <CardHeader>
-                <CardTitle>Statistics</CardTitle>
+                <CardTitle>Thống kê</CardTitle>
                 <CardDescription>
-                  Overview of your profile performance
+                  Tổng quan về hiệu suất hồ sơ của bạn
                 </CardDescription>
               </CardHeader>
 
@@ -1372,11 +1128,11 @@ export default function TutorDashboard() {
                   <div className="text-center py-12">
                     <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground" />
                     <h2 className="mt-4 text-xl font-medium">
-                      No statistics available
+                      Không có số liệu thống kê có sẵn
                     </h2>
                     <p className="mt-2 text-muted-foreground max-w-md mx-auto">
-                      Statistics will be available once your profile becomes
-                      active and you start getting student interactions.
+                      Thống kê sẽ có sẵn khi hồ sơ của bạn hoạt động và bạn bắt
+                      đầu nhận được tương tác của sinh viên.
                     </p>
                   </div>
                 )}

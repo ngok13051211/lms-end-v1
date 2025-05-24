@@ -83,6 +83,86 @@ function MessageSkeleton() {
   );
 }
 
+// Message list component to display grouped messages
+function MessageList({
+  groupedMessages,
+  user,
+  conversation,
+  formatDate,
+}: {
+  groupedMessages: any[];
+  user: any;
+  conversation: Conversation;
+  formatDate: (date: string) => string;
+}) {
+  return (
+    <div className="space-y-6">
+      {groupedMessages.map((group, groupIndex) => (
+        <div key={groupIndex} className="space-y-2">
+          {group.messages.map(
+            (message: ConversationMessage, messageIndex: number) => {
+              const isSelf = message.sender_id === user?.id;
+
+              return (
+                <div
+                  key={message.id}
+                  className={`flex items-start ${
+                    isSelf ? "justify-end" : "justify-start"
+                  }`}
+                >
+                  {!isSelf && groupIndex === 0 && messageIndex === 0 && (
+                    <Avatar className="h-8 w-8 mr-2">
+                      <AvatarImage
+                        src={conversation.tutor?.avatar}
+                        alt={conversation.tutor?.firstName}
+                      />
+                      <AvatarFallback>
+                        {(conversation.tutor?.firstName?.[0] || "") +
+                          (conversation.tutor?.lastName?.[0] || "")}
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
+
+                  {!isSelf && !(groupIndex === 0 && messageIndex === 0) && (
+                    <div className="w-8 mr-2" />
+                  )}
+
+                  <div
+                    className={`rounded-lg px-4 py-2 max-w-[80%] break-words ${
+                      isSelf ? "bg-primary text-primary-foreground" : "bg-muted"
+                    }`}
+                  >
+                    <p>{message.content}</p>
+                    <p className="text-xs mt-1 opacity-70">
+                      {formatDate(message.created_at)}
+                    </p>
+                  </div>
+
+                  {isSelf && groupIndex === 0 && messageIndex === 0 && (
+                    <Avatar className="h-8 w-8 ml-2">
+                      <AvatarImage src={user?.avatar} alt={user?.name} />
+                      <AvatarFallback>{user?.name?.[0] || "U"}</AvatarFallback>
+                    </Avatar>
+                  )}
+
+                  {isSelf && !(groupIndex === 0 && messageIndex === 0) && (
+                    <div className="w-8 ml-2" />
+                  )}
+                </div>
+              );
+            }
+          )}
+        </div>
+      ))}
+      {groupedMessages.length === 0 && (
+        <div className="text-center py-8 text-muted-foreground">
+          <p>Hãy bắt đầu cuộc trò chuyện</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function StudentDashboardMessages() {
   const { user } = useSelector((state: RootState) => state.auth);
   const [, navigate] = useLocation();
@@ -143,10 +223,10 @@ export default function StudentDashboardMessages() {
     scrollToBottom();
 
     // Scroll on window resize
-    window.addEventListener('resize', scrollToBottom);
+    window.addEventListener("resize", scrollToBottom);
 
     return () => {
-      window.removeEventListener('resize', scrollToBottom);
+      window.removeEventListener("resize", scrollToBottom);
     };
   }, [conversationId]);
 
@@ -217,10 +297,11 @@ export default function StudentDashboardMessages() {
                       href={`/dashboard/student/messages/${conv.id}`}
                     >
                       <a
-                        className={`flex items-center p-4 border rounded-lg transition-colors hover:border-primary ${conversationId === String(conv.id)
-                          ? "border-primary bg-primary/5"
-                          : ""
-                          }`}
+                        className={`flex items-center p-4 border rounded-lg transition-colors hover:border-primary ${
+                          conversationId === String(conv.id)
+                            ? "border-primary bg-primary/5"
+                            : ""
+                        }`}
                       >
                         <Avatar className="h-10 w-10">
                           <AvatarImage
@@ -289,7 +370,10 @@ export default function StudentDashboardMessages() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="flex-1 overflow-y-auto p-4 space-y-4" style={{ maxHeight: "calc(70vh - 140px)" }}>
+              <CardContent
+                className="flex-1 overflow-y-auto p-4 space-y-4"
+                style={{ maxHeight: "calc(70vh - 140px)" }}
+              >
                 <div className="space-y-4">
                   <div className="flex items-start">
                     <div className="h-8 w-8 rounded-full bg-muted mr-2"></div>
@@ -351,21 +435,30 @@ export default function StudentDashboardMessages() {
                   <div className="ml-3">
                     <CardTitle className="text-base font-medium">
                       {conversation.tutor
-                        ? `${conversation.tutor.firstName || ""} ${conversation.tutor.lastName || ""
-                        }`
+                        ? `${conversation.tutor.firstName || ""} ${
+                            conversation.tutor.lastName || ""
+                          }`
                         : "Giáo viên"}
                     </CardTitle>
                     <div className="flex items-center">
                       <p className="text-xs text-muted-foreground mr-2">
                         {conversation.tutor?.email || ""}
                       </p>
-                      <Badge variant="outline" className="text-xs px-1 py-0 h-5">Giáo viên</Badge>
+                      <Badge
+                        variant="outline"
+                        className="text-xs px-1 py-0 h-5"
+                      >
+                        Giáo viên
+                      </Badge>
                     </div>
                   </div>
                 </div>
               </CardHeader>
 
-              <CardContent className="flex-1 overflow-y-auto p-4 space-y-4" style={{ maxHeight: "calc(70vh - 140px)" }}>
+              <CardContent
+                className="flex-1 overflow-y-auto p-4 space-y-4"
+                style={{ maxHeight: "calc(70vh - 140px)" }}
+              >
                 <MessageList
                   groupedMessages={groupedMessages}
                   user={user}
@@ -377,12 +470,14 @@ export default function StudentDashboardMessages() {
 
               <CardFooter className="p-4 border-t">
                 <MessageInput
-                  conversationId={conversationId || ''}
+                  conversationId={conversationId || ""}
                   onMessageSent={() => {
                     // Scroll to bottom after sending
                     setTimeout(() => {
                       if (messagesEndRef.current) {
-                        messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+                        messagesEndRef.current.scrollIntoView({
+                          behavior: "smooth",
+                        });
                       }
                     }, 100);
                   }}

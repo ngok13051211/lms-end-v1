@@ -2,7 +2,6 @@ import { Request, Response, NextFunction } from "express";
 import { ZodSchema, ZodError, z } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { ApiError } from "./errorMiddleware";
-import { createScheduleSchema } from "@shared/schema";
 
 /**
  * Middleware xác thực dữ liệu đầu vào sử dụng Zod Schema

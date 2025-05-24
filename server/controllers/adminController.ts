@@ -133,7 +133,7 @@ export const deactivateUser = async (req: Request, res: Response) => {
     if (isNaN(userId)) {
       return res.status(400).json({
         success: false,
-        message: "ID người dùng không hợp lệ"
+        message: "ID người dùng không hợp lệ",
       });
     }
 
@@ -145,7 +145,7 @@ export const deactivateUser = async (req: Request, res: Response) => {
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "Không tìm thấy người dùng"
+        message: "Không tìm thấy người dùng",
       });
     }
 
@@ -253,16 +253,28 @@ export const getAdminStats = async (req: Request, res: Response) => {
       })
       .from(schema.tutorProfiles);
 
-    // 3. Số lượng buổi học theo trạng thái
+    // 3. Số lượng buổi học theo trạng thái (dùng booking_requests thay cho bookings)
     const [bookingStats] = await db
       .select({
-        total: count(schema.bookings.id),
-        pending: sql`SUM(CASE WHEN ${schema.bookings.status} = 'pending' THEN 1 ELSE 0 END)`,
-        confirmed: sql`SUM(CASE WHEN ${schema.bookings.status} = 'confirmed' THEN 1 ELSE 0 END)`,
-        completed: sql`SUM(CASE WHEN ${schema.bookings.status} = 'completed' THEN 1 ELSE 0 END)`,
-        canceled: sql`SUM(CASE WHEN ${schema.bookings.status} = 'canceled' THEN 1 ELSE 0 END)`,
+        total: count(schema.bookingRequests.id),
+        pending: sql`SUM(CASE WHEN ${schema.bookingRequests.status} = 'pending' THEN 1 ELSE 0 END)`,
+        confirmed: sql`SUM(CASE WHEN ${schema.bookingRequests.status} = 'confirmed' THEN 1 ELSE 0 END)`,
+        completed: sql`SUM(CASE WHEN ${schema.bookingRequests.status} = 'completed' THEN 1 ELSE 0 END)`,
+        cancelled: sql`SUM(CASE WHEN ${schema.bookingRequests.status} = 'cancelled' THEN 1 ELSE 0 END)`,
+        rejected: sql`SUM(CASE WHEN ${schema.bookingRequests.status} = 'rejected' THEN 1 ELSE 0 END)`,
       })
-      .from(schema.bookings);
+      .from(schema.bookingRequests);
+
+    // Thêm thống kê chi tiết về các buổi học (booking_sessions)
+    const [sessionStats] = await db
+      .select({
+        total: count(schema.bookingSessions.id),
+        pending: sql`SUM(CASE WHEN ${schema.bookingSessions.status} = 'pending' THEN 1 ELSE 0 END)`,
+        confirmed: sql`SUM(CASE WHEN ${schema.bookingSessions.status} = 'confirmed' THEN 1 ELSE 0 END)`,
+        completed: sql`SUM(CASE WHEN ${schema.bookingSessions.status} = 'completed' THEN 1 ELSE 0 END)`,
+        cancelled: sql`SUM(CASE WHEN ${schema.bookingSessions.status} = 'cancelled' THEN 1 ELSE 0 END)`,
+      })
+      .from(schema.bookingSessions);
 
     // 4. Thống kê về thanh toán
     const [paymentStats] = await db
@@ -301,12 +313,20 @@ export const getAdminStats = async (req: Request, res: Response) => {
           approved: Number(tutorStats.approved || 0),
           rejected: Number(tutorStats.rejected || 0),
         },
-        bookings: {
+        bookingRequests: {
           total: Number(bookingStats.total || 0),
           pending: Number(bookingStats.pending || 0),
           confirmed: Number(bookingStats.confirmed || 0),
           completed: Number(bookingStats.completed || 0),
-          canceled: Number(bookingStats.canceled || 0),
+          canceled: Number(bookingStats.rejected || 0),
+        },
+        // Thêm thống kê mới về các buổi học
+        bookingSessions: {
+          total: Number(sessionStats.total || 0),
+          pending: Number(sessionStats.pending || 0),
+          confirmed: Number(sessionStats.confirmed || 0),
+          completed: Number(sessionStats.completed || 0),
+          cancelled: Number(sessionStats.cancelled || 0),
         },
         payments: {
           total: Number(paymentStats.total || 0),

@@ -10,7 +10,7 @@ import {
   date,
   time,
   varchar,
-  unique
+  unique,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -33,8 +33,6 @@ export const subjects = pgTable("subjects", {
   description: text("description"),
   icon: text("icon"),
   tutor_count: integer("tutor_count").default(0),
-  teaching_mode: text("teaching_mode").default("both"), // "online", "offline", "both"
-  hourly_rate: decimal("hourly_rate", { precision: 10, scale: 2 }).default("0"),
   created_at: timestamp("created_at").defaultNow().notNull(),
   updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -251,8 +249,6 @@ export const teachingSchedules = pgTable("teaching_schedules", {
   date: date("date").notNull(),
   start_time: time("start_time").notNull(),
   end_time: time("end_time").notNull(),
-  mode: text("mode").notNull(), // "online", "offline"
-  location: text("location"),
   is_recurring: boolean("is_recurring").default(false),
   status: text("status").default("available"), // "available", "booked", "completed", "cancelled"
   created_at: timestamp("created_at").defaultNow().notNull(),
@@ -322,6 +318,9 @@ export const reviews = pgTable("reviews", {
   tutor_id: integer("tutor_id")
     .notNull()
     .references(() => tutorProfiles.id),
+  course_id: integer("course_id")
+    .notNull()
+    .references(() => courses.id),
   rating: integer("rating").notNull(),
   comment: text("comment"),
   created_at: timestamp("created_at").defaultNow().notNull(),
@@ -341,31 +340,27 @@ export const testimonials = pgTable("testimonials", {
 });
 
 // Conversations Model
-// export const conversations = pgTable("conversations", {
-//   id: serial("id").primaryKey(),
-//   student_id: integer("student_id")
-//     .notNull()
-//     .references(() => users.id),
-//   tutor_id: integer("tutor_id")
-//     .notNull()
-//     .references(() => users.id),
-//   last_message_at: timestamp("last_message_at").defaultNow().notNull(),
-//   created_at: timestamp("created_at").defaultNow().notNull(),
-// });
+
 export const conversations = pgTable(
   "conversations",
   {
     id: serial("id").primaryKey(),
-    student_id: integer("student_id").notNull().references(() => users.id),
-    tutor_id: integer("tutor_id").notNull().references(() => users.id),
+    student_id: integer("student_id")
+      .notNull()
+      .references(() => users.id),
+    tutor_id: integer("tutor_id")
+      .notNull()
+      .references(() => users.id),
     last_message_at: timestamp("last_message_at").defaultNow().notNull(),
     created_at: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => ({
-    uniqueStudentTutor: unique("unique_student_tutor").on(table.student_id, table.tutor_id),
+    uniqueStudentTutor: unique("unique_student_tutor").on(
+      table.student_id,
+      table.tutor_id
+    ),
   })
 );
-
 
 // Messages Model
 export const messages = pgTable("messages", {
@@ -383,17 +378,20 @@ export const messages = pgTable("messages", {
 });
 
 // Định nghĩa mối quan hệ cho conversations
-export const conversationsRelations = relations(conversations, ({ one, many }) => ({
-  student: one(users, {
-    fields: [conversations.student_id],
-    references: [users.id],
-  }),
-  tutor: one(users, {
-    fields: [conversations.tutor_id],
-    references: [users.id],
-  }),
-  messages: many(messages),
-}));
+export const conversationsRelations = relations(
+  conversations,
+  ({ one, many }) => ({
+    student: one(users, {
+      fields: [conversations.student_id],
+      references: [users.id],
+    }),
+    tutor: one(users, {
+      fields: [conversations.tutor_id],
+      references: [users.id],
+    }),
+    messages: many(messages),
+  })
+);
 
 // Định nghĩa mối quan hệ cho messages
 export const messagesRelations = relations(messages, ({ one }) => ({
@@ -579,6 +577,10 @@ export const reviewsRelations = relations(reviews, ({ one }) => ({
     fields: [reviews.tutor_id],
     references: [tutorProfiles.id],
   }),
+  course: one(courses, {
+    fields: [reviews.course_id],
+    references: [courses.id],
+  }),
 }));
 
 export const paymentsRelations = relations(payments, ({ one }) => ({
@@ -700,14 +702,20 @@ export const educationLevelSelectSchema = createSelectSchema(educationLevels);
 // Schema cho việc gửi tin nhắn mới
 export const messageSchema = z.object({
   content: z.string().min(1, "Nội dung tin nhắn không được để trống"),
-  attachment_url: z.string().url("Đường dẫn tệp đính kèm không hợp lệ").optional(),
+  attachment_url: z
+    .string()
+    .url("Đường dẫn tệp đính kèm không hợp lệ")
+    .optional(),
 });
 
 // Schema cho việc gửi tin nhắn trực tiếp (tự động tạo conversation)
 export const directMessageSchema = z.object({
   recipient_id: z.number().int().positive("ID người nhận không hợp lệ"),
   content: z.string().min(1, "Nội dung tin nhắn không được để trống"),
-  attachment_url: z.string().url("Đường dẫn tệp đính kèm không hợp lệ").optional(),
+  attachment_url: z
+    .string()
+    .url("Đường dẫn tệp đính kèm không hợp lệ")
+    .optional(),
 });
 
 // Custom schema for route params that have a tutorId parameter
@@ -821,10 +829,6 @@ export const scheduleSchema = z.object({
   end_time: z
     .string()
     .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Định dạng giờ phải là HH:MM"),
-  mode: z.enum(["online", "offline"], {
-    errorMap: () => ({ message: "Chế độ dạy phải là online hoặc offline" }),
-  }),
-  location: z.string().optional(),
   is_recurring: z.boolean().default(false),
   status: z
     .enum(["available", "booked", "completed", "cancelled"])
@@ -847,8 +851,6 @@ const singleScheduleSchema = z.object({
   start_time: z.string({ required_error: "start_time is required" }),
   end_time: z.string({ required_error: "end_time is required" }),
   is_recurring: z.literal(false),
-  mode: z.enum(["online", "offline"]),
-  location: z.string().optional(),
 });
 
 // Schema cho lịch định kỳ
@@ -869,8 +871,6 @@ const recurringScheduleSchema = z.object({
   date: z.string().optional(),
   start_time: z.string().optional(),
   end_time: z.string().optional(),
-  mode: z.enum(["online", "offline"]),
-  location: z.string().optional(),
 });
 
 // Export schema dùng cho validate middleware
@@ -898,7 +898,7 @@ export const teachingRequestSchema = z.object({
 
 // Schema cho cập nhật trạng thái yêu cầu giảng dạy
 export const teachingRequestStatusSchema = z.object({
-  status: z.enum(["pending", "approved", "rejected"], {
+  status: z.enum(["draft", "pending", "approved", "rejected"], {
     errorMap: () => ({ message: "Trạng thái không hợp lệ" }),
   }),
   rejection_reason: z.string().optional(), // Lý do nếu từ chối

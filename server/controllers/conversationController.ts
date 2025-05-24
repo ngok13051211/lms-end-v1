@@ -21,8 +21,8 @@ export const startConversation = async (req: Request, res: Response) => {
     const tutorProfile = await db.query.tutorProfiles.findFirst({
       where: eq(schema.tutorProfiles.id, tutorId),
       with: {
-        user: true
-      }
+        user: true,
+      },
     });
 
     if (!tutorProfile) {
@@ -34,29 +34,30 @@ export const startConversation = async (req: Request, res: Response) => {
       where: and(
         eq(schema.conversations.student_id, studentId),
         eq(schema.conversations.tutor_id, tutorProfile.user.id)
-      )
+      ),
     });
 
     if (existingConversation) {
       return res.status(200).json({
         conversation: existingConversation,
-        message: "Conversation already exists"
+        message: "Conversation already exists",
       });
     }
 
     // Create new conversation
-    const [conversation] = await db.insert(schema.conversations)
+    const [conversation] = await db
+      .insert(schema.conversations)
       .values({
         student_id: studentId,
         tutor_id: tutorProfile.user.id,
         last_message_at: new Date(),
-        created_at: new Date()
+        created_at: new Date(),
       })
       .returning();
 
     return res.status(201).json({
       message: "Conversation started successfully",
-      conversation
+      conversation,
     });
   } catch (error) {
     console.error("Start conversation error:", error);
@@ -65,12 +66,16 @@ export const startConversation = async (req: Request, res: Response) => {
       message: error instanceof Error ? error.message : "Unknown error",
       stack: error instanceof Error ? error.stack : undefined,
       tutorId: req.params.tutorId,
-      studentId: req.user?.id
+      studentId: req.user?.id,
     };
-    console.error("Detailed error info:", JSON.stringify(errorDetails, null, 2));
+    console.error(
+      "Detailed error info:",
+      JSON.stringify(errorDetails, null, 2)
+    );
     return res.status(500).json({
       message: "Internal server error",
-      details: process.env.NODE_ENV === 'development' ? errorDetails : undefined
+      details:
+        process.env.NODE_ENV === "development" ? errorDetails : undefined,
     });
   }
 };
@@ -192,15 +197,15 @@ export const getConversations = async (req: Request, res: Response) => {
               last_name: true,
               avatar: true,
               role: true,
-              email: true
-            }
+              email: true,
+            },
           },
           messages: {
             orderBy: desc(schema.messages.created_at),
-            limit: 1
-          }
+            limit: 1,
+          },
         },
-        orderBy: desc(schema.conversations.last_message_at)
+        orderBy: desc(schema.conversations.last_message_at),
       });
     } else if (userRole === "tutor") {
       // Get tutor's conversations
@@ -214,50 +219,73 @@ export const getConversations = async (req: Request, res: Response) => {
               last_name: true,
               avatar: true,
               role: true,
-              email: true
-            }
+              email: true,
+            },
           },
           messages: {
             orderBy: desc(schema.messages.created_at),
-            limit: 1
-          }
+            limit: 1,
+          },
         },
-        orderBy: desc(schema.conversations.last_message_at)
+        orderBy: desc(schema.conversations.last_message_at),
       });
     } else {
       return res.status(403).json({ message: "Forbidden" });
     }
 
     // Add last message to each conversation and unread count
-    const conversationsWithLastMessage = await Promise.all(conversations.map(async (conv) => {
-      // Calculate unread message count
-      let unreadQuery;
-      if (userRole === "student") {
-        unreadQuery = await db.select({ count: count() })
-          .from(schema.messages)
-          .where(and(
-            eq(schema.messages.conversation_id, conv.id),
-            eq(schema.messages.sender_id, conv.tutor.id),
-            eq(schema.messages.read, false)
-          ));
-      } else {
-        unreadQuery = await db.select({ count: count() })
-          .from(schema.messages)
-          .where(and(
-            eq(schema.messages.conversation_id, conv.id),
-            eq(schema.messages.sender_id, conv.student.id),
-            eq(schema.messages.read, false)
-          ));
-      }
+    const conversationsWithLastMessage = await Promise.all(
+      conversations.map(async (conv) => {
+        // Calculate unread message count
+        let unreadQuery;
 
-      const unread_count = parseInt(String(unreadQuery[0].count), 10);
+        if (userRole === "student") {
+          // When user is a student, we check for unread messages from the tutor
+          if ("tutor" in conv) {
+            // Check if tutor property exists
+            unreadQuery = await db
+              .select({ count: count() })
+              .from(schema.messages)
+              .where(
+                and(
+                  eq(schema.messages.conversation_id, conv.id),
+                  eq(schema.messages.sender_id, conv.tutor.id),
+                  eq(schema.messages.read, false)
+                )
+              );
+          } else {
+            // Fallback if tutor property doesn't exist
+            unreadQuery = [{ count: 0 }];
+          }
+        } else {
+          // When user is a tutor, we check for unread messages from the student
+          if ("student" in conv) {
+            // Check if student property exists
+            unreadQuery = await db
+              .select({ count: count() })
+              .from(schema.messages)
+              .where(
+                and(
+                  eq(schema.messages.conversation_id, conv.id),
+                  eq(schema.messages.sender_id, conv.student.id),
+                  eq(schema.messages.read, false)
+                )
+              );
+          } else {
+            // Fallback if student property doesn't exist
+            unreadQuery = [{ count: 0 }];
+          }
+        }
 
-      return {
-        ...conv,
-        last_message: conv.messages[0] || null,
-        unread_count
-      };
-    }));
+        const unread_count = parseInt(String(unreadQuery[0].count), 10);
+
+        return {
+          ...conv,
+          last_message: conv.messages[0] || null,
+          unread_count,
+        };
+      })
+    );
 
     return res.status(200).json(conversationsWithLastMessage);
   } catch (error) {
@@ -298,8 +326,8 @@ export const getConversation = async (req: Request, res: Response) => {
             last_name: true,
             avatar: true,
             email: true,
-            role: true
-          }
+            role: true,
+          },
         },
         tutor: {
           columns: {
@@ -308,36 +336,46 @@ export const getConversation = async (req: Request, res: Response) => {
             last_name: true,
             avatar: true,
             email: true,
-            role: true
-          }
+            role: true,
+          },
         },
         messages: {
-          orderBy: schema.messages.created_at
-        }
-      }
+          orderBy: schema.messages.created_at,
+        },
+      },
     });
 
     if (!conversation) {
-      return res.status(404).json({ message: "Conversation not found or you are not a participant" });
+      return res
+        .status(404)
+        .json({
+          message: "Conversation not found or you are not a participant",
+        });
     }
 
     // Mark messages as read
     if (userRole === "student") {
-      await db.update(schema.messages)
+      await db
+        .update(schema.messages)
         .set({ read: true })
-        .where(and(
-          eq(schema.messages.conversation_id, conversationId),
-          eq(schema.messages.sender_id, conversation.tutor.id),
-          eq(schema.messages.read, false)
-        ));
+        .where(
+          and(
+            eq(schema.messages.conversation_id, conversationId),
+            eq(schema.messages.sender_id, conversation.tutor.id),
+            eq(schema.messages.read, false)
+          )
+        );
     } else if (userRole === "tutor") {
-      await db.update(schema.messages)
+      await db
+        .update(schema.messages)
         .set({ read: true })
-        .where(and(
-          eq(schema.messages.conversation_id, conversationId),
-          eq(schema.messages.sender_id, conversation.student.id),
-          eq(schema.messages.read, false)
-        ));
+        .where(
+          and(
+            eq(schema.messages.conversation_id, conversationId),
+            eq(schema.messages.sender_id, conversation.student.id),
+            eq(schema.messages.read, false)
+          )
+        );
     }
 
     return res.status(200).json(conversation);
@@ -373,33 +411,39 @@ export const sendMessage = async (req: Request, res: Response) => {
           eq(schema.conversations.student_id, userId),
           eq(schema.conversations.tutor_id, userId)
         )
-      )
+      ),
     });
 
     if (!conversation) {
-      return res.status(404).json({ message: "Conversation not found or you are not a participant" });
+      return res
+        .status(404)
+        .json({
+          message: "Conversation not found or you are not a participant",
+        });
     }
 
     // Create new message
-    const [message] = await db.insert(schema.messages)
+    const [message] = await db
+      .insert(schema.messages)
       .values({
         conversation_id: conversationId,
         sender_id: userId,
         content: req.body.content.trim(),
         attachment_url: req.body.attachment_url || null,
         read: false,
-        created_at: new Date()
+        created_at: new Date(),
       })
       .returning();
 
     // Update conversation's last_message_at
-    await db.update(schema.conversations)
+    await db
+      .update(schema.conversations)
       .set({ last_message_at: new Date() })
       .where(eq(schema.conversations.id, conversationId));
 
     return res.status(201).json({
       message: "Message sent successfully",
-      data: message
+      data: message,
     });
   } catch (error) {
     console.error("Send message error:", error);
@@ -430,11 +474,15 @@ export const markMessageAsRead = async (req: Request, res: Response) => {
           eq(schema.conversations.student_id, userId),
           eq(schema.conversations.tutor_id, userId)
         )
-      )
+      ),
     });
 
     if (!conversation) {
-      return res.status(404).json({ message: "Conversation not found or you are not a participant" });
+      return res
+        .status(404)
+        .json({
+          message: "Conversation not found or you are not a participant",
+        });
     }
 
     // Check if message exists in the conversation
@@ -442,7 +490,7 @@ export const markMessageAsRead = async (req: Request, res: Response) => {
       where: and(
         eq(schema.messages.id, messageId),
         eq(schema.messages.conversation_id, conversationId)
-      )
+      ),
     });
 
     if (!message) {
@@ -451,7 +499,8 @@ export const markMessageAsRead = async (req: Request, res: Response) => {
 
     // Mark message as read if not the sender
     if (message.sender_id !== userId) {
-      await db.update(schema.messages)
+      await db
+        .update(schema.messages)
         .set({ read: true })
         .where(eq(schema.messages.id, messageId));
     }
@@ -490,12 +539,16 @@ export const getMessages = async (req: Request, res: Response) => {
       columns: {
         id: true,
         student_id: true,
-        tutor_id: true
-      }
+        tutor_id: true,
+      },
     });
 
     if (!conversation) {
-      return res.status(404).json({ message: "Conversation not found or you are not a participant" });
+      return res
+        .status(404)
+        .json({
+          message: "Conversation not found or you are not a participant",
+        });
     }
 
     // Fetch messages for the conversation, ordered by creation time ascending
@@ -509,29 +562,35 @@ export const getMessages = async (req: Request, res: Response) => {
             first_name: true,
             last_name: true,
             avatar: true,
-            role: true
-          }
-        }
-      }
+            role: true,
+          },
+        },
+      },
     });
 
     // Mark messages as read
     if (userRole === "student") {
-      await db.update(schema.messages)
+      await db
+        .update(schema.messages)
         .set({ read: true })
-        .where(and(
-          eq(schema.messages.conversation_id, conversationId),
-          eq(schema.messages.sender_id, conversation.tutor_id),
-          eq(schema.messages.read, false)
-        ));
+        .where(
+          and(
+            eq(schema.messages.conversation_id, conversationId),
+            eq(schema.messages.sender_id, conversation.tutor_id),
+            eq(schema.messages.read, false)
+          )
+        );
     } else if (userRole === "tutor") {
-      await db.update(schema.messages)
+      await db
+        .update(schema.messages)
         .set({ read: true })
-        .where(and(
-          eq(schema.messages.conversation_id, conversationId),
-          eq(schema.messages.sender_id, conversation.student_id),
-          eq(schema.messages.read, false)
-        ));
+        .where(
+          and(
+            eq(schema.messages.conversation_id, conversationId),
+            eq(schema.messages.sender_id, conversation.student_id),
+            eq(schema.messages.read, false)
+          )
+        );
     }
 
     return res.status(200).json(messages);

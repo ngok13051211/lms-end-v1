@@ -69,8 +69,6 @@ const singleScheduleSchema = z.object({
       /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/,
       "Invalid time format. Use HH:MM"
     ),
-  mode: z.enum(["online", "offline"]),
-  location: z.string().optional(),
   course_id: z.number().optional(),
 });
 
@@ -79,8 +77,6 @@ const recurringSchemaBase = z.object({
   is_recurring: z.literal(true),
   start_date: z.string(),
   end_date: z.string(),
-  mode: z.enum(["online", "offline"]),
-  location: z.string().optional(),
   course_id: z.number().optional(),
   repeat_schedule: repeatScheduleSchema.optional(),
   repeat_days: z.array(z.string()).optional().default([]),
@@ -228,9 +224,6 @@ export const createSchedule = async (req: Request, res: Response) => {
         date: scheduleData.date,
         start_time: scheduleData.start_time,
         end_time: scheduleData.end_time,
-        mode: scheduleData.mode,
-        location:
-          scheduleData.mode === "offline" ? scheduleData.location : null,
         is_recurring: false,
         status: "available",
       });
@@ -307,9 +300,6 @@ export const createSchedule = async (req: Request, res: Response) => {
               date: formattedDate,
               start_time: slot.startTime,
               end_time: slot.endTime,
-              mode: scheduleData.mode,
-              location:
-                scheduleData.mode === "offline" ? scheduleData.location : null,
               is_recurring: true,
               status: "available",
             });
@@ -353,9 +343,6 @@ export const createSchedule = async (req: Request, res: Response) => {
             date: formattedDate,
             start_time: scheduleData.start_time,
             end_time: scheduleData.end_time,
-            mode: scheduleData.mode,
-            location:
-              scheduleData.mode === "offline" ? scheduleData.location : null,
             is_recurring: true,
             status: "available",
           });

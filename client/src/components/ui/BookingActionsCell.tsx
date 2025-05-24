@@ -47,12 +47,14 @@ export interface BookingActionsProps {
   };
   refetchBookings?: () => void; // Function to refetch the booking list
   tutorActions?: boolean; // Whether to show tutor-specific actions
+  onFeedback?: (sessionId: number) => void; // Callback for feedback action
 }
 
 export function BookingActionsCell({
   booking,
   refetchBookings,
   tutorActions = false,
+  onFeedback,
 }: BookingActionsProps) {
   const [, setLocation] = useLocation();
   const { user } = useSelector((state: RootState) => state.auth);
@@ -277,23 +279,40 @@ export function BookingActionsCell({
             <Calendar className="h-4 w-4 mr-2" />
             Xem lịch học
           </DropdownMenuItem>
-        )}
+        )}{" "}
         {booking.status === "completed" && (
-          <DropdownMenuItem
-            onClick={hasRated ? handleViewBooking : handleAddRating}
-          >
-            {hasRated ? (
-              <>
-                <Eye className="h-4 w-4 mr-2" />
-                Xem chi tiết
-              </>
-            ) : (
-              <>
-                <Star className="h-4 w-4 mr-2" />
-                Đánh giá
-              </>
-            )}
-          </DropdownMenuItem>
+          <>
+            <DropdownMenuItem onClick={handleViewBooking}>
+              <Eye className="h-4 w-4 mr-2" />
+              Xem chi tiết
+            </DropdownMenuItem>
+            {!tutorActions &&
+              onFeedback &&
+              booking.sessions?.some(
+                (session) =>
+                  session.status === "completed" &&
+                  (!session.sessionNote || !session.sessionNote.student_rating)
+              ) && (
+                <DropdownMenuItem
+                  onClick={() => {
+                    // Tìm buổi học đầu tiên chưa có đánh giá
+                    const sessionToRate = booking.sessions?.find(
+                      (session) =>
+                        session.status === "completed" &&
+                        (!session.sessionNote ||
+                          !session.sessionNote.student_rating)
+                    );
+
+                    if (sessionToRate && onFeedback) {
+                      onFeedback(sessionToRate.id);
+                    }
+                  }}
+                >
+                  <Star className="h-4 w-4 mr-2" />
+                  Đánh giá
+                </DropdownMenuItem>
+              )}
+          </>
         )}
         {(booking.status === "cancelled" || booking.status === "rejected") && (
           <DropdownMenuItem onClick={() => setShowReasonDialog(true)}>
