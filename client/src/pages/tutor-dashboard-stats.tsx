@@ -16,10 +16,40 @@ import {
   Users,
   Star,
   BadgeCheck,
+  LineChart,
+  DollarSign,
 } from "lucide-react";
 import TutorDashboardLayout from "@/components/layout/TutorDashboardLayout";
 import { Progress } from "@/components/ui/progress";
 import { Link } from "wouter";
+import { useState } from "react";
+import { format } from "date-fns";
+import { Line } from "react-chartjs-2";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+} from "chart.js";
+import {
+  TimeFilter,
+  TimeFilterParams,
+} from "@/components/admin/TimeFilter";
+
+// Register ChartJS components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 interface TutorProfile {
   isVerified?: boolean;
@@ -29,7 +59,19 @@ interface TutorProfile {
   hourlyRate?: number | string;
 }
 
+interface RevenueData {
+  period: string;
+  revenue: number;
+}
+
 export default function TutorDashboardStats() {
+  // State cho bộ lọc thời gian doanh thu
+  const [revenueFilterParams, setRevenueFilterParams] = useState<TimeFilterParams>({
+    filterType: "month",
+    month: new Date().getMonth() + 1,
+    year: new Date().getFullYear(),
+  });
+  const [shouldFetchRevenueData, setShouldFetchRevenueData] = useState(false);
   // Get tutor profile
   const { data: tutorProfile, isLoading: profileLoading } =
     useQuery<TutorProfile>({
@@ -45,6 +87,7 @@ export default function TutorDashboardStats() {
     rating?: number | string;
     reviews?: number;
     active_courses?: number;
+    inactive_courses?: number;
     unread_messages?: number;
     response_rate?: number;
     average_response_time?: string;
@@ -57,7 +100,143 @@ export default function TutorDashboardStats() {
     enabled: !!tutorProfile,
   });
 
+  // Get tutor's revenue statistics
+  const {
+    data: revenueData,
+    isLoading: isRevenueLoading,
+    error: revenueError,
+  } = useQuery<RevenueData[]>({
+    queryKey: ["tutor-revenue-stats", revenueFilterParams],
+    queryFn: async () => {
+      try {
+        let url = "/api/v1/tutors/statistics/revenue";
+        const params = new URLSearchParams();
+
+        // Add type parameter based on filter
+        params.append("type", revenueFilterParams.filterType);
+
+        // Add other parameters based on filter type
+        switch (revenueFilterParams.filterType) {
+          case "day":
+            if (revenueFilterParams.fromDate) {
+              params.append(
+                "fromDate",
+                format(revenueFilterParams.fromDate, "yyyy-MM-dd")
+              );
+            }
+            if (revenueFilterParams.toDate) {
+              params.append(
+                "toDate",
+                format(revenueFilterParams.toDate, "yyyy-MM-dd")
+              );
+            }
+            break;
+          case "month":
+            if (revenueFilterParams.month) {
+              params.append("month", revenueFilterParams.month.toString());
+            }
+            if (revenueFilterParams.year) {
+              params.append("year", revenueFilterParams.year.toString());
+            }
+            break;
+          case "year":
+            if (revenueFilterParams.year) {
+              params.append("year", revenueFilterParams.year.toString());
+            }
+            break;
+        }
+
+        const response = await fetch(`${url}?${params.toString()}`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch revenue data");
+        }
+        const data = await response.json();
+        return data as RevenueData[];
+      } catch (error) {
+        console.error("Error fetching tutor revenue data:", error);
+        throw error;
+      }
+    },
+    enabled: shouldFetchRevenueData,
+    refetchOnWindowFocus: false,
+  });
+
   const isLoading = profileLoading || statsLoading;
+
+  // Handle applying revenue filter
+  const handleApplyRevenueFilter = (params: TimeFilterParams) => {
+    setRevenueFilterParams(params);
+    setShouldFetchRevenueData(true);
+  };
+
+  // Format revenue data for chart
+  const formatRevenueChart = () => {
+    if (!revenueData || revenueData.length === 0) {
+      return {
+        labels: [],
+        datasets: [
+          {
+            label: "Doanh thu (VND)",
+            data: [],
+            backgroundColor: "rgba(10, 179, 156, 0.5)",
+            borderColor: "rgb(10, 179, 156)",
+            tension: 0.3,
+          },
+        ],
+      };
+    }
+
+    // Sort data by period (chronological order)
+    const sortedData = [...revenueData].sort((a, b) => {
+      return a.period.localeCompare(b.period);
+    });
+
+    // Format labels based on filter type
+    const labels = sortedData.map((item) => {
+      if (item.period.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        // Day format: YYYY-MM-DD
+        const dateParts = item.period.split("-");
+        return `${dateParts[2]}/${dateParts[1]}`;
+      } else if (item.period.match(/^\d{4}-\d{2}$/)) {
+        // Month format: YYYY-MM
+        const monthParts = item.period.split("-");
+        return `${monthParts[1]}/${monthParts[0]}`;
+      } else {
+        return item.period;
+      }
+    });
+
+    // Check if all values are below 1 million for unit scaling
+    const allValuesBelowOneMillion = sortedData.every(
+      (item) => item.revenue < 1000000
+    );
+
+    const useThousandUnit = allValuesBelowOneMillion;
+    const unit = useThousandUnit ? "nghìn VND" : "triệu VND";
+    const divisor = useThousandUnit ? 1000 : 1000000;
+
+    // Convert revenue to appropriate unit
+    const values = sortedData.map((item) =>
+      Number((item.revenue / divisor).toFixed(1))
+    );
+
+    return {
+      labels,
+      datasets: [
+        {
+          label: `Doanh thu (${unit})`,
+          data: values,
+          backgroundColor: "rgba(10, 179, 156, 0.5)",
+          borderColor: "rgb(10, 179, 156)",
+          tension: 0.3,
+        },
+      ],
+      _config: {
+        unit,
+        useThousandUnit,
+      },
+    };
+  };
 
   if (isLoading) {
     return (
@@ -99,9 +278,8 @@ export default function TutorDashboardStats() {
                 Trạng thái hồ sơ
               </CardTitle>
               <BadgeCheck
-                className={`h-4 w-4 ${
-                  tutorProfile.isVerified ? "text-green-500" : "text-yellow-500"
-                }`}
+                className={`h-4 w-4 ${tutorProfile.isVerified ? "text-green-500" : "text-yellow-500"
+                  }`}
               />
             </CardHeader>
             <CardContent>
@@ -116,22 +294,7 @@ export default function TutorDashboardStats() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">
-                Lượt xem hồ sơ
-              </CardTitle>
-              <Eye className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {stats?.profile_views || 0}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Số lượt xem hồ sơ của bạn
-              </p>
-            </CardContent>
-          </Card>
+
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -156,11 +319,10 @@ export default function TutorDashboardStats() {
             <CardContent>
               <div className="text-2xl font-bold">
                 {stats?.rating
-                  ? `${
-                      typeof stats.rating === "number"
-                        ? stats.rating.toFixed(1)
-                        : stats.rating
-                    }/5.0`
+                  ? `${typeof stats.rating === "number"
+                    ? stats.rating.toFixed(1)
+                    : stats.rating
+                  }/5.0`
                   : "Chưa có"}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
@@ -168,229 +330,129 @@ export default function TutorDashboardStats() {
               </p>
             </CardContent>
           </Card>
-        </div>
-
-        {/* Activity Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Khóa học</CardTitle>
-              <CardDescription>Số khóa học đang hoạt động</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium leading-none">
-                      Khóa học đang hiển thị
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {stats?.active_courses || 0} khóa học
-                    </p>
-                  </div>
-                  <BookOpen className="h-5 w-5 text-muted-foreground" />
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Progress
-                    value={(stats?.active_courses || 0) * 20}
-                    className="h-2"
-                  />
-                  <span className="text-sm text-muted-foreground w-8">
-                    {stats?.active_courses || 0}/5
-                  </span>
-                </div>
-
-                <Button variant="outline" size="sm" asChild>
-                  <Link href="/dashboard/tutor/courses">Quản lý khóa học</Link>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle>Tin nhắn</CardTitle>
-              <CardDescription>
-                Tin nhắn và tương tác với học viên
-              </CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Khóa học</CardTitle>
+              <BookOpen className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium leading-none">
-                      Tin nhắn chưa đọc
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {stats?.unread_messages || 0} tin nhắn
-                    </p>
+              {((stats?.active_courses || 0) + (stats?.inactive_courses || 0)) > 0 ? (
+                <>
+                  <div className="text-2xl font-bold">
+                    {stats?.active_courses || 0} / {(stats?.active_courses || 0) + (stats?.inactive_courses || 0)}
                   </div>
-                  <MessageSquare className="h-5 w-5 text-muted-foreground" />
-                </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Hiển thị: {stats?.active_courses || 0} / {(stats?.active_courses || 0) + (stats?.inactive_courses || 0)} khóa học
+                  </p>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex flex-col">
-                    <span className="text-2xl font-bold">
-                      {stats?.active_conversations || 0}
-                    </span>
-                    <span className="text-sm text-muted-foreground">
-                      Hội thoại
-                    </span>
-                  </div>
-
-                  <div className="flex flex-col">
-                    <span className="text-2xl font-bold">
-                      {stats?.response_rate || 100}%
-                    </span>
-                    <span className="text-sm text-muted-foreground">
-                      Tỉ lệ phản hồi
-                    </span>
-                  </div>
-                </div>
-
-                <Button variant="outline" size="sm" asChild>
-                  <Link href="/dashboard/tutor/messages">Xem tin nhắn</Link>
-                </Button>
-              </div>
+                </>
+              ) : (
+                <div className="text-sm text-muted-foreground">Chưa có khóa học nào</div>
+              )}
+              
             </CardContent>
           </Card>
         </div>
 
-        {/* Stats Table */}
+        {/* Revenue Statistics */}
         <Card>
           <CardHeader>
-            <CardTitle>Thống kê hoạt động</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5 text-green-600" />
+              Thống kê doanh thu
+            </CardTitle>
             <CardDescription>
-              Tổng quan về hoạt động của bạn trên nền tảng
+              Xem biểu đồ doanh thu từ các buổi học đã hoàn thành
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3 font-medium">Chỉ số</th>
-                    <th className="text-right py-3 font-medium">Giá trị</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b">
-                    <td className="py-3">Ngày tham gia</td>
-                    <td className="text-right">
-                      {tutorProfile?.created_at
-                        ? new Date(tutorProfile.created_at).toLocaleDateString(
-                            "vi-VN"
-                          )
-                        : new Date().toLocaleDateString("vi-VN")}
-                    </td>
-                  </tr>
-                  <tr className="border-b">
-                    <td className="py-3">Thời gian phản hồi trung bình</td>
-                    <td className="text-right">
-                      {stats?.average_response_time || "24 giờ"}
-                    </td>
-                  </tr>
-                  <tr className="border-b">
-                    <td className="py-3">Số môn học</td>
-                    <td className="text-right">
-                      {tutorProfile.subjects?.length || 0}
-                    </td>
-                  </tr>
-                  <tr className="border-b">
-                    <td className="py-3">Số cấp độ giảng dạy</td>
-                    <td className="text-right">
-                      {tutorProfile.educationLevels?.length || 0}
-                    </td>
-                  </tr>
-                  <tr className="border-b">
-                    <td className="py-3">Khóa học đã tạo</td>
-                    <td className="text-right">
-                      {stats?.courses_created || 0}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="py-3">Học phí tham khảo</td>
-                    <td className="text-right">
-                      {tutorProfile?.hourlyRate
-                        ? new Intl.NumberFormat("vi-VN", {
-                            style: "currency",
-                            currency: "VND",
-                          }).format(Number(tutorProfile.hourlyRate)) + "/giờ"
-                        : "Chưa đặt"}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+            {/* Time Filter */}
+            <div className="mb-6">
+              <TimeFilter
+                onApplyFilter={handleApplyRevenueFilter}
+                className="border-none shadow-none"
+              />
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Tips for improvement */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Gợi ý cải thiện</CardTitle>
-            <CardDescription>
-              Những cách để cải thiện hồ sơ và tăng khả năng nhận học viên
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-3">
-              {tutorProfile?.isVerified === false && (
-                <li className="flex items-start">
-                  <UserCheck className="h-5 w-5 text-primary mr-2 mt-0.5" />
-                  <div>
-                    <p className="font-medium">Hoàn thiện hồ sơ xác minh</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Xác minh hồ sơ để tăng độ tin cậy và cơ hội nhận học viên.
-                    </p>
-                  </div>
-                </li>
-              )}
-
-              {(stats?.active_courses || 0) < 3 && (
-                <li className="flex items-start">
-                  <BookOpen className="h-5 w-5 text-primary mr-2 mt-0.5" />
-                  <div>
-                    <p className="font-medium">Tạo thêm khóa học</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Tạo thêm khóa học cho các môn học và cấp độ khác nhau để
-                      tiếp cận nhiều học viên hơn.
-                    </p>
-                    <Button variant="link" className="px-0 h-auto mt-1" asChild>
-                      <Link href="/dashboard/tutor/courses">Tạo khóa học</Link>
-                    </Button>
-                  </div>
-                </li>
-              )}
-
-              <li className="flex items-start">
-                <Star className="h-5 w-5 text-primary mr-2 mt-0.5" />
-                <div>
-                  <p className="font-medium">Yêu cầu đánh giá từ học viên</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Đánh giá tốt giúp tăng khả năng hiển thị hồ sơ và tạo niềm
-                    tin với học viên mới.
-                  </p>
+            {/* Revenue Chart */}
+            <div className="h-[350px]">
+              {isRevenueLoading ? (
+                <div className="h-full flex items-center justify-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <span className="ml-2">Đang tải dữ liệu doanh thu...</span>
                 </div>
-              </li>
+              ) : revenueData && revenueData.length > 0 ? (
+                (() => {
+                  const chartData = formatRevenueChart();
+                  const config = chartData._config || {
+                    unit: "VND",
+                    useThousandUnit: false,
+                  };
 
-              <li className="flex items-start">
-                <MessageSquare className="h-5 w-5 text-primary mr-2 mt-0.5" />
-                <div>
-                  <p className="font-medium">Phản hồi tin nhắn nhanh chóng</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Phản hồi nhanh chóng giúp tăng tỉ lệ chuyển đổi từ người
-                    quan tâm thành học viên.
-                  </p>
-                  <Button variant="link" className="px-0 h-auto mt-1" asChild>
-                    <Link href="/dashboard/tutor/messages">
-                      Kiểm tra tin nhắn
-                    </Link>
-                  </Button>
+                  return (
+                    <Line
+                      data={chartData}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                          legend: {
+                            position: "top" as const,
+                          },
+                          title: {
+                            display: true,
+                            text: `Biểu đồ doanh thu theo thời gian`,
+                          },
+                          tooltip: {
+                            callbacks: {
+                              label: function (context: any) {
+                                const value = context.parsed.y;
+                                return `Doanh thu: ${value} ${config.unit}`;
+                              },
+                            },
+                          },
+                        },
+                        scales: {
+                          y: {
+                            beginAtZero: true,
+                            ticks: {
+                              stepSize: config.useThousandUnit ? 50 : 0.5,
+                            },
+                            title: {
+                              display: true,
+                              text: `Doanh thu (${config.unit})`,
+                            },
+                          },
+                          x: {
+                            title: {
+                              display: true,
+                              text: "Thời gian",
+                            },
+                          },
+                        },
+                      }}
+                    />
+                  );
+                })()
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center">
+                    <LineChart className="h-16 w-16 mx-auto text-muted-foreground" />
+                    <p className="mt-4 text-muted-foreground">
+                      {shouldFetchRevenueData
+                        ? "Không có dữ liệu doanh thu trong khoảng thời gian được chọn."
+                        : "Chọn bộ lọc thời gian và nhấn nút Xem để hiển thị dữ liệu doanh thu."}
+                    </p>
+                    {!shouldFetchRevenueData && (
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Doanh thu được tính từ các buổi học đã hoàn thành.
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </li>
-            </ul>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>

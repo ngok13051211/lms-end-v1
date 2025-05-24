@@ -178,6 +178,8 @@ export default function TutorDashboard() {
     profileViews: number;
     totalStudents: number;
     averageRating: number;
+    active_courses: number;
+    inactive_courses: number;
     // Add any other stats properties that you need
   }
 
@@ -808,8 +810,8 @@ export default function TutorDashboard() {
                             <p className="text-base">
                               {tutorProfile.date_of_birth
                                 ? new Date(
-                                    tutorProfile.date_of_birth
-                                  ).toLocaleDateString("vi-VN")
+                                  tutorProfile.date_of_birth
+                                ).toLocaleDateString("vi-VN")
                                 : "Chưa cập nhật"}
                             </p>
                           </div>
@@ -840,7 +842,7 @@ export default function TutorDashboard() {
                         Môn học giảng dạy
                       </h3>
                       {tutorProfile.subjects &&
-                      tutorProfile.subjects.length > 0 ? (
+                        tutorProfile.subjects.length > 0 ? (
                         <div className="flex flex-wrap gap-2">
                           {tutorProfile.subjects.map((subject) => (
                             <Badge
@@ -902,11 +904,10 @@ export default function TutorDashboard() {
                                   ? "default"
                                   : "secondary"
                               }
-                              className={`mr-4 ${
-                                course.status === "active"
+                              className={`mr-4 ${course.status === "active"
                                   ? "bg-green-500 hover:bg-green-600"
                                   : ""
-                              }`}
+                                }`}
                             >
                               {course.status === "active"
                                 ? "Active"
@@ -953,8 +954,8 @@ export default function TutorDashboard() {
                             {course.teachingMode === "online"
                               ? "Online"
                               : course.teachingMode === "offline"
-                              ? "In-person"
-                              : "Online & In-person"}
+                                ? "In-person"
+                                : "Online & In-person"}
                           </Badge>
                         </div>
 

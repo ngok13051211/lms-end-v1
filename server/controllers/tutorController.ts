@@ -238,15 +238,12 @@ export const getTutors = async (req: Request, res: Response) => {
         )
         .where(
           or(
-            sql`LOWER(${schema.users.first_name}) LIKE ${
-              "%" + searchLower + "%"
-            }`,
-            sql`LOWER(${schema.users.last_name}) LIKE ${
-              "%" + searchLower + "%"
-            }`,
-            sql`LOWER(${schema.tutorProfiles.bio}) LIKE ${
-              "%" + searchLower + "%"
-            }`
+            sql`LOWER(${schema.users.first_name}) LIKE ${"%" + searchLower + "%"
+              }`,
+            sql`LOWER(${schema.users.last_name}) LIKE ${"%" + searchLower + "%"
+              }`,
+            sql`LOWER(${schema.tutorProfiles.bio}) LIKE ${"%" + searchLower + "%"
+              }`
           )
         )
         .groupBy(schema.tutorProfiles.id); // Thêm groupBy để không bị trùng lặp kết quả
@@ -409,9 +406,8 @@ export const getTutors = async (req: Request, res: Response) => {
         .select({ id: schema.tutorProfiles.id })
         .from(schema.tutorProfiles)
         .where(
-          sql`LOWER(${schema.tutorProfiles.bio}) LIKE ${
-            "%" + locationLower + "%"
-          }`
+          sql`LOWER(${schema.tutorProfiles.bio}) LIKE ${"%" + locationLower + "%"
+            }`
         );
 
       if (tutorsWithLocationInBio.length > 0) {
@@ -690,8 +686,7 @@ export const getTutorById = async (req: Request, res: Response) => {
       }
 
       console.log(
-        `Found tutor profile with ID: ${tutor.id} (using ${
-          tutor.id === tutorId ? "tutor_profile.id" : "user_id mapping"
+        `Found tutor profile with ID: ${tutor.id} (using ${tutor.id === tutorId ? "tutor_profile.id" : "user_id mapping"
         })`
       );
       // Format response data (đơn giản hóa)      // Tìm các chứng chỉ từ bảng teachingRequests
@@ -920,9 +915,9 @@ export const getTutorReviews = async (req: Request, res: Response) => {
         created_at: review.created_at,
         course: review.course
           ? {
-              id: review.course.id,
-              title: review.course.title,
-            }
+            id: review.course.id,
+            title: review.course.title,
+          }
           : null,
         student: {
           id: review.student.id,
@@ -1329,9 +1324,7 @@ export const getTutorStats = async (req: Request, res: Response) => {
 
     if (!tutorProfile) {
       return res.status(404).json({ message: "Tutor profile not found" });
-    }
-
-    // Get active courses count
+    }    // Get active courses count
     const activeCoursesCount = await db
       .select({ count: sql<number>`count(*)` })
       .from(schema.courses)
@@ -1339,6 +1332,17 @@ export const getTutorStats = async (req: Request, res: Response) => {
         and(
           eq(schema.courses.tutor_id, tutorProfile.id),
           eq(schema.courses.status, "active")
+        )
+      );
+
+    // Get inactive courses count
+    const inactiveCoursesCount = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(schema.courses)
+      .where(
+        and(
+          eq(schema.courses.tutor_id, tutorProfile.id),
+          eq(schema.courses.status, "inactive")
         )
       );
 
@@ -1377,18 +1381,17 @@ export const getTutorStats = async (req: Request, res: Response) => {
           not(eq(schema.messages.sender_id, userId)),
           eq(schema.messages.read, false)
         )
-      );
-
-    const stats = {
-      profile_status: tutorProfile.is_verified ? "Đã xác minh" : "Chờ xác minh",
-      active_courses: Number(activeCoursesCount[0]?.count || 0),
-      courses_created: Number(totalCoursesCount[0]?.count || 0),
-      reviews: Number(reviewsCount[0]?.count || 0),
-      rating: tutorProfile.rating,
-      profile_views: profileViews,
-      active_conversations: Number(conversationsCount[0]?.count || 0),
-      unread_messages: Number(unreadMessagesCount[0]?.count || 0),
-    };
+      ); const stats = {
+        profile_status: tutorProfile.is_verified ? "Đã xác minh" : "Chờ xác minh",
+        active_courses: Number(activeCoursesCount[0]?.count || 0),
+        inactive_courses: Number(inactiveCoursesCount[0]?.count || 0),
+        courses_created: Number(totalCoursesCount[0]?.count || 0),
+        reviews: Number(reviewsCount[0]?.count || 0),
+        rating: tutorProfile.rating,
+        profile_views: profileViews,
+        active_conversations: Number(conversationsCount[0]?.count || 0),
+        unread_messages: Number(unreadMessagesCount[0]?.count || 0),
+      };
 
     return res.status(200).json(stats);
   } catch (error) {
@@ -1577,8 +1580,7 @@ export const getTutorCourses = async (req: Request, res: Response) => {
 
     // Log which ID we're using
     console.log(
-      `Found tutor profile with ID: ${tutorProfile.id} (using ${
-        tutorProfile.id === tutorId ? "tutor_profile.id" : "user_id mapping"
+      `Found tutor profile with ID: ${tutorProfile.id} (using ${tutorProfile.id === tutorId ? "tutor_profile.id" : "user_id mapping"
       })`
     );
 
@@ -2174,10 +2176,10 @@ export const getOwnTeachingRequests = async (req: Request, res: Response) => {
       updated_at: request.updated_at,
       approved_by: request.approvedBy
         ? {
-            id: request.approvedBy.id,
-            name: `${request.approvedBy.first_name} ${request.approvedBy.last_name}`,
-            email: request.approvedBy.email,
-          }
+          id: request.approvedBy.id,
+          name: `${request.approvedBy.first_name} ${request.approvedBy.last_name}`,
+          email: request.approvedBy.email,
+        }
         : null,
     }));
 
