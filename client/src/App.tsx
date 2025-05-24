@@ -26,6 +26,7 @@ import AdminTutorVerification from "@/pages/admin-tutor-verification";
 import AdminReports from "@/pages/admin-reports";
 import AdminUsers from "@/pages/admin-users";
 import AdminTutors from "@/pages/admin-tutors";
+import AdminTutorDetail from "@/pages/admin-tutor-detail";
 import BecomeTutor from "@/pages/become-tutor";
 import BookingForm from "@/pages/booking-form";
 import Payment from "@/pages/payment";
@@ -224,6 +225,9 @@ function Router() {
       </Route>{" "}
       <Route path="/admin-dashboard/tutors">
         <PrivateRoute role="admin" component={AdminTutors} />
+      </Route>
+      <Route path="/admin-dashboard/tutors/:id">
+        <PrivateRoute role="admin" component={AdminTutorDetail} />
       </Route>
       {/* Booking form route */}
       <Route path="/book/:tutorId">

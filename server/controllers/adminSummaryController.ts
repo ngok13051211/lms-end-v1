@@ -133,16 +133,22 @@ export const getRecentActivities = async (req: Request, res: Response) => {
         // Get recently registered users
         const recentUsers = await db
             .select({
-                id: users.id,
-                username: users.username,
-                email: users.email,
-                firstName: users.first_name,
-                lastName: users.last_name,
-                role: users.role,
-                createdAt: users.created_at,
-                type: sql`'new_user'`.as("type"),
-                title: sql`'New user registered'`.as("title"),
-                description: sql`CONCAT(${users.first_name}, ' ', ${users.last_name}, ' joined as ', ${users.role})`.as("description")
+            id: users.id,
+            username: users.username,
+            email: users.email,
+            firstName: users.first_name,
+            lastName: users.last_name,
+            role: users.role,
+            createdAt: users.created_at,
+            type: sql`'new_user'`.as("type"),
+            title: sql`'Người dùng mới đăng ký'`.as("title"),
+            description: sql`CONCAT(${users.first_name}, ' ', ${users.last_name}, ' đã tham gia với vai trò ', 
+                CASE 
+                WHEN ${users.role} = 'student' THEN 'học viên'
+                WHEN ${users.role} = 'tutor' THEN 'giảng viên'
+                WHEN ${users.role} = 'admin' THEN 'quản trị viên'
+                ELSE ${users.role}
+                END)`.as("description")
             })
             .from(users)
             .orderBy(desc(users.created_at))
@@ -159,7 +165,8 @@ export const getRecentActivities = async (req: Request, res: Response) => {
                 hourlyRate: courses.hourly_rate,
                 createdAt: courses.created_at,
                 type: sql`'new_course'`.as("type"),
-                description: sql`CONCAT('New course: ', ${courses.title})`.as("description")
+                title: sql`'Khóa học mới'`.as("title"),
+                description: sql`CONCAT('Khóa học mới: ', ${courses.title})`.as("description")
             })
             .from(courses)
             .orderBy(desc(courses.created_at))
@@ -176,7 +183,8 @@ export const getRecentActivities = async (req: Request, res: Response) => {
                 status: bookingRequests.status,
                 createdAt: bookingRequests.created_at,
                 type: sql`'new_booking'`.as("type"),
-                description: sql`CONCAT('New booking: ', ${bookingRequests.title})`.as("description")
+                title: sql`'Yêu cầu đặt lịch mới'`.as("title"),
+                description: sql`CONCAT('Yêu cầu đặt lịch: ', ${bookingRequests.title})`.as("description")
             })
             .from(bookingRequests)
             .orderBy(desc(bookingRequests.created_at))
@@ -211,7 +219,7 @@ export const getRecentActivities = async (req: Request, res: Response) => {
         });
     } catch (error) {
         console.error("Error getting recent activities:", error);
-        return res.status(500).json({ error: "Failed to get recent activities" });
+        return res.status(500).json({ error: "Không thể lấy hoạt động gần đây" });
     }
 };
 

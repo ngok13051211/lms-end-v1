@@ -10,13 +10,21 @@ import { tutorIdParamSchema } from "@shared/schema";
 
 const router = Router();
 
-// Bắt đầu cuộc hội thoại với gia sư
+// Bắt đầu cuộc hội thoại với gia sư (phương thức cũ - chỉ dành cho học viên)
 router.post(
   "/tutor/:tutorId",
   authMiddleware,
   roleMiddleware(["student"]),
   validateParams(tutorIdParamSchema),
   conversationController.startConversation
+);
+
+// Bắt đầu cuộc hội thoại với bất kỳ người dùng nào (học viên hoặc gia sư)
+router.post(
+  "/user/:id",
+  authMiddleware,
+  validateParams(schema.idSchema),
+  conversationController.startConversationWithUser
 );
 
 // Lấy danh sách cuộc hội thoại

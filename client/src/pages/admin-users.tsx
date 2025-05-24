@@ -42,7 +42,10 @@ import {
   Filter,
   MoreHorizontal,
   UserPlus,
+  Lock,
+  Unlock,
 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 // Interface cho dữ liệu người dùng
 interface User {
@@ -74,20 +77,16 @@ interface UserDetailResponse {
 
 export default function AdminUsers() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [roleFilter, setRoleFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-
   // Truy vấn danh sách người dùng
   const { data, isLoading, refetch } = useQuery<ApiResponse>({
-    queryKey: [`users-list-${searchTerm}-${roleFilter}-${page}`],
+    queryKey: [`users-list-${searchTerm}-${page}`],
     queryFn: async () => {
       const response = await fetch(
-        `/api/v1/admin/users?search=${searchTerm}&role=${
-          roleFilter === "all" ? "" : roleFilter
-        }&page=${page}&limit=${pageSize}`,
+        `/api/v1/admin/users?search=${searchTerm}&role=student&page=${page}&limit=${pageSize}`,
         {
           credentials: "include",
         }
@@ -129,13 +128,31 @@ export default function AdminUsers() {
       console.error("Lỗi khi lấy thông tin chi tiết người dùng:", error);
     }
   };
+  // State cho dialog xác nhận khóa/mở khóa tài khoản
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [actionType, setActionType] = useState<"deactivate" | "activate">("deactivate");
+  const [targetUserId, setTargetUserId] = useState<number | null>(null);
+  const [targetUserName, setTargetUserName] = useState<string>("");
+  const { toast } = useToast();
+
+  // Mở dialog xác nhận khóa tài khoản
+  const openDeactivateConfirm = (userId: number, userName: string) => {
+    setTargetUserId(userId);
+    setTargetUserName(userName);
+    setActionType("deactivate");
+    setConfirmDialogOpen(true);
+  };
+
+  // Mở dialog xác nhận mở khóa tài khoản
+  const openActivateConfirm = (userId: number, userName: string) => {
+    setTargetUserId(userId);
+    setTargetUserName(userName);
+    setActionType("activate");
+    setConfirmDialogOpen(true);
+  };
 
   // Xử lý khóa tài khoản người dùng
   const deactivateUser = async (userId: number) => {
-    if (!window.confirm("Bạn có chắc chắn muốn khóa tài khoản này?")) {
-      return;
-    }
-
     try {
       const response = await fetch(`/api/v1/admin/users/${userId}/deactivate`, {
         method: "PATCH",
@@ -152,10 +169,49 @@ export default function AdminUsers() {
       // Cập nhật lại danh sách sau khi khóa tài khoản
       await refetch();
 
-      alert("Đã khóa tài khoản người dùng thành công");
+      toast({
+        title: "Thành công",
+        description: "Đã khóa tài khoản học viên thành công",
+      });
     } catch (error) {
       console.error("Lỗi khi khóa tài khoản người dùng:", error);
-      alert("Đã xảy ra lỗi khi khóa tài khoản người dùng");
+      toast({
+        title: "Lỗi",
+        description: "Không thể khóa tài khoản học viên",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Xử lý mở khóa tài khoản người dùng
+  const activateUser = async (userId: number) => {
+    try {
+      const response = await fetch(`/api/v1/admin/users/${userId}/activate`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Không thể mở khóa tài khoản người dùng");
+      }
+
+      // Cập nhật lại danh sách sau khi mở khóa tài khoản
+      await refetch();
+
+      toast({
+        title: "Thành công",
+        description: "Đã mở khóa tài khoản học viên thành công",
+      });
+    } catch (error) {
+      console.error("Lỗi khi mở khóa tài khoản người dùng:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể mở khóa tài khoản học viên",
+        variant: "destructive",
+      });
     }
   };
 
@@ -163,28 +219,24 @@ export default function AdminUsers() {
     <DashboardLayout>
       <div className="p-6 max-w-7xl mx-auto space-y-6">
         <div className="flex flex-col md:flex-row justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">
-              Quản lý người dùng
-            </h1>
+          <div>            <h1 className="text-3xl font-bold tracking-tight">
+            Quản lý học viên
+          </h1>
             <p className="text-muted-foreground mt-1">
-              Quản lý tất cả người dùng trong hệ thống HomiTutor
+              Quản lý tất cả học viên trong hệ thống HomiTutor
             </p>
-          </div>
-
-          <div>
+          </div>          <div>
             <Dialog>
               <DialogTrigger asChild>
                 <Button>
                   <UserPlus className="mr-2 h-4 w-4" />
-                  Thêm người dùng
+                  Thêm học viên
                 </Button>
-              </DialogTrigger>
-              <DialogContent>
+              </DialogTrigger>              <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Thêm người dùng mới</DialogTitle>
+                  <DialogTitle>Thêm học viên mới</DialogTitle>
                   <DialogDescription>
-                    Điền thông tin để tạo tài khoản người dùng mới
+                    Điền thông tin để tạo tài khoản học viên mới
                   </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
@@ -216,21 +268,11 @@ export default function AdminUsers() {
                       Mật khẩu
                     </label>
                     <Input id="password" type="password" className="mt-1" />
-                  </div>
-                  <div>
+                  </div>                  <div>
                     <label htmlFor="role" className="text-sm font-medium">
                       Vai trò
                     </label>
-                    <Select>
-                      <SelectTrigger id="role" className="mt-1">
-                        <SelectValue placeholder="Chọn vai trò" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="student">Học viên</SelectItem>
-                        <SelectItem value="tutor">Gia sư</SelectItem>
-                        <SelectItem value="admin">Quản trị viên</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Input id="role" className="mt-1" value="Học viên" disabled />
                   </div>
                 </div>
                 <DialogFooter>
@@ -241,32 +283,19 @@ export default function AdminUsers() {
           </div>
         </div>
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle>Danh sách người dùng</CardTitle>
+          <CardHeader className="pb-3">            <CardTitle>Danh sách học viên</CardTitle>
             <CardDescription>
-              Tổng cộng {usersData.users?.length || 0} người dùng
-            </CardDescription>
-            <div className="flex flex-col sm:flex-row gap-4 mt-4">
+              Tổng cộng {usersData.users?.length || 0} học viên
+            </CardDescription><div className="flex flex-col sm:flex-row gap-4 mt-4">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input
-                  placeholder="Tìm kiếm người dùng..."
+                  placeholder="Tìm kiếm học viên..."
                   className="pl-10"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-              <Select value={roleFilter} onValueChange={setRoleFilter}>
-                <SelectTrigger className="w-full sm:w-40">
-                  <SelectValue placeholder="Lọc theo vai trò" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tất cả</SelectItem>
-                  <SelectItem value="student">Học viên</SelectItem>
-                  <SelectItem value="tutor">Gia sư</SelectItem>
-                  <SelectItem value="admin">Quản trị viên</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
           </CardHeader>
           <CardContent>
@@ -277,19 +306,17 @@ export default function AdminUsers() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="border-b text-left">
-                      <th className="py-4 px-4 font-medium">Người dùng</th>
-                      <th className="py-4 px-4 font-medium">Email</th>
-                      <th className="py-4 px-4 font-medium">Vai trò</th>
-                      <th className="py-4 px-4 font-medium">Ngày tham gia</th>
-                      <th className="py-4 px-4 font-medium">Trạng thái</th>
-                      <th className="py-4 px-4 font-medium text-right">
-                        Thao tác
-                      </th>
-                    </tr>
-                  </thead>
+                <table className="w-full border-collapse">                  <thead>
+                  <tr className="border-b text-left">
+                    <th className="py-4 px-4 font-medium">Học viên</th>
+                    <th className="py-4 px-4 font-medium">Email</th>
+                    <th className="py-4 px-4 font-medium">Ngày tham gia</th>
+                    <th className="py-4 px-4 font-medium">Trạng thái</th>
+                    <th className="py-4 px-4 font-medium text-right">
+                      Thao tác
+                    </th>
+                  </tr>
+                </thead>
                   <tbody>
                     {usersData.users.map((user) => (
                       <tr key={user.id} className="border-b">
@@ -309,25 +336,7 @@ export default function AdminUsers() {
                               {user.first_name} {user.last_name}
                             </span>
                           </div>
-                        </td>
-                        <td className="py-4 px-4">{user.email}</td>
-                        <td className="py-4 px-4">
-                          <Badge
-                            variant={
-                              user.role === "admin"
-                                ? "default"
-                                : user.role === "tutor"
-                                ? "secondary"
-                                : "outline"
-                            }
-                          >
-                            {user.role === "admin"
-                              ? "Quản trị viên"
-                              : user.role === "tutor"
-                              ? "Gia sư"
-                              : "Học viên"}
-                          </Badge>
-                        </td>
+                        </td>                        <td className="py-4 px-4">{user.email}</td>
                         <td className="py-4 px-4">
                           {formatDate(user.created_at)}
                         </td>
@@ -350,38 +359,41 @@ export default function AdminUsers() {
                                 <MoreHorizontal className="h-4 w-4" />
                                 <span className="sr-only">Mở menu</span>
                               </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>Hành động</DropdownMenuLabel>{" "}
+                            </DropdownMenuTrigger>                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Hành động</DropdownMenuLabel>
                               <DropdownMenuItem
                                 onClick={() => handleViewUserDetail(user.id)}
                               >
                                 Xem chi tiết
                               </DropdownMenuItem>
                               <DropdownMenuItem>Chỉnh sửa</DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  user.is_active && deactivateUser(user.id)
-                                }
-                                className={
-                                  user.is_active
-                                    ? "text-red-600"
-                                    : "text-gray-400"
-                                }
-                                disabled={!user.is_active}
-                              >
-                                {user.is_active
-                                  ? "Khóa tài khoản"
-                                  : "Đã bị khóa"}
-                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />                              {user.is_active ? (
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    openDeactivateConfirm(user.id, `${user.first_name} ${user.last_name}`)
+                                  }
+                                  className="text-red-600"
+                                >
+                                  <Lock className="h-4 w-4 mr-2" />
+                                  Khóa tài khoản
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    openActivateConfirm(user.id, `${user.first_name} ${user.last_name}`)
+                                  }
+                                  className="text-green-600"
+                                >
+                                  <Unlock className="h-4 w-4 mr-2" />
+                                  Mở khóa tài khoản
+                                </DropdownMenuItem>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>{" "}
+                    ))}                  </tbody>
+                </table>
                 {usersData.total_pages > 1 && (
                   <div className="flex justify-center mt-6">
                     <div className="flex items-center space-x-2">
@@ -406,163 +418,55 @@ export default function AdminUsers() {
                       </Button>
                     </div>
                   </div>
-                )}
-              </div>
+                )}              </div>
             )}
           </CardContent>
-        </Card>{" "}
-      </div>
+        </Card>
 
-      {/* Modal chi tiết người dùng */}
-      <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Chi tiết người dùng</DialogTitle>
-            <DialogDescription>
-              Thông tin chi tiết của người dùng trong hệ thống
-            </DialogDescription>
-          </DialogHeader>
-
-          {selectedUser ? (
-            <div className="space-y-6 py-4">
-              <div className="flex flex-col md:flex-row gap-6 items-start">
-                <div className="flex-shrink-0">
-                  <Avatar className="h-24 w-24">
-                    <AvatarImage
-                      src={selectedUser.avatar}
-                      alt={`${selectedUser.first_name} ${selectedUser.last_name}`}
-                    />
-                    <AvatarFallback className="text-2xl">
-                      {selectedUser.first_name[0]}
-                      {selectedUser.last_name[0]}
-                    </AvatarFallback>
-                  </Avatar>
-                </div>
-
-                <div className="space-y-4 flex-1">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <h4 className="text-sm font-medium text-muted-foreground">
-                        Họ tên
-                      </h4>
-                      <p className="text-base">
-                        {selectedUser.first_name} {selectedUser.last_name}
-                      </p>
-                    </div>
-
-                    <div>
-                      <h4 className="text-sm font-medium text-muted-foreground">
-                        Tên đăng nhập
-                      </h4>
-                      <p className="text-base">{selectedUser.username}</p>
-                    </div>
-
-                    <div>
-                      <h4 className="text-sm font-medium text-muted-foreground">
-                        Email
-                      </h4>
-                      <p className="text-base">{selectedUser.email}</p>
-                    </div>
-
-                    <div>
-                      <h4 className="text-sm font-medium text-muted-foreground">
-                        Vai trò
-                      </h4>
-                      <Badge
-                        variant={
-                          selectedUser.role === "admin"
-                            ? "default"
-                            : selectedUser.role === "tutor"
-                            ? "secondary"
-                            : "outline"
-                        }
-                        className="mt-1"
-                      >
-                        {selectedUser.role === "admin"
-                          ? "Quản trị viên"
-                          : selectedUser.role === "tutor"
-                          ? "Gia sư"
-                          : "Học viên"}
-                      </Badge>
-                    </div>
-
-                    <div>
-                      <h4 className="text-sm font-medium text-muted-foreground">
-                        Trạng thái
-                      </h4>
-                      <Badge
-                        variant={
-                          selectedUser.is_active ? "outline" : "destructive"
-                        }
-                        className={
-                          selectedUser.is_active
-                            ? "mt-1 bg-green-100 text-green-800 hover:bg-green-200"
-                            : "mt-1"
-                        }
-                      >
-                        {selectedUser.is_active ? "Đang hoạt động" : "Bị khóa"}
-                      </Badge>
-                    </div>
-
-                    <div>
-                      <h4 className="text-sm font-medium text-muted-foreground">
-                        Ngày tham gia
-                      </h4>
-                      <p className="text-base">
-                        {formatDate(selectedUser.created_at)}
-                      </p>
-                    </div>
-
-                    <div>
-                      <h4 className="text-sm font-medium text-muted-foreground">
-                        Cập nhật lần cuối
-                      </h4>
-                      <p className="text-base">
-                        {formatDate(selectedUser.updated_at)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {selectedUser.role === "tutor" && (
-                <div className="pt-4 border-t">
-                  <h3 className="font-medium text-lg mb-3">Thông tin gia sư</h3>
-                  <p className="text-muted-foreground text-sm">
-                    Xem thêm trong trang quản lý gia sư
+        {/* Confirmation Dialog for Account Actions */}
+        <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {actionType === "deactivate" ? "Khóa tài khoản" : "Mở khóa tài khoản"}
+              </DialogTitle>
+              <DialogDescription>
+                Bạn có chắc chắn muốn {actionType === "deactivate" ? "khóa" : "mở khóa"} tài khoản của học viên <strong>{targetUserName}</strong>?
+                {actionType === "deactivate" && (
+                  <p className="mt-2 text-red-500">
+                    Học viên sẽ không thể đăng nhập hoặc sử dụng hệ thống cho đến khi được mở khóa.
                   </p>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="py-8 flex items-center justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <span className="ml-2">Đang tải thông tin...</span>
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsDetailModalOpen(false)}
-            >
-              Đóng
-            </Button>
-
-            {selectedUser?.is_active && selectedUser?.role !== "admin" && (
+                )}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="sm:justify-end">
               <Button
-                variant="destructive"
+                type="button"
+                variant="secondary"
+                onClick={() => setConfirmDialogOpen(false)}
+              >
+                Không
+              </Button>
+              <Button
+                type="button"
+                variant={actionType === "deactivate" ? "destructive" : "default"}
                 onClick={() => {
-                  deactivateUser(selectedUser.id);
-                  setIsDetailModalOpen(false);
+                  if (targetUserId) {
+                    if (actionType === "deactivate") {
+                      deactivateUser(targetUserId);
+                    } else {
+                      activateUser(targetUserId);
+                    }
+                  }
+                  setConfirmDialogOpen(false);
                 }}
               >
-                Khóa tài khoản
+                Có
               </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
     </DashboardLayout>
   );
 }

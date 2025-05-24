@@ -1671,7 +1671,7 @@ export const getTeachingRequests = async (req: Request, res: Response) => {
     const total = Number(countResult[0]?.count || 0);
     const totalPages = Math.ceil(total / limit);
 
-    // Format dữ liệu đúng cấu trúc frontend mong muốn
+    // Format dữ liệu đúng cấu trúc mà frontend mong đợi
     const formattedRequests = requests.map((request) => ({
       id: request.id,
       subject: request.subject,
@@ -1852,6 +1852,28 @@ export const approveTeachingRequest = async (req: Request, res: Response) => {
         updated_at: new Date(),
       })
       .where(eq(schema.teachingRequests.id, requestId));
+
+    // Kiểm tra số lượng yêu cầu đã được duyệt của gia sư này
+    const approvedRequests = await db.query.teachingRequests.findMany({
+      where: and(
+        eq(schema.teachingRequests.tutor_id, request.tutor_id),
+        eq(schema.teachingRequests.status, "approved")
+      ),
+    });
+    console.log("Số lượng yêu cầu đã được duyệt:", approvedRequests.length);
+    // Nếu chỉ có 1 yêu cầu được duyệt (yêu cầu hiện tại), thì đây là lần đầu tiên
+    // Cập nhật is_verified = true trong bảng tutor_profiles
+    if (approvedRequests.length === 1) {
+      await db
+        .update(schema.tutorProfiles)
+        .set({
+          is_verified: true,
+          updated_at: new Date(),
+        })
+        .where(eq(schema.tutorProfiles.id, request.tutor_id));
+
+      console.log(`Đã cập nhật is_verified = true cho tutor_id ${request.tutor_id}`);
+    }
 
     // Kiểm tra và liên kết môn học với gia sư
     const existingSubject = await db.query.tutorSubjects.findFirst({

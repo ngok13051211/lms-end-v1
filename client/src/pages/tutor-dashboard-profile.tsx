@@ -821,6 +821,17 @@ export default function TutorDashboardProfile() {
     }
   }, [tutorProfile, profileForm, user]);
 
+  // Tự động điền thông tin từ Redux khi chưa có profile và mở dialog
+  useEffect(() => {
+    // Chỉ thực hiện khi dialog đang mở và chưa có hồ sơ
+    if (profileDialogOpen && !tutorProfile && user) {
+      console.log("Tự động điền thông tin từ user vào form");
+      profileForm.setValue("first_name", user.first_name || "");
+      profileForm.setValue("last_name", user.last_name || "");
+      profileForm.setValue("phone", user.phone || "");
+    }
+  }, [profileDialogOpen, tutorProfile, user, profileForm]);
+
   // Theo dõi thay đổi của certificateUrls
   useEffect(() => {
     console.log("certificateUrls đã thay đổi:", certificateUrls);
@@ -1039,12 +1050,10 @@ export default function TutorDashboardProfile() {
                       </div>
                     </div>
 
-                    <div>
-                      <h3 className="text-sm font-medium text-muted-foreground mb-1">
-                        Đánh giá
-                      </h3>
+                    <div>                      <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                      Đánh giá
+                    </h3>
                       <div className="flex items-center">
-                        {" "}
                         <Star className="h-4 w-4 text-warning fill-warning mr-1" />
                         <span>
                           {tutorProfile?.rating} ({tutorProfile?.total_reviews}{" "}
@@ -1084,12 +1093,20 @@ export default function TutorDashboardProfile() {
                     >
                       <Edit className="mr-2 h-4 w-4" />
                       Chỉnh sửa thông tin
-                    </Button>
-
-                    <Button
+                    </Button>                    <Button
                       variant="secondary"
                       className="flex items-center"
-                      onClick={() => setTeachingRequestDialogOpen(true)}
+                      onClick={() => {
+                        if (!tutorProfile) {
+                          toast({
+                            title: "Chưa có hồ sơ gia sư",
+                            description: "Vui lòng tạo hồ sơ của bạn trước khi gửi yêu cầu giảng dạy",
+                            variant: "destructive",
+                          });
+                          return;
+                        }
+                        setTeachingRequestDialogOpen(true);
+                      }}
                     >
                       <BookOpen className="mr-2 h-4 w-4" />
                       Yêu cầu giảng dạy

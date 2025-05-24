@@ -34,6 +34,15 @@ router.patch(
   adminController.deactivateUser
 );
 
+// Mở khóa tài khoản người dùng
+router.patch(
+  "/users/:id/activate",
+  authMiddleware,
+  roleMiddleware(["admin"]),
+  validateParams(schema.idSchema),
+  adminController.activateUser
+);
+
 // Lấy danh sách xác minh gia sư (DEPRECATED - sử dụng /teaching-requests/pending thay thế)
 // router.get(
 //   "/tutors/verification",
@@ -41,6 +50,23 @@ router.patch(
 //   roleMiddleware(["admin"]),
 //   tutorController.getTutorVerifications
 // );
+
+// Lấy danh sách tất cả gia sư
+router.get(
+  "/tutors",
+  authMiddleware,
+  roleMiddleware(["admin"]),
+  adminController.getTutors
+);
+
+// Lấy chi tiết gia sư theo ID
+router.get(
+  "/tutors/:id",
+  authMiddleware,
+  roleMiddleware(["admin"]),
+  validateParams(schema.idSchema),
+  adminController.getTutorById
+);
 
 // DEPRECATED: Phê duyệt gia sư trực tiếp (sử dụng /teaching-requests/:id/approve thay thế)
 // router.patch(

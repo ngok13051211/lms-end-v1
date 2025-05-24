@@ -4,6 +4,10 @@ import * as schema from "@shared/schema";
 import { eq, and, desc, sql, count } from "drizzle-orm";
 import { console } from "inspector";
 
+// Import các controller functions
+import { getTutors } from "./adminController/getTutors";
+import { getTutorById } from "./adminController/getTutorById";
+
 /**
  * @desc    Lấy danh sách tất cả người dùng
  * @route   GET /api/v1/admin/users
@@ -172,6 +176,53 @@ export const deactivateUser = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * @desc    Mở khóa tài khoản người dùng
+ * @route   PATCH /api/v1/admin/users/:id/activate
+ * @access  Private/Admin
+ */
+export const activateUser = async (req: Request, res: Response) => {
+  try {
+    const userId = parseInt(req.params.id);
+
+    if (isNaN(userId)) {
+      return res.status(400).json({
+        success: false,
+        message: "ID người dùng không hợp lệ"
+      });
+    }
+
+    // Kiểm tra xem người dùng có tồn tại không
+    const user = await db.query.users.findFirst({
+      where: eq(schema.users.id, userId),
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy người dùng"
+      });
+    }
+
+    // Cập nhật trạng thái tài khoản thành hoạt động
+    await db
+      .update(schema.users)
+      .set({ is_active: true, updated_at: new Date() })
+      .where(eq(schema.users.id, userId));
+
+    return res.status(200).json({
+      success: true,
+      message: "Đã mở khóa tài khoản người dùng thành công",
+    });
+  } catch (error) {
+    console.error("Activate user error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi server khi mở khóa tài khoản",
+    });
+  }
+};
+
 export const getAdminStats = async (req: Request, res: Response) => {
   try {
     // Đảm bảo người dùng có quyền admin
@@ -273,3 +324,6 @@ export const getAdminStats = async (req: Request, res: Response) => {
     });
   }
 };
+
+// Export controller functions
+export { getTutors, getTutorById };
