@@ -202,7 +202,7 @@ export default function TutorListing() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    <SelectItem value="all">All Subjects</SelectItem>
+                    <SelectItem value="all">Tất cả môn học</SelectItem>
                     {subjects?.map((subject) => (
                       <SelectItem
                         key={subject.id}
@@ -221,7 +221,7 @@ export default function TutorListing() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    <SelectItem value="all">All Levels</SelectItem>
+                    <SelectItem value="all">Tất cả các cấo</SelectItem>
                     {educationLevels?.map((level) => (
                       <SelectItem key={level.id} value={level.id.toString()}>
                         {level.name}
@@ -231,7 +231,7 @@ export default function TutorListing() {
                 </SelectContent>
               </Select>
 
-              <Select value={modeFilter} onValueChange={setModeFilter}>
+              {/* <Select value={modeFilter} onValueChange={setModeFilter}>
                 <SelectTrigger className="w-[150px]">
                   <SelectValue placeholder="Mode" />
                 </SelectTrigger>
@@ -243,10 +243,10 @@ export default function TutorListing() {
                     <SelectItem value="both">Both</SelectItem>
                   </SelectGroup>
                 </SelectContent>
-              </Select>
+              </Select> */}
             </div>
 
-            <div className="lg:hidden">
+            {/* <div className="lg:hidden">
               <Sheet>
                 <SheetTrigger asChild>
                   <Button variant="outline" className="w-full">
@@ -583,10 +583,10 @@ export default function TutorListing() {
                   </div>
                 </SheetContent>
               </Sheet>
-            </div>
+            </div> */}
 
             <Button type="submit">
-              <Search className="mr-2 h-4 w-4" /> Search
+              <Search className="mr-2 h-4 w-4" /> Tìm kiếm
             </Button>
           </form>
         </div>

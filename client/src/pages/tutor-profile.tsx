@@ -692,7 +692,7 @@ export default function TutorProfile() {
                           </div>
 
                           {/* Address */}
-                          <div className="flex items-start">
+                          {/* <div className="flex items-start">
                             <MapPin className="h-4 w-4 text-muted-foreground mt-1 mr-3" />
                             <div>
                               <p className="font-medium text-sm">Địa chỉ</p>
@@ -700,7 +700,7 @@ export default function TutorProfile() {
                                 {tutor.user?.address || "Chưa cập nhật"}
                               </p>
                             </div>
-                          </div>
+                          </div> */}
 
                           {/* Phone - only if available */}
                           {tutor.user?.phone && (

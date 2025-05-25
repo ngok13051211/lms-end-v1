@@ -271,7 +271,7 @@ export default function TutorCard({
           )}
         </div>
 
-        {tutor.availability && (
+        {/* {tutor.availability && (
           <div className="mb-4">
             <p className="text-sm font-medium mb-2 flex items-center">
               <Calendar className="h-4 w-4 mr-1 text-muted-foreground" />
@@ -283,7 +283,7 @@ export default function TutorCard({
               </div>
             </div>
           </div>
-        )}
+        )} */}
         <div className="mt-auto flex items-center justify-between">
           <div>
             {/* <span className="text-secondary font-medium">

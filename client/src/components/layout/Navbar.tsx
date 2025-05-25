@@ -96,10 +96,10 @@ export default function Navbar() {
             </Link>
           )}
           <Link
-            href="/blog"
+            href="/guide"
             className="text-foreground hover:text-primary text-sm font-medium"
           >
-            Blog
+            Hướng Dẫn
           </Link>
 
           {user ? (

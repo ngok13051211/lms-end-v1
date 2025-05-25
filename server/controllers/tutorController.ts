@@ -509,54 +509,72 @@ export const getTutors = async (req: Request, res: Response) => {
 // Get featured tutors
 export const getFeaturedTutors = async (req: Request, res: Response) => {
   try {
+    const { subject } = req.query;
+    const subjectId = subject ? parseInt(subject as string) : undefined;
+
+    // Build conditions for the query
+    const conditions = [
+      eq(schema.tutorProfiles.is_featured, true),
+      eq(schema.tutorProfiles.is_verified, true),
+    ];
+
+    // If subject filter is provided, find tutors who teach that subject
+    let tutorIdsWithSubject: number[] = [];
+    if (subjectId && !isNaN(subjectId)) {
+      const tutorsWithSubject = await db
+        .select({ tutor_id: schema.tutorSubjects.tutor_id })
+        .from(schema.tutorSubjects)
+        .where(eq(schema.tutorSubjects.subject_id, subjectId));
+
+      tutorIdsWithSubject = tutorsWithSubject.map((t) => t.tutor_id);
+
+      if (tutorIdsWithSubject.length === 0) {
+        return res.status(200).json([]);
+      }
+    }
+
     const tutors = await db.query.tutorProfiles.findMany({
-      where: and(
-        eq(schema.tutorProfiles.is_verified, true),
-        eq(schema.tutorProfiles.is_featured, true)
-      ),
+      where:
+        subjectId && tutorIdsWithSubject.length > 0
+          ? and(
+              ...conditions,
+              inArray(schema.tutorProfiles.id, tutorIdsWithSubject)
+            )
+          : and(...conditions),
       with: {
         user: {
           columns: {
             id: true,
             first_name: true,
             last_name: true,
-            email: true,
             avatar: true,
           },
         },
         tutorSubjects: {
           with: {
-            subject: true,
-          },
-          limit: 3,
-        },
-
-        // Thêm courses vào query để có thông tin hourly_rate và teaching_mode
-        courses: {
-          where: eq(schema.courses.status, "active"),
-          columns: {
-            id: true,
-            teaching_mode: true,
-            hourly_rate: true,
+            subject: {
+              columns: {
+                id: true,
+                name: true,
+              },
+            },
           },
         },
       },
-      limit: 6,
+      orderBy: [desc(schema.tutorProfiles.rating)],
+      limit: 10,
     });
 
-    // Format response đơn giản hóa
+    // Format response according to requirements
     const formattedTutors = tutors.map((tutor) => ({
       id: tutor.id,
-      user_id: tutor.user_id,
+      first_name: tutor.user.first_name,
+      last_name: tutor.user.last_name,
+      avatar: tutor.user.avatar,
+      rating: parseFloat(tutor.rating || "0"),
+      total_reviews: tutor.total_reviews,
       bio: tutor.bio,
-      rating: tutor.rating,
-      user: {
-        id: tutor.user.id,
-        name: `${tutor.user.first_name} ${tutor.user.last_name}`,
-        avatar: tutor.user.avatar,
-      },
-      subjects: tutor.tutorSubjects.map((ts) => ts.subject),
-      courses: tutor.courses, // Thêm courses vào response
+      subjects: tutor.tutorSubjects.map((ts) => ts.subject.name),
     }));
 
     return res.status(200).json(formattedTutors);

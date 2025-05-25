@@ -33,6 +33,7 @@ import Payment from "@/pages/payment";
 import StudentBookingDetail from "@/pages/student-booking-detail";
 import TutorBookingDetail from "@/pages/tutor-booking-detail";
 import DashboardMessages from "@/pages/dashboard-messages";
+import TutorSuggestionsDemo from "@/pages/tutor-suggestions-demo";
 import PrivateRoute from "@/components/auth/PrivateRoute";
 import MainLayout from "@/components/layout/MainLayout";
 import { useEffect, useState, ReactNode } from "react";
@@ -40,6 +41,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { loadUser } from "@/features/auth/authSlice";
 import { RootState } from "./store";
 import { Loader2 } from "lucide-react";
+import CozeBot from "./components/CozeBot";
 
 // Hàm wrapper để bọc component bên trong MainLayout
 function withMainLayout(Component: React.ComponentType<any>): React.FC<any> {
@@ -73,6 +75,10 @@ function Router() {
       <Route path="/tutors/:id" component={withMainLayout(TutorProfile)} />{" "}
       <Route path="/subjects" component={withMainLayout(Subjects)} />
       <Route path="/subjects/:id" component={withMainLayout(SubjectDetail)} />
+      <Route
+        path="/demo/tutor-suggestions"
+        component={withMainLayout(TutorSuggestionsDemo)}
+      />
       <Route path="/become-tutor" component={withMainLayout(BecomeTutor)} />
       <Route path="/book/:tutorId" component={withMainLayout(BookingForm)} />
       <Route
@@ -291,6 +297,7 @@ function App() {
       <WouterRouter>
         <Router />
         <Toaster />
+        <CozeBot />
       </WouterRouter>
     </QueryClientProvider>
   );

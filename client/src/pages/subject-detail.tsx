@@ -247,14 +247,20 @@ export default function SubjectDetail() {
             {subject?.name}
           </h1>
           <div className="flex flex-wrap gap-2 mb-4">
-            {subject?.education_levels?.map((level) => (
-              <Badge
-                key={level.id}
-                className="bg-primary/10 hover:bg-primary/20 text-primary px-2 py-1 text-sm"
-              >
-                {level.name}
-              </Badge>
-            ))}
+            {/* Filter out duplicate education levels by ID before mapping */}
+            {subject?.education_levels
+              ?.filter(
+                (level, index, self) =>
+                  index === self.findIndex((l) => l.id === level.id)
+              )
+              .map((level) => (
+                <Badge
+                  key={level.id}
+                  className="bg-primary/10 hover:bg-primary/20 text-primary px-2 py-1 text-sm"
+                >
+                  {level.name}
+                </Badge>
+              ))}
           </div>
           <p className="text-muted-foreground text-sm sm:text-base max-w-2xl">
             {subject?.description}

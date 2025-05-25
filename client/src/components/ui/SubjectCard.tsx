@@ -137,26 +137,25 @@ export default function SubjectCard({
 
         {subject.education_levels && subject.education_levels.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-4">
-            {subject.education_levels.map((level) => (
-              <Badge
-                key={level.id}
-                className="bg-primary-light/20 text-primary-dark hover:bg-primary-light/30"
-              >
-                {level.name}
-              </Badge>
-            ))}
+            {/* Filter out duplicate education levels by ID before mapping */}
+            {subject.education_levels
+              .filter(
+                (level, index, self) =>
+                  index === self.findIndex((l) => l.id === level.id)
+              )
+              .map((level) => (
+                <Badge
+                  key={level.id}
+                  className="bg-primary-light/20 text-primary-dark hover:bg-primary-light/30"
+                >
+                  {level.name}
+                </Badge>
+              ))}
           </div>
         )}
 
         <div className="mt-auto flex items-center justify-between">
-          <div>
-            <span className="text-secondary font-medium">
-              {formatPrice(subject.hourly_rate || 0)}
-            </span>
-            <span className="text-muted-foreground text-sm">
-              /giờ (Trung bình)
-            </span>
-          </div>
+          <div></div>
           <Button
             variant="default"
             className="bg-primary text-white hover:bg-primary-dark whitespace-nowrap"

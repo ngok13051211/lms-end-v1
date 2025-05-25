@@ -56,68 +56,69 @@ export default function SearchSection({
   };
 
   return (
-    <section className="py-8 bg-white shadow-md sticky top-16 z-40">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-white rounded-lg p-4">
-          <h2 className="text-center text-2xl font-medium mb-6">
-            Tìm gia sư phù hợp với nhu cầu của bạn
-          </h2>
+    // <section className="py-8 bg-white shadow-md sticky top-16 z-40">
+    //   <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    //     <div className="bg-white rounded-lg p-4">
+    //       <h2 className="text-center text-2xl font-medium mb-6">
+    //         Tìm gia sư phù hợp với nhu cầu của bạn
+    //       </h2>
 
-          <div className="flex flex-wrap -mx-2">
-            <div className="w-full md:w-1/4 px-2 mb-4 md:mb-0">
-              <Select value={subject} onValueChange={setSubject}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Môn học" />
-                </SelectTrigger>
-                <SelectContent>
-                  {subjects.map((subject) => (
-                    <SelectItem key={subject.id} value={subject.id.toString()}>
-                      {subject.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+    //       <div className="flex flex-wrap -mx-2">
+    //         <div className="w-full md:w-1/4 px-2 mb-4 md:mb-0">
+    //           <Select value={subject} onValueChange={setSubject}>
+    //             <SelectTrigger className="w-full">
+    //               <SelectValue placeholder="Môn học" />
+    //             </SelectTrigger>
+    //             <SelectContent>
+    //               {subjects.map((subject) => (
+    //                 <SelectItem key={subject.id} value={subject.id.toString()}>
+    //                   {subject.name}
+    //                 </SelectItem>
+    //               ))}
+    //             </SelectContent>
+    //           </Select>
+    //         </div>
 
-            <div className="w-full md:w-1/4 px-2 mb-4 md:mb-0">
-              <Select value={level} onValueChange={setLevel}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Cấp học" />
-                </SelectTrigger>
-                <SelectContent>
-                  {educationLevels.map((level) => (
-                    <SelectItem key={level.id} value={level.id.toString()}>
-                      {level.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+    //         <div className="w-full md:w-1/4 px-2 mb-4 md:mb-0">
+    //           <Select value={level} onValueChange={setLevel}>
+    //             <SelectTrigger className="w-full">
+    //               <SelectValue placeholder="Cấp học" />
+    //             </SelectTrigger>
+    //             <SelectContent>
+    //               {educationLevels.map((level) => (
+    //                 <SelectItem key={level.id} value={level.id.toString()}>
+    //                   {level.name}
+    //                 </SelectItem>
+    //               ))}
+    //             </SelectContent>
+    //           </Select>
+    //         </div>
 
-            <div className="w-full md:w-1/4 px-2 mb-4 md:mb-0">
-              <Select value={mode} onValueChange={setMode}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Hình thức học" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="online">Trực tuyến</SelectItem>
-                  <SelectItem value="offline">Tại nhà</SelectItem>
-                  <SelectItem value="both">Cả hai</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+    //         <div className="w-full md:w-1/4 px-2 mb-4 md:mb-0">
+    //           <Select value={mode} onValueChange={setMode}>
+    //             <SelectTrigger className="w-full">
+    //               <SelectValue placeholder="Hình thức học" />
+    //             </SelectTrigger>
+    //             <SelectContent>
+    //               <SelectItem value="online">Trực tuyến</SelectItem>
+    //               <SelectItem value="offline">Tại nhà</SelectItem>
+    //               <SelectItem value="both">Cả hai</SelectItem>
+    //             </SelectContent>
+    //           </Select>
+    //         </div>
 
-            <div className="w-full md:w-1/4 px-2">
-              <Button
-                className="w-full bg-primary hover:bg-primary-dark"
-                onClick={handleSearch}
-              >
-                <Search className="mr-2 h-4 w-4" /> Tìm kiếm
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
+    //         <div className="w-full md:w-1/4 px-2">
+    //           <Button
+    //             className="w-full bg-primary hover:bg-primary-dark"
+    //             onClick={handleSearch}
+    //           >
+    //             <Search className="mr-2 h-4 w-4" /> Tìm kiếm
+    //           </Button>
+    //         </div>
+    //       </div>
+    //     </div>
+    //   </div>
+    // </section>
+    <></>
   );
 }
