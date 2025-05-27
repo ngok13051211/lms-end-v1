@@ -1,5 +1,6 @@
 import { Router } from "express";
 import * as tutorController from "../controllers/tutorController";
+import * as tutorStatisticsController from "../controllers/tutorStatisticsController";
 import { authMiddleware, roleMiddleware } from "../middlewares/authMiddleware";
 import uploadService from "../services/uploadService";
 import {
@@ -80,6 +81,14 @@ router.get(
   authMiddleware,
   roleMiddleware(["tutor"]),
   tutorController.getTutorStats
+);
+
+// Lấy thống kê doanh thu gia sư
+router.get(
+  "/statistics/revenue",
+  authMiddleware,
+  roleMiddleware(["tutor"]),
+  tutorStatisticsController.getTutorRevenueStats
 );
 
 // Lấy khóa học của gia sư đang đăng nhập

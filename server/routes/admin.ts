@@ -1,9 +1,12 @@
 import { Router } from "express";
 import * as adminController from "../controllers/adminController";
 import * as tutorController from "../controllers/tutorController";
+import { getTutors } from "../controllers/adminController/getTutors";
+import { getTutorById } from "../controllers/adminController/getTutorById";
 import { authMiddleware, roleMiddleware } from "../middlewares/authMiddleware";
 import { validateParams } from "../middlewares/validationMiddleware";
 import * as schema from "@shared/schema";
+import { z } from "zod";
 import { getBookingsVolume, getCoursesBySubject } from "../controllers/adminSummaryController";
 
 const router = Router();
@@ -34,6 +37,15 @@ router.patch(
   adminController.deactivateUser
 );
 
+// Mở khóa tài khoản người dùng
+router.patch(
+  "/users/:id/activate",
+  authMiddleware,
+  roleMiddleware(["admin"]),
+  validateParams(schema.idSchema),
+  adminController.activateUser
+);
+
 // Lấy danh sách xác minh gia sư (DEPRECATED - sử dụng /teaching-requests/pending thay thế)
 // router.get(
 //   "/tutors/verification",
@@ -41,6 +53,36 @@ router.patch(
 //   roleMiddleware(["admin"]),
 //   tutorController.getTutorVerifications
 // );
+
+// Lấy danh sách booking của một user
+router.get(
+  "/users/:userId/bookings",
+  authMiddleware,
+  roleMiddleware(["admin"]),
+  validateParams(z.object({
+    userId: schema.idSchema.shape.id,
+  })),
+  adminController.getUserBookings
+);
+
+// Route booking-summary đã được chuyển sang file fix-booking-summary-route.ts để tránh xung đột
+
+// Lấy danh sách tất cả gia sư
+router.get(
+  "/tutors",
+  authMiddleware,
+  roleMiddleware(["admin"]),
+  getTutors
+);
+
+// Lấy chi tiết gia sư theo ID
+router.get(
+  "/tutors/:id",
+  authMiddleware,
+  roleMiddleware(["admin"]),
+  validateParams(schema.idSchema),
+  getTutorById
+);
 
 // DEPRECATED: Phê duyệt gia sư trực tiếp (sử dụng /teaching-requests/:id/approve thay thế)
 // router.patch(

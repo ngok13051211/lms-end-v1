@@ -158,7 +158,7 @@ export default function Navbar() {
                     className="w-full flex items-center"
                   >
                     <User className="mr-2 h-4 w-4" />
-                    <span>Profile</span>
+                    <span>Hồ sơ</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
@@ -183,20 +183,11 @@ export default function Navbar() {
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link
-                        href="/dashboard/messages"
-                        className="w-full flex items-center"
-                      >
-                        <MessageSquare className="mr-2 h-4 w-4" />
-                        <span>Messages</span>
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link
                         href="/dashboard/tutor/stats"
                         className="w-full flex items-center"
                       >
                         <PieChart className="mr-2 h-4 w-4" />
-                        <span>Statistics</span>
+                        <span>Thống kê</span>
                       </Link>
                     </DropdownMenuItem>
                   </>
@@ -204,7 +195,7 @@ export default function Navbar() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>
                   <LogOut className="mr-2 h-4 w-4" />
-                  <span>Log out</span>
+                  <span>Đăng xuất</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

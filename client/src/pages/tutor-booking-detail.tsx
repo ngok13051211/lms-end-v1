@@ -30,11 +30,15 @@ import {
   Phone,
   User,
   Info,
+  Check,
+  X,
 } from "lucide-react";
 import {
   BookingSession,
   useBookingDetailsQuery,
 } from "@/hooks/useBookingDetailsQuery";
+import { useBookingStatusMutation } from "@/hooks/useBookingStatusMutation";
+import { useToast } from "@/hooks/use-toast";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { cn } from "@/lib/utils";
 
@@ -118,6 +122,51 @@ export default function TutorBookingDetail() {
   const { id } = useParams<{ id: string }>();
   const { data: booking, isLoading, error } = useBookingDetailsQuery(id);
   const { user } = useSelector((state: RootState) => state.auth);
+  const { toast } = useToast();
+
+  // Hook for updating booking status
+  const updateBookingStatus = useBookingStatusMutation();
+  // Handler for confirming booking
+  const handleConfirmBooking = async () => {
+    if (!booking) return;
+
+    try {
+      await updateBookingStatus.mutateAsync(
+        { bookingId: booking.id, status: "confirmed" },
+      );
+      toast({
+        title: "Thành công",
+        description: "Đã xác nhận lịch dạy thành công",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Lỗi",
+        description: error?.message || "Không thể xác nhận lịch dạy",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handler for rejecting booking
+  const handleRejectBooking = async () => {
+    if (!booking) return;
+
+    try {
+      await updateBookingStatus.mutateAsync(
+        { bookingId: booking.id, status: "rejected" },
+      );
+      toast({
+        title: "Thành công",
+        description: "Đã từ chối lịch dạy thành công",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Lỗi",
+        description: error?.message || "Không thể từ chối lịch dạy",
+        variant: "destructive",
+      });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -358,10 +407,60 @@ export default function TutorBookingDetail() {
                 </div>
               </div>
             </CardContent>
-          </Card>
-
-          {/* Right column - Student info */}
+          </Card>          {/* Right column - Student info */}
           <div className="space-y-6">
+            {/* Action buttons for pending bookings */}
+            {booking.status === "pending" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Thao tác</CardTitle>
+                  <CardDescription>
+                    Xác nhận hoặc từ chối yêu cầu đặt lịch này
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">                    <Button
+                      onClick={handleConfirmBooking}
+                      disabled={updateBookingStatus.isPending}
+                      className="w-full bg-blue-600 hover:bg-blue-700"
+                      size="lg"
+                    >
+                      {updateBookingStatus.isPending ? (
+                        <div className="flex items-center">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Đang xử lý...
+                        </div>
+                      ) : (
+                        <div className="flex items-center">
+                          <Check className="h-4 w-4 mr-2" />
+                          Xác nhận lịch dạy
+                        </div>
+                      )}
+                    </Button>
+                    <Button
+                      onClick={handleRejectBooking}
+                      disabled={updateBookingStatus.isPending}
+                      variant="destructive"
+                      className="w-full"
+                      size="lg"
+                    >
+                      {updateBookingStatus.isPending ? (
+                        <div className="flex items-center">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Đang xử lý...
+                        </div>
+                      ) : (
+                        <div className="flex items-center">
+                          <X className="h-4 w-4 mr-2" />
+                          Từ chối lịch dạy
+                        </div>
+                      )}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Thông tin học viên</CardTitle>

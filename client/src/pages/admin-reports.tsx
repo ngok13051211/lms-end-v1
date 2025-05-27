@@ -711,22 +711,37 @@ export default function AdminReports() {
       }
     });
 
-    // Chuyển doanh thu từ đơn vị VND sang triệu VND để hiển thị
+    // Kiểm tra xem tất cả các giá trị có nhỏ hơn 1 triệu không
+    const allValuesBelowOneMillion = sortedData.every(
+      (item) => item.revenue < 1000000
+    );
+
+    // Xác định đơn vị hiển thị và cách xử lý dữ liệu
+    const useThousandUnit = allValuesBelowOneMillion;
+    const unit = useThousandUnit ? "nghìn VND" : "triệu VND";
+    const divisor = useThousandUnit ? 1000 : 1000000;
+    const stepSize = useThousandUnit ? 100 : 0.5;    // Chuyển doanh thu từ đơn vị VND sang triệu hoặc nghìn VND để hiển thị
     const values = sortedData.map((item) =>
-      Number((item.revenue / 1000000).toFixed(1))
+      Number((item.revenue / divisor).toFixed(1))
     );
 
     return {
       labels,
       datasets: [
         {
-          label: "Doanh thu (triệu VND)",
+          label: `Doanh thu (${unit})`,
           data: values,
           backgroundColor: "rgba(10, 179, 156, 0.5)",
           borderColor: "rgb(10, 179, 156)",
           tension: 0.3,
         },
       ],
+      // Thêm thông tin đơn vị và stepSize để sử dụng trong options
+      _config: {
+        unit,
+        stepSize,
+        useThousandUnit
+      }
     };
   };
 
@@ -807,7 +822,7 @@ export default function AdminReports() {
           </CardContent>
         </Card>
         {/* Biểu đồ tổng hợp */}
-        <Card>
+        <Card className="h-[600px]">
           <CardHeader>
             <CardTitle>Biểu đồ tổng hợp</CardTitle>
             <CardDescription>
@@ -891,30 +906,51 @@ export default function AdminReports() {
                     <div className="h-full flex items-center justify-center">
                       <Loader2 className="h-8 w-8 animate-spin text-primary" />
                       <span className="ml-2">Đang tải dữ liệu...</span>
-                    </div>
-                  ) : revenueStatsData && revenueStatsData.length > 0 ? (
-                    <Line
-                      data={formatRevenueChart()}
-                      options={{
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                          legend: {
-                            position: "top" as const,
-                          },
-                          title: {
-                            display: true,
-                            text: "Doanh thu theo thời gian (triệu VND)",
-                          },
-                        },
-                        scales: {
-                          y: {
-                            beginAtZero: true,
-                          },
-                        },
-                      }}
-                    />
-                  ) : (
+                    </div>) : revenueStatsData && revenueStatsData.length > 0 ? (
+                      (() => {
+                        const chartData = formatRevenueChart();
+                        const config = chartData._config || {
+                          unit: "triệu VND",
+                          stepSize: 0.5,
+                          useThousandUnit: false
+                        };
+
+                        return (
+                          <Line
+                            data={chartData}
+                            options={{
+                              responsive: true,
+                              maintainAspectRatio: false,
+                              plugins: {
+                                legend: {
+                                  position: "top" as const,
+                                },
+                                title: {
+                                  display: true,
+                                  text: `Doanh thu theo thời gian (${config.unit})`,
+                                },
+                                tooltip: {
+                                  callbacks: {
+                                    label: function (context: any) {
+                                      const value = context.parsed.y;
+                                      return `Doanh thu: ${value} ${config.unit}`;
+                                    }
+                                  }
+                                }
+                              },
+                              scales: {
+                                y: {
+                                  beginAtZero: true,
+                                  ticks: {
+                                    stepSize: config.stepSize
+                                  }
+                                },
+                              },
+                            }}
+                          />
+                        );
+                      })()
+                    ) : (
                     <div className="flex items-center justify-center h-full">
                       <div className="text-center">
                         <LineChart className="h-16 w-16 mx-auto text-muted-foreground" />

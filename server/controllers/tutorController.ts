@@ -1079,9 +1079,7 @@ export const createTutorProfile = async (req: Request, res: Response) => {
     });
 
     if (existingProfile) {
-      return res
-        .status(400)
-        .json({ message: "You already have a tutor profile" });
+      return res.status(400).json({ message: "Bạn đã có một hồ sơ gia sư" });
     }
 
     // Validate tutor profile data
@@ -1347,9 +1345,7 @@ export const getTutorStats = async (req: Request, res: Response) => {
 
     if (!tutorProfile) {
       return res.status(404).json({ message: "Tutor profile not found" });
-    }
-
-    // Get active courses count
+    } // Get active courses count
     const activeCoursesCount = await db
       .select({ count: sql<number>`count(*)` })
       .from(schema.courses)
@@ -1357,6 +1353,17 @@ export const getTutorStats = async (req: Request, res: Response) => {
         and(
           eq(schema.courses.tutor_id, tutorProfile.id),
           eq(schema.courses.status, "active")
+        )
+      );
+
+    // Get inactive courses count
+    const inactiveCoursesCount = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(schema.courses)
+      .where(
+        and(
+          eq(schema.courses.tutor_id, tutorProfile.id),
+          eq(schema.courses.status, "inactive")
         )
       );
 
@@ -1396,10 +1403,10 @@ export const getTutorStats = async (req: Request, res: Response) => {
           eq(schema.messages.read, false)
         )
       );
-
     const stats = {
       profile_status: tutorProfile.is_verified ? "Đã xác minh" : "Chờ xác minh",
       active_courses: Number(activeCoursesCount[0]?.count || 0),
+      inactive_courses: Number(inactiveCoursesCount[0]?.count || 0),
       courses_created: Number(totalCoursesCount[0]?.count || 0),
       reviews: Number(reviewsCount[0]?.count || 0),
       rating: tutorProfile.rating,
@@ -1764,7 +1771,7 @@ export const getTeachingRequests = async (req: Request, res: Response) => {
     const total = Number(countResult[0]?.count || 0);
     const totalPages = Math.ceil(total / limit);
 
-    // Format dữ liệu đúng cấu trúc frontend mong muốn
+    // Format dữ liệu đúng cấu trúc mà frontend mong đợi
     const formattedRequests = requests.map((request) => ({
       id: request.id,
       subject: request.subject,
@@ -1981,13 +1988,17 @@ export const approveTeachingRequest = async (req: Request, res: Response) => {
       })
       .where(eq(schema.teachingRequests.id, requestId));
 
-    // Kiểm tra xem profile của gia sư đã được xác minh chưa
-    const tutorProfile = await db.query.tutorProfiles.findFirst({
-      where: eq(schema.tutorProfiles.id, request.tutor_id),
+    // Kiểm tra số lượng yêu cầu đã được duyệt của gia sư này
+    const approvedRequests = await db.query.teachingRequests.findMany({
+      where: and(
+        eq(schema.teachingRequests.tutor_id, request.tutor_id),
+        eq(schema.teachingRequests.status, "approved")
+      ),
     });
-
-    if (tutorProfile && !tutorProfile.is_verified) {
-      // Nếu đây là lần đầu tiên được phê duyệt, cập nhật is_verified thành true
+    console.log("Số lượng yêu cầu đã được duyệt:", approvedRequests.length);
+    // Nếu chỉ có 1 yêu cầu được duyệt (yêu cầu hiện tại), thì đây là lần đầu tiên
+    // Cập nhật is_verified = true trong bảng tutor_profiles
+    if (approvedRequests.length === 1) {
       await db
         .update(schema.tutorProfiles)
         .set({
@@ -1997,7 +2008,7 @@ export const approveTeachingRequest = async (req: Request, res: Response) => {
         .where(eq(schema.tutorProfiles.id, request.tutor_id));
 
       console.log(
-        `Đã cập nhật is_verified thành true cho gia sư ID: ${request.tutor_id}`
+        `Đã cập nhật is_verified = true cho tutor_id ${request.tutor_id}`
       );
     }
 

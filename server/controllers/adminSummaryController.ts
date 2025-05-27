@@ -61,11 +61,17 @@ export const getTotalBookings = async (req: Request, res: Response) => {
 // Get overall dashboard summary
 export const getDashboardOverview = async (req: Request, res: Response) => {
   try {
-    // Get total active users count
+    // Get total active users count (excluding admins)
     const usersCount = await db
       .select({ count: count() })
       .from(users)
-      .where(eq(users.is_active, true));
+      .where(
+        and(
+          eq(users.is_active, true),
+          sql`${users.role} != 'admin'`
+        )
+      );
+
     const totalUsers = Number(usersCount[0].count || 0);
 
     // Get active student count
@@ -152,11 +158,14 @@ export const getRecentActivities = async (req: Request, res: Response) => {
         role: users.role,
         createdAt: users.created_at,
         type: sql`'new_user'`.as("type"),
-        title: sql`'New user registered'`.as("title"),
-        description:
-          sql`CONCAT(${users.first_name}, ' ', ${users.last_name}, ' joined as ', ${users.role})`.as(
-            "description"
-          ),
+        title: sql`'Người dùng mới đăng ký'`.as("title"),
+        description: sql`CONCAT(${users.first_name}, ' ', ${users.last_name}, ' đã tham gia với vai trò ', 
+                CASE 
+                WHEN ${users.role} = 'student' THEN 'học viên'
+                WHEN ${users.role} = 'tutor' THEN 'giảng viên'
+                WHEN ${users.role} = 'admin' THEN 'quản trị viên'
+                ELSE ${users.role}
+                END)`.as("description")
       })
       .from(users)
       .orderBy(desc(users.created_at))
@@ -173,9 +182,8 @@ export const getRecentActivities = async (req: Request, res: Response) => {
         hourlyRate: courses.hourly_rate,
         createdAt: courses.created_at,
         type: sql`'new_course'`.as("type"),
-        description: sql`CONCAT('New course: ', ${courses.title})`.as(
-          "description"
-        ),
+        title: sql`'Khóa học mới'`.as("title"),
+        description: sql`CONCAT('Khóa học mới: ', ${courses.title})`.as("description")
       })
       .from(courses)
       .orderBy(desc(courses.created_at))
@@ -192,9 +200,8 @@ export const getRecentActivities = async (req: Request, res: Response) => {
         status: bookingRequests.status,
         createdAt: bookingRequests.created_at,
         type: sql`'new_booking'`.as("type"),
-        description: sql`CONCAT('New booking: ', ${bookingRequests.title})`.as(
-          "description"
-        ),
+        title: sql`'Yêu cầu đặt lịch mới'`.as("title"),
+        description: sql`CONCAT('Yêu cầu đặt lịch: ', ${bookingRequests.title})`.as("description")
       })
       .from(bookingRequests)
       .orderBy(desc(bookingRequests.created_at))
@@ -226,13 +233,13 @@ export const getRecentActivities = async (req: Request, res: Response) => {
         tutorVerifications: recentTutorVerifications,
         newUsers: recentUsers,
         newCourses: recentCourses,
-        newBookings: recentBookings,
+        newBookings: recentBookings
       },
-      recentActivities: allActivities,
+      recentActivities: allActivities
     });
   } catch (error) {
     console.error("Error getting recent activities:", error);
-    return res.status(500).json({ error: "Failed to get recent activities" });
+    return res.status(500).json({ error: "Không thể lấy hoạt động gần đây" });
   }
 };
 
@@ -261,7 +268,7 @@ export const getUserGrowthByMonth = async (req: Request, res: Response) => {
       count: parseInt(String(item.count), 10), // Convert to string first, then to number
     }));
 
-    console.log("User growth data processed:", monthlyData);
+    console.log("User grow:", monthlyData);
 
     // Return monthly growth data as an array
     return res.json(monthlyData);
@@ -437,13 +444,10 @@ export const getUserGrowthLatest12Months = async (
 ) => {
   try {
     // Extract query parameters
-    const {
-      type = "month",
-      month,
-      year: yearParam,
-      fromDate,
-      toDate,
-    } = req.query;
+
+
+    const { type, month, year: yearParam, fromDate, toDate } = req.query;
+
     const currentDate = new Date();
     const year = yearParam
       ? parseInt(yearParam as string, 10)
@@ -463,6 +467,7 @@ export const getUserGrowthLatest12Months = async (
                           COUNT(*) as count
                         FROM users
                         WHERE created_at::date BETWEEN ${fromDate}::date AND ${toDate}::date
+                        AND role != 'admin'
                         GROUP BY TO_CHAR(created_at, 'YYYY-MM-DD')
                         ORDER BY month ASC
                         `
@@ -476,6 +481,7 @@ export const getUserGrowthLatest12Months = async (
                           COUNT(*) as count
                         FROM users
                         WHERE created_at::date >= ${fromDate}::date
+                        AND role != 'admin'
                         GROUP BY TO_CHAR(created_at, 'YYYY-MM-DD')
                         ORDER BY month ASC
                         `
@@ -489,6 +495,7 @@ export const getUserGrowthLatest12Months = async (
                           COUNT(*) as count
                         FROM users
                         WHERE created_at::date >= NOW() - INTERVAL '30 days'
+                        AND role != 'admin'
                         GROUP BY TO_CHAR(created_at, 'YYYY-MM-DD')
                         ORDER BY month ASC
                         `
@@ -499,7 +506,9 @@ export const getUserGrowthLatest12Months = async (
       case "month":
         // If month is specified, group by day within that month
         if (month) {
+          console.log("Fetching user growth for the month:", month);
           const monthNum = parseInt(month as string, 10);
+          console.log("Year:", year, "Month:", monthNum);
           if (monthNum < 1 || monthNum > 12) {
             return res
               .status(400)
@@ -515,11 +524,13 @@ export const getUserGrowthLatest12Months = async (
                         WHERE 
                           EXTRACT(YEAR FROM created_at) = ${year} AND
                           EXTRACT(MONTH FROM created_at) = ${monthNum}
+                          AND role != 'admin'
                         GROUP BY TO_CHAR(created_at, 'YYYY-MM-DD')
                         ORDER BY month ASC
                         `
           );
         } else {
+          console.log("Fetching user growth for the year:", year);
           // If no month specified, return all months for the year
           result = await db.execute(
             sql`
@@ -528,6 +539,7 @@ export const getUserGrowthLatest12Months = async (
                           COUNT(*) as count
                         FROM users
                         WHERE EXTRACT(YEAR FROM created_at) = ${year}
+                        AND role != 'admin'
                         GROUP BY TO_CHAR(created_at, 'YYYY-MM')
                         ORDER BY month ASC
                         `
@@ -536,6 +548,7 @@ export const getUserGrowthLatest12Months = async (
         break;
 
       case "year":
+        console.log("Fetching user growth for the year:", year);
         // Group by month for the specified year
         result = await db.execute(
           sql`
@@ -544,26 +557,27 @@ export const getUserGrowthLatest12Months = async (
                       COUNT(*) as count
                     FROM users
                     WHERE EXTRACT(YEAR FROM created_at) = ${year}
+                    AND role != 'admin'
                     GROUP BY TO_CHAR(created_at, 'YYYY-MM')
                     ORDER BY month ASC
                     `
         );
         break;
-
       default:
-        // Default behavior: latest 12 months
+        // Default behavior: latest 12 months (from beginning of 12 months ago to now)
+        console.log("Fetching user growth for the latest 12 months");
         result = await db.execute(
           sql`
-                    SELECT 
-                      TO_CHAR(created_at, 'YYYY-MM') as month,
-                      COUNT(*) as count
-                    FROM users
-                    WHERE created_at >= NOW() - INTERVAL '12 months'
-                    GROUP BY TO_CHAR(created_at, 'YYYY-MM')
-                    ORDER BY month ASC
-                    `
+    SELECT 
+      TO_CHAR(created_at, 'YYYY-MM') as month,
+      COUNT(*) as count
+    FROM users
+    WHERE created_at >= DATE_TRUNC('month', NOW() - INTERVAL '11 months')
+    AND role != 'admin'
+    GROUP BY TO_CHAR(created_at, 'YYYY-MM')
+    ORDER BY month ASC
+  `
         );
-        break;
     }
 
     // Transform the data: extract rows and convert count to number
@@ -572,7 +586,7 @@ export const getUserGrowthLatest12Months = async (
       count: parseInt(String(item.count || "0"), 10), // Convert to string first, then to number
     }));
 
-    console.log("User growth data processed:", monthlyData);
+    console.log("User growth data :", monthlyData);
 
     // Return monthly growth data as an array
     return res.json(monthlyData);

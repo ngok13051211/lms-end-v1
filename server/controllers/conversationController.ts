@@ -80,6 +80,99 @@ export const startConversation = async (req: Request, res: Response) => {
   }
 };
 
+// Start a new conversation with any user
+// Lưu ý: userId được lấy từ req.params.id, KHÔNG lấy từ req.body và KHÔNG validate body cho API này
+export const startConversationWithUser = async (req: Request, res: Response) => {
+  try {
+    const currentUserId = req.user?.id;
+    const currentUserRole = req.user?.role;
+    // Lấy userId từ params đã được validate bằng validateParams(schema.idSchema)
+    const targetUserId = req.params.id ? Number(req.params.id) : undefined;
+
+    if (!currentUserId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    if (!targetUserId || isNaN(targetUserId)) {
+      return res.status(400).json({ message: "Invalid user ID" });
+    }
+
+    // Check if target user exists
+    const targetUser = await db.query.users.findFirst({
+      where: eq(schema.users.id, targetUserId),
+    });
+
+    if (!targetUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Validate roles for conversation
+    if (currentUserRole === targetUser.role) {
+      return res.status(400).json({
+        message: "Cannot start conversation with user of same role"
+      });
+    }
+
+    // Check which user is student and which is tutor
+    let studentId, tutorId;
+
+    if (currentUserRole === "student" && targetUser.role === "tutor") {
+      studentId = currentUserId;
+      tutorId = targetUserId;
+    } else if (currentUserRole === "tutor" && targetUser.role === "student") {
+      studentId = targetUserId;
+      tutorId = currentUserId;
+    } else {
+      return res.status(400).json({
+        message: "Conversations can only be between students and tutors"
+      });
+    }
+
+    // Check if conversation already exists
+    const existingConversation = await db.query.conversations.findFirst({
+      where: and(
+        eq(schema.conversations.student_id, studentId),
+        eq(schema.conversations.tutor_id, tutorId)
+      )
+    });
+
+    if (existingConversation) {
+      return res.status(200).json({
+        conversation: existingConversation,
+        message: "Conversation already exists"
+      });
+    }
+
+    // Create new conversation
+    const [conversation] = await db.insert(schema.conversations)
+      .values({
+        student_id: studentId,
+        tutor_id: tutorId,
+        last_message_at: new Date(),
+        created_at: new Date()
+      })
+      .returning();
+
+    return res.status(201).json({
+      message: "Conversation started successfully",
+      conversation
+    });
+  } catch (error) {
+    console.error("Start conversation with user error:", error);
+    const errorDetails = {
+      message: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined,
+      userId: req.params.id,
+      currentUserId: req.user?.id
+    };
+    console.error("Detailed error info:", JSON.stringify(errorDetails, null, 2));
+    return res.status(500).json({
+      message: "Internal server error",
+      details: process.env.NODE_ENV === 'development' ? errorDetails : undefined
+    });
+  }
+};
+
 // Get user's conversations
 export const getConversations = async (req: Request, res: Response) => {
   try {

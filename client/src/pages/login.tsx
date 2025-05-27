@@ -31,8 +31,8 @@ import MainLayout from "@/components/layout/MainLayout";
 import OtpVerificationModal from "@/components/auth/OtpVerificationModal";
 
 const loginSchema = z.object({
-  email: z.string().email("Please enter a valid email"),
-  password: z.string().min(1, "Password is required"),
+  email: z.string().email("Vui lòng nhập địa chỉ email hợp lệ"),
+  password: z.string().min(1, "Mật khẩu là bắt buộc"),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -106,12 +106,12 @@ export default function Login() {
               <span className="text-primary text-2xl font-medium">
                 Homi<span className="text-secondary">Tutor</span>
               </span>
-            </div>
+            </div>{" "}
             <CardTitle className="text-2xl text-center">
-              Login to your account
+              Đăng nhập tài khoản
             </CardTitle>
             <CardDescription className="text-center">
-              Enter your email and password to access your account
+              Nhập email và mật khẩu để truy cập tài khoản của bạn
             </CardDescription>
           </CardHeader>
 
@@ -132,10 +132,11 @@ export default function Login() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
+                      {" "}
                       <FormLabel>Email</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="you@example.com"
+                          placeholder="email@example.com"
                           type="email"
                           {...field}
                         />
@@ -150,11 +151,12 @@ export default function Login() {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Password</FormLabel>
+                      {" "}
+                      <FormLabel>Mật khẩu</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Input
-                            placeholder="Your password"
+                            placeholder="Mật khẩu của bạn"
                             type={showPassword ? "text" : "password"}
                             {...field}
                           />
@@ -163,7 +165,7 @@ export default function Login() {
                             className="absolute right-3 top-2.5 text-gray-500"
                             onClick={() => setShowPassword(!showPassword)}
                           >
-                            {showPassword ? "Hide" : "Show"}
+                            {showPassword ? "Ẩn" : "Hiện"}
                           </button>
                         </div>
                       </FormControl>
@@ -177,28 +179,30 @@ export default function Login() {
                   className="w-full bg-primary hover:bg-primary-dark"
                   disabled={isLoading}
                 >
+                  {" "}
                   {isLoading ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : null}
-                  Sign in
+                  Đăng nhập
                 </Button>
               </form>
             </Form>
           </CardContent>
 
           <CardFooter className="flex flex-col space-y-4">
+            {" "}
             <div className="text-center text-sm">
               <Link
                 href="/forgot-password"
                 className="text-primary hover:underline"
               >
-                Forgot your password?
+                Quên mật khẩu?
               </Link>
             </div>
             <div className="text-center text-sm">
-              Don't have an account?{" "}
+              Chưa có tài khoản?{" "}
               <Link href="/register" className="text-primary hover:underline">
-                Sign up
+                Đăng ký
               </Link>
             </div>
           </CardFooter>

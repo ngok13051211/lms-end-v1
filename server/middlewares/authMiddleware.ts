@@ -11,6 +11,7 @@ declare global {
       user?: {
         id: number;
         role: string;
+        is_active?: boolean;
       };
     }
   }
@@ -45,11 +46,20 @@ export const authMiddleware = async (
       columns: {
         id: true,
         role: true,
+        is_active: true,
       },
     });
 
     if (!user) {
       return res.status(401).json({ message: "Unauthorized: User not found" });
+    }
+
+    // Check if user is active
+    if (!user.is_active) {
+      return res.status(403).json({ 
+        error: "ACCOUNT_DEACTIVATED", 
+        message: "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên để biết thêm chi tiết." 
+      });
     }
 
     // Attach user to request

@@ -7,8 +7,22 @@ import { useDispatch, useSelector } from "react-redux";
 import { registerUser } from "@/features/auth/authSlice";
 import { RootState } from "@/store";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
 import { Link } from "wouter";
@@ -18,25 +32,29 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 
-const registerSchema = z.object({
-  firstName: z.string().min(2, "First name is required"),
-  lastName: z.string().min(2, "Last name is required"),
-  username: z.string().min(3, "Username must be at least 3 characters"),
-  email: z.string().email("Please enter a valid email"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  confirmPassword: z.string().min(1, "Please confirm your password"),
-  role: z.enum(["student", "tutor"]),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords do not match",
-  path: ["confirmPassword"],
-});
+const registerSchema = z
+  .object({
+    firstName: z.string().min(2, "Họ là bắt buộc"),
+    lastName: z.string().min(2, "Tên là bắt buộc"),
+    username: z.string().min(3, "Tên đăng nhập phải có ít nhất 3 ký tự"),
+    email: z.string().email("Vui lòng nhập địa chỉ email hợp lệ"),
+    password: z.string().min(6, "Mật khẩu phải có ít nhất 6 ký tự"),
+    confirmPassword: z.string().min(1, "Vui lòng xác nhận mật khẩu"),
+    role: z.enum(["student", "tutor"]),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Mật khẩu không khớp",
+    path: ["confirmPassword"],
+  });
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function Register() {
   const [, navigate] = useLocation();
   const dispatch = useDispatch();
-  const { isLoading, error, registrationEmail } = useSelector((state: RootState) => state.auth);
+  const { isLoading, error, registrationEmail } = useSelector(
+    (state: RootState) => state.auth
+  );
   const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
 
@@ -58,8 +76,8 @@ export default function Register() {
     if (registrationEmail) {
       const encodedEmail = encodeURIComponent(registrationEmail);
       toast({
-        title: "Registration successful",
-        description: "Please verify your email to activate your account.",
+        title: "Đăng ký thành công",
+        description: "Vui lòng xác minh email để kích hoạt tài khoản của bạn.",
       });
       navigate(`/verify-email/${encodedEmail}`);
     }
@@ -90,13 +108,15 @@ export default function Register() {
           toast({
             variant: "destructive",
             title: "Đăng ký thất bại",
-            description: "Email này đã tồn tại trong hệ thống, vui lòng sử dụng email khác hoặc đăng nhập.",
+            description:
+              "Email này đã tồn tại trong hệ thống, vui lòng sử dụng email khác hoặc đăng nhập.",
           });
         } else {
           toast({
             variant: "destructive",
             title: "Đăng ký thất bại",
-            description: errorMessage || "Có lỗi xảy ra trong quá trình đăng ký.",
+            description:
+              errorMessage || "Có lỗi xảy ra trong quá trình đăng ký.",
           });
         }
       }
@@ -115,26 +135,33 @@ export default function Register() {
         <Card className="w-full max-w-lg">
           <CardHeader className="space-y-1">
             <div className="flex justify-center mb-4">
-              <span className="text-primary text-2xl font-medium">Homi<span className="text-secondary">Tutor</span></span>
-            </div>
-            <CardTitle className="text-2xl text-center">Create an account</CardTitle>
+              <span className="text-primary text-2xl font-medium">
+                Homi<span className="text-secondary">Tutor</span>
+              </span>
+            </div>{" "}
+            <CardTitle className="text-2xl text-center">
+              Tạo tài khoản
+            </CardTitle>
             <CardDescription className="text-center">
-              Enter your details below to create your account
+              Nhập thông tin chi tiết bên dưới để tạo tài khoản của bạn
             </CardDescription>
           </CardHeader>
 
           <CardContent>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-4"
+              >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="firstName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>First Name</FormLabel>
+                        <FormLabel>Họ</FormLabel>
                         <FormControl>
-                          <Input placeholder="John" {...field} />
+                          <Input placeholder="Nguyễn" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -146,9 +173,9 @@ export default function Register() {
                     name="lastName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Last Name</FormLabel>
+                        <FormLabel>Tên</FormLabel>
                         <FormControl>
-                          <Input placeholder="Doe" {...field} />
+                          <Input placeholder="Văn A" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -161,9 +188,9 @@ export default function Register() {
                   name="username"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Username</FormLabel>
+                      <FormLabel>Tên đăng nhập</FormLabel>
                       <FormControl>
-                        <Input placeholder="johndoe" {...field} />
+                        <Input placeholder="nguyenvana" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -175,9 +202,13 @@ export default function Register() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email</FormLabel>
+                      <FormLabel>Email</FormLabel>{" "}
                       <FormControl>
-                        <Input placeholder="john.doe@example.com" type="email" {...field} />
+                        <Input
+                          placeholder="nguyen.vana@example.com"
+                          type="email"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -189,11 +220,11 @@ export default function Register() {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Password</FormLabel>
+                      <FormLabel>Mật khẩu</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Input
-                            placeholder="Your password"
+                            placeholder="Mật khẩu của bạn"
                             type={showPassword ? "text" : "password"}
                             {...field}
                           />
@@ -202,7 +233,7 @@ export default function Register() {
                             className="absolute right-3 top-2.5 text-gray-500"
                             onClick={() => setShowPassword(!showPassword)}
                           >
-                            {showPassword ? "Hide" : "Show"}
+                            {showPassword ? "Ẩn" : "Hiện"}
                           </button>
                         </div>
                       </FormControl>
@@ -216,10 +247,10 @@ export default function Register() {
                   name="confirmPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Confirm Password</FormLabel>
+                      <FormLabel>Xác nhận mật khẩu</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="Confirm your password"
+                          placeholder="Xác nhận mật khẩu của bạn"
                           type={showPassword ? "text" : "password"}
                           {...field}
                         />
@@ -234,7 +265,7 @@ export default function Register() {
                   name="role"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>I want to register as:</FormLabel>
+                      <FormLabel>Tôi muốn đăng ký với tư cách:</FormLabel>
                       <FormControl>
                         <RadioGroup
                           onValueChange={field.onChange}
@@ -243,11 +274,11 @@ export default function Register() {
                         >
                           <div className="flex items-center space-x-2">
                             <RadioGroupItem value="student" id="student" />
-                            <Label htmlFor="student">Student</Label>
+                            <Label htmlFor="student">Học sinh</Label>
                           </div>
                           <div className="flex items-center space-x-2">
                             <RadioGroupItem value="tutor" id="tutor" />
-                            <Label htmlFor="tutor">Tutor</Label>
+                            <Label htmlFor="tutor">Gia sư</Label>
                           </div>
                         </RadioGroup>
                       </FormControl>
@@ -261,18 +292,22 @@ export default function Register() {
                   className="w-full bg-primary hover:bg-primary-dark"
                   disabled={isLoading}
                 >
-                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  Create account
+                  {" "}
+                  {isLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : null}
+                  Tạo tài khoản
                 </Button>
               </form>
             </Form>
           </CardContent>
 
           <CardFooter className="flex justify-center">
+            {" "}
             <div className="text-center text-sm">
-              Already have an account?{" "}
+              Đã có tài khoản?{" "}
               <Link href="/login" className="text-primary hover:underline">
-                Sign in
+                Đăng nhập
               </Link>
             </div>
           </CardFooter>

@@ -799,10 +799,7 @@ export default function BookingForm() {
                                 <span>Gia sư chưa cập nhật lịch dạy</span>
                               </div>
                             ) : (
-                              <span>
-                                Chọn một hoặc nhiều ngày có lịch trống (hiển thị
-                                màu xanh nhạt)
-                              </span>
+                              <span></span>
                             )}
                           </FormDescription>
                           <FormMessage />
@@ -850,9 +847,9 @@ export default function BookingForm() {
                                   </Button>
                                 </div>
                                 <div>
-                                  <FormLabel className="text-xs">
+                                  {/* <FormLabel className="text-xs">
                                     Chọn khung giờ học (có thể chọn nhiều)
-                                  </FormLabel>
+                                  </FormLabel> */}
                                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-1.5">
                                     {availableSlots.map((slot) => {
                                       const isSelected = selectedTimeSlots.some(
@@ -1074,10 +1071,6 @@ export default function BookingForm() {
                               </div>
                             </div>
                           </FormControl>
-                          <FormDescription>
-                            Gia sư sẽ nhận được thông tin này trước buổi học
-                            (tối đa 300 ký tự)
-                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}

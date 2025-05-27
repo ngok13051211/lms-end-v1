@@ -5,8 +5,10 @@ import {
   teachingScheduleInsertSchema,
   tutorProfiles,
   courses,
+  bookingSessions,
+  bookingRequests,
 } from "../../shared/schema";
-import { eq, and, between, or, asc } from "drizzle-orm";
+import { eq, and, between, or, asc, sql } from "drizzle-orm";
 import { z } from "zod";
 import {
   eachDayOfInterval,
@@ -213,7 +215,7 @@ export const createSchedule = async (req: Request, res: Response) => {
       if (hasConflict) {
         return res.status(409).json({
           success: false,
-          message: "You already have a schedule during this time.",
+          message: "Bạn đã có một lịch trình trong thời gian này.",
         });
       }
 
@@ -739,9 +741,7 @@ export const getAvailableTutorSchedulesByTutorId = async (
       courseId,
       dateRange: { from: fromDate, to: toDate },
       // Don't stringify conditions as it contains circular references
-    });
-
-    // Query available schedules
+    }); // Query available schedules
     const availableSchedules = await db.query.teachingSchedules.findMany({
       where: and(...conditions),
       orderBy: [asc(teachingSchedules.date), asc(teachingSchedules.start_time)],
@@ -760,7 +760,70 @@ export const getAvailableTutorSchedulesByTutorId = async (
         message: "Không có lịch trống",
         data: [],
       });
-    } // Group schedules by date
+    } // Get existing booking sessions for this tutor to filter out booked time slots
+    const existingBookings = await db
+      .select({
+        date: bookingSessions.date,
+        start_time: bookingSessions.start_time,
+        end_time: bookingSessions.end_time,
+        status: bookingSessions.status,
+      })
+      .from(bookingSessions)
+      .innerJoin(
+        bookingRequests,
+        eq(bookingSessions.request_id, bookingRequests.id)
+      )
+      .where(
+        and(
+          eq(bookingRequests.tutor_id, tutorId),
+          sql`${bookingSessions.status} IN ('pending', 'confirmed', 'completed')`,
+          between(bookingSessions.date, fromDate, toDate)
+        )
+      );
+
+    console.log(
+      `Found ${existingBookings.length} existing bookings to exclude:`,
+      existingBookings
+    );
+
+    // Helper function to check if two time ranges overlap
+    const timesOverlap = (
+      start1: string,
+      end1: string,
+      start2: string,
+      end2: string
+    ): boolean => {
+      return start1 < end2 && end1 > start2;
+    };
+
+    // Filter out time slots that conflict with existing bookings
+    const filteredSchedules = availableSchedules.filter((schedule) => {
+      const scheduleDate = format(schedule.date, "yyyy-MM-dd");
+
+      // Check if this schedule conflicts with any existing booking
+      const hasConflict = existingBookings.some((booking) => {
+        const bookingDate = format(new Date(booking.date), "yyyy-MM-dd");
+
+        return (
+          scheduleDate === bookingDate &&
+          timesOverlap(
+            schedule.start_time,
+            schedule.end_time,
+            booking.start_time,
+            booking.end_time
+          )
+        );
+      });
+
+      return !hasConflict; // Keep only schedules without conflicts
+    });
+
+    console.log(
+      `After filtering conflicts, ${filteredSchedules.length} schedules remain:`,
+      filteredSchedules
+    );
+
+    // Group schedules by date
     const schedulesByDate: Record<
       string,
       {
@@ -770,7 +833,7 @@ export const getAvailableTutorSchedulesByTutorId = async (
       }[]
     > = {};
 
-    availableSchedules.forEach((schedule) => {
+    filteredSchedules.forEach((schedule) => {
       const dateStr = format(schedule.date, "yyyy-MM-dd");
 
       if (!schedulesByDate[dateStr]) {

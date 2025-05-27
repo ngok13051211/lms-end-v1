@@ -74,6 +74,11 @@ const login = async (userData: {
       throw new Error("Account unverified. Please verify your email address.");
     }
 
+    // Special handling for deactivated accounts
+    if (errorData.error === "ACCOUNT_DEACTIVATED") {
+      throw new Error("ACCOUNT_DEACTIVATED");
+    }
+
     throw new Error(errorData.error?.message || "Login failed");
   }
 
@@ -134,6 +139,16 @@ const loadUser = async (): Promise<typeof User> => {
       if (response.status === 401) {
         localStorage.removeItem("token");
       }
+      
+      // Kiểm tra trường hợp tài khoản bị khóa
+      // Xử lý các mã lỗi khác nhau
+      if (response.status === 403) {
+        const errorData = await response.json();
+        if (errorData.error === "ACCOUNT_DEACTIVATED") {
+          throw new Error("ACCOUNT_DEACTIVATED");
+        }
+      }
+      
       throw new Error("Failed to load user profile");
     }
 

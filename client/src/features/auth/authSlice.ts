@@ -149,6 +149,11 @@ export const authSlice = createSlice({
       .addCase(loginUser.rejected, (state, action: PayloadAction<any>) => {
         state.isLoading = false;
         state.error = action.payload;
+        
+        // Nếu tài khoản bị khóa, chuyển hướng người dùng đến trang thông báo
+        if (action.payload === "ACCOUNT_DEACTIVATED") {
+          window.location.href = "/account-deactivated";
+        }
       })
       // Load user
       .addCase(loadUser.pending, (state) => {
@@ -160,9 +165,14 @@ export const authSlice = createSlice({
         // Chuyển đổi dữ liệu từ API sang kiểu User
         state.user = action.payload as unknown as User;
       })
-      .addCase(loadUser.rejected, (state) => {
+      .addCase(loadUser.rejected, (state, action: PayloadAction<any>) => {
         state.isLoading = false;
         state.user = null;
+        
+        // Kiểm tra nếu tài khoản bị khóa
+        if (action.payload === "ACCOUNT_DEACTIVATED") {
+          window.location.href = "/account-deactivated";
+        }
       })
       // Logout
       .addCase(logout.fulfilled, (state) => {

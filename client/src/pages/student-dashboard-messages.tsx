@@ -106,9 +106,8 @@ function MessageList({
               return (
                 <div
                   key={message.id}
-                  className={`flex items-start ${
-                    isSelf ? "justify-end" : "justify-start"
-                  }`}
+                  className={`flex items-start ${isSelf ? "justify-end" : "justify-start"
+                    }`}
                 >
                   {!isSelf && groupIndex === 0 && messageIndex === 0 && (
                     <Avatar className="h-8 w-8 mr-2">
@@ -128,9 +127,8 @@ function MessageList({
                   )}
 
                   <div
-                    className={`rounded-lg px-4 py-2 max-w-[80%] break-words ${
-                      isSelf ? "bg-primary text-primary-foreground" : "bg-muted"
-                    }`}
+                    className={`rounded-lg px-4 py-2 max-w-[80%] break-words ${isSelf ? "bg-primary text-primary-foreground" : "bg-muted"
+                      }`}
                   >
                     <p>{message.content}</p>
                     <p className="text-xs mt-1 opacity-70">
@@ -275,6 +273,23 @@ export default function StudentDashboardMessages() {
 
   return (
     <DashboardLayout activePage="messages">
+      <div className="pb-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between mb-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Tin nhắn</h1>
+            <p className="text-muted-foreground">
+              Trò chuyện với giáo viên của bạn
+            </p>
+          </div>
+          <div className="mt-2 sm:mt-0">
+            <Button variant="outline" size="sm">
+              <MessageSquare className="h-4 w-4 mr-2" />
+              Trò chuyện mới
+            </Button>
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Conversations list */}
         <div className="lg:col-span-1">
@@ -297,27 +312,26 @@ export default function StudentDashboardMessages() {
                       href={`/dashboard/student/messages/${conv.id}`}
                     >
                       <a
-                        className={`flex items-center p-4 border rounded-lg transition-colors hover:border-primary ${
-                          conversationId === String(conv.id)
+                        className={`flex items-center p-4 border rounded-lg transition-colors hover:border-primary ${conversationId === String(conv.id)
                             ? "border-primary bg-primary/5"
                             : ""
-                        }`}
+                          }`}
                       >
                         <Avatar className="h-10 w-10">
                           <AvatarImage
-                            src={conv.student?.avatar}
-                            alt={conv.student?.firstName}
+                            src={conv.tutor?.avatar}
+                            alt={conv.tutor?.firstName}
                           />
                           <AvatarFallback>
-                            {(conv.student?.firstName?.[0] || "") +
-                              (conv.student?.lastName?.[0] || "")}
+                            {(conv.tutor?.firstName?.[0] || "") +
+                              (conv.tutor?.lastName?.[0] || "")}
                           </AvatarFallback>
                         </Avatar>
 
                         <div className="ml-4 flex-1 overflow-hidden">
                           <div className="flex items-center justify-between">
                             <h4 className="font-medium truncate">
-                              {conv.student?.firstName} {conv.student?.lastName}
+                              {conv.tutor?.firstName} {conv.tutor?.lastName}
                             </h4>
                             <span className="text-xs text-muted-foreground whitespace-nowrap ml-2">
                               {conv.last_message_at
@@ -348,8 +362,8 @@ export default function StudentDashboardMessages() {
                     Không có tin nhắn
                   </h2>
                   <p className="mt-2 text-muted-foreground max-w-md mx-auto">
-                    Bạn chưa nhận được tin nhắn từ học viên. Hoàn thiện hồ sơ và
-                    tạo thông báo dạy để học viên liên hệ.
+                    Bạn chưa có cuộc trò chuyện nào với giáo viên.
+                    Hãy liên hệ với giáo viên để được hỗ trợ học tập.
                   </p>
                 </div>
               )}
@@ -435,9 +449,8 @@ export default function StudentDashboardMessages() {
                   <div className="ml-3">
                     <CardTitle className="text-base font-medium">
                       {conversation.tutor
-                        ? `${conversation.tutor.firstName || ""} ${
-                            conversation.tutor.lastName || ""
-                          }`
+                        ? `${conversation.tutor.firstName || ""} ${conversation.tutor.lastName || ""
+                        }`
                         : "Giáo viên"}
                     </CardTitle>
                     <div className="flex items-center">

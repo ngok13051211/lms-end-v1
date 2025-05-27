@@ -57,7 +57,7 @@ export default function TutorDashboardLayout({
 
   return (
     <DashboardLayout>
-      <div className="p-6 max-w-7xl mx-auto">
+      <div className={`p-6 max-w-7xl mx-auto ${activePage === "messages" ? "h-full" : ""}`}>
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-medium mb-1">Quản lý Gia sư</h1>
@@ -83,7 +83,11 @@ export default function TutorDashboardLayout({
 
         <Separator className="mb-6" />
 
-        {children}
+        {activePage === "messages" ? (
+          <div className="h-[calc(100%-130px)]">{children}</div>
+        ) : (
+          children
+        )}
       </div>
     </DashboardLayout>
   );

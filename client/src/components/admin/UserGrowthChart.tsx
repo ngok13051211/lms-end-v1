@@ -45,7 +45,6 @@ const UserGrowthChart = ({ filterParams }: UserGrowthChartProps) => {
     labels: [],
     datasets: []
   });
-
   // Prepare URL with filter parameters
   const prepareApiUrl = () => {
     const url = new URL('/api/v1/admin/summary/statistics/user-growth-latest-12-months', window.location.origin);
@@ -77,21 +76,26 @@ const UserGrowthChart = ({ filterParams }: UserGrowthChartProps) => {
           }
           break;
       }
+    } else {
+      // No parameters - use default API endpoint without type/year parameters
+      console.log("Using default 12-month view with no filters");
     }
 
     return url.pathname + url.search;
   };
-
   // Truy vấn dữ liệu thống kê tăng trưởng người dùng
   const {
     data: growthData,
     isLoading,
     isError
   } = useQuery({
-    queryKey: ["userGrowthStats", filterParams],
+    // Use a different query key when no filters are provided
+    // This ensures that dashboard and reports pages don't share cached data
+    queryKey: filterParams ? ["userGrowthStats", "filtered", filterParams] : ["userGrowthStats", "default"],
     queryFn: async () => {
       try {
         const apiUrl = prepareApiUrl();
+        console.log("Fetching user growth data with URL:", apiUrl);
         const response = await apiRequest("GET", apiUrl);
         const data = await response.json();
         return data as MonthlyGrowthData[];
@@ -105,6 +109,7 @@ const UserGrowthChart = ({ filterParams }: UserGrowthChartProps) => {
     staleTime: 10 * 60 * 1000, // 10 phút
   });
   useEffect(() => {
+    console.log("===> growthData:", growthData);
     console.log("Growth data received:", growthData);
     if (growthData && Array.isArray(growthData) && growthData.length > 0) {
       // Xử lý dữ liệu để hiển thị trên biểu đồ

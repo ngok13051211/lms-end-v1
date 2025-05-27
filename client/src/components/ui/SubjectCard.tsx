@@ -123,12 +123,12 @@ export default function SubjectCard({
       <div className="p-4 flex-1 flex flex-col">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-medium text-lg">{subject.name}</h3>
-          <div className="flex items-center">
+          {/* <div className="flex items-center">
             <Users className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm ml-1">
               {subject.tutor_count || 0} gia sư
             </span>
-          </div>
+          </div> */}
         </div>
         <p className="text-muted-foreground text-sm mb-3">
           {subject.description ||

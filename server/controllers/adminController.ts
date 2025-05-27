@@ -4,6 +4,10 @@ import * as schema from "@shared/schema";
 import { eq, and, desc, sql, count } from "drizzle-orm";
 import { console } from "inspector";
 
+// Import các controller functions
+import { getTutors } from "./adminController/getTutors";
+import { getTutorById } from "./adminController/getTutorById";
+
 /**
  * @desc    Lấy danh sách tất cả người dùng
  * @route   GET /api/v1/admin/users
@@ -172,6 +176,53 @@ export const deactivateUser = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * @desc    Mở khóa tài khoản người dùng
+ * @route   PATCH /api/v1/admin/users/:id/activate
+ * @access  Private/Admin
+ */
+export const activateUser = async (req: Request, res: Response) => {
+  try {
+    const userId = parseInt(req.params.id);
+
+    if (isNaN(userId)) {
+      return res.status(400).json({
+        success: false,
+        message: "ID người dùng không hợp lệ"
+      });
+    }
+
+    // Kiểm tra xem người dùng có tồn tại không
+    const user = await db.query.users.findFirst({
+      where: eq(schema.users.id, userId),
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy người dùng"
+      });
+    }
+
+    // Cập nhật trạng thái tài khoản thành hoạt động
+    await db
+      .update(schema.users)
+      .set({ is_active: true, updated_at: new Date() })
+      .where(eq(schema.users.id, userId));
+
+    return res.status(200).json({
+      success: true,
+      message: "Đã mở khóa tài khoản người dùng thành công",
+    });
+  } catch (error) {
+    console.error("Activate user error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi server khi mở khóa tài khoản",
+    });
+  }
+};
+
 export const getAdminStats = async (req: Request, res: Response) => {
   try {
     // Đảm bảo người dùng có quyền admin
@@ -293,3 +344,196 @@ export const getAdminStats = async (req: Request, res: Response) => {
     });
   }
 };
+
+/**
+ * @desc    Lấy danh sách booking của một người dùng
+ * @route   GET /api/v1/admin/users/:userId/bookings
+ * @access  Private/Admin
+ */
+export const getUserBookings = async (req: Request, res: Response) => {
+  try {
+    // Kiểm tra quyền admin
+    if (req.user?.role !== "admin") {
+      return res.status(403).json({
+        message:
+          "Không có quyền truy cập. Chỉ admin mới có thể xem thông tin này.",
+      });
+    }
+
+    const userId = parseInt(req.params.userId);
+
+    // Phân trang
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const offset = (page - 1) * limit;
+
+    // Lấy danh sách booking của người dùng này
+    const bookings = await db.query.bookingRequests.findMany({
+      where: eq(schema.bookingRequests.student_id, userId),
+      with: {
+        course: {
+          with: {
+            subject: true,
+            tutor: {
+              with: {
+                user: true
+              }
+            }
+          }
+        }
+      },
+      offset,
+      limit,
+      orderBy: [desc(schema.bookingRequests.created_at)],
+    });
+
+    // Lấy tổng số booking để phân trang
+    const totalCount = await db
+      .select({ count: count() })
+      .from(schema.bookingRequests)
+      .where(eq(schema.bookingRequests.student_id, userId));
+
+    const total = totalCount[0]?.count || 0;
+
+    // Định dạng dữ liệu trả về
+    const formattedBookings = bookings.map(booking => ({
+      id: booking.id,
+      title: booking.title,
+      status: booking.status,
+      created_at: booking.created_at,
+      course_name: booking.course?.title || "N/A",
+      subject_name: booking.course?.subject?.name || "N/A",
+      tutor_name: booking.course?.tutor?.user
+        ? `${booking.course.tutor.user.first_name} ${booking.course.tutor.user.last_name}`
+        : "N/A",
+      hourly_rate: booking.hourly_rate,
+      total_hours: booking.total_hours,
+      total_amount: booking.total_amount,
+      mode: booking.mode,
+      course_id: booking.course_id,
+    }));
+
+    return res.json({
+      message: "Lấy danh sách booking thành công",
+      data: formattedBookings,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    console.error("Error in getUserBookings:", error);
+    return res.status(500).json({
+      message: "Đã xảy ra lỗi khi lấy danh sách booking",
+      error: (error as Error).message,
+    });
+  }
+};
+
+/**
+ * @desc    Lấy tổng quan lịch sử học tập của học viên, nhóm theo khóa học
+ * @route   GET /api/v1/admin/users/:userId/booking-summary
+ * @access  Private/Admin
+ */
+export const getUserBookingSummaryByCourse = async (req: Request, res: Response) => {
+  try {
+    // Kiểm tra quyền admin
+    if (req.user?.role !== "admin") {
+      return res.status(403).json({
+        message: "Không có quyền truy cập. Chỉ admin mới có thể xem thông tin này.",
+      });
+    }
+
+    const userId = parseInt(req.params.userId);
+
+    if (isNaN(userId)) {
+      return res.status(400).json({ message: "Invalid user ID" });
+    }
+
+    // Kiểm tra user có tồn tại không
+    const user = await db.query.users.findFirst({
+      where: eq(schema.users.id, userId),
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Lấy tất cả bookings của user này để nhóm theo course_id
+    const bookings = await db.query.bookingRequests.findMany({
+      where: eq(schema.bookingRequests.student_id, userId),
+      with: {
+        course: {
+          with: {
+            subject: true,
+            tutor: {
+              with: {
+                user: true
+              }
+            }
+          }
+        },
+        sessions: true
+      },
+    });
+
+    // Nhóm bookings theo course_id
+    const bookingsByCoursesMap = new Map();
+
+    bookings.forEach(booking => {
+      if (!booking.course_id) return;
+
+      const key = booking.course_id;
+      if (!bookingsByCoursesMap.has(key)) {
+        bookingsByCoursesMap.set(key, {
+          course_id: booking.course_id,
+          course_name: booking.course?.title || "N/A",
+          subject_name: booking.course?.subject?.name || "N/A",
+          tutor_name: booking.course?.tutor?.user
+            ? `${booking.course.tutor.user.first_name} ${booking.course.tutor.user.last_name}`
+            : "N/A",
+          sessions: [],
+          total_sessions: 0,
+          completed_sessions: 0
+        });
+      }
+
+      // Thêm các sessions của booking này vào group
+      if (booking.sessions && Array.isArray(booking.sessions)) {
+        const group = bookingsByCoursesMap.get(key);
+        booking.sessions.forEach(session => {
+          group.sessions.push(session);
+          group.total_sessions++;
+          if (session.status === "completed") {
+            group.completed_sessions++;
+          }
+        });
+      }
+    });
+
+    // Convert Map to Array và thêm overall_status
+    const bookingSummary = Array.from(bookingsByCoursesMap.values()).map(group => ({
+      course_id: group.course_id,
+      course_name: group.course_name,
+      subject_name: group.subject_name,
+      tutor_name: group.tutor_name,
+      total_sessions: group.total_sessions,
+      completed_sessions: group.completed_sessions,
+      overall_status: group.total_sessions === group.completed_sessions && group.total_sessions > 0
+        ? "completed"
+        : "in_progress"
+    }));
+
+    return res.status(200).json(bookingSummary);
+  } catch (error) {
+    console.error("Error in getUserBookingSummaryByCourse:", error);
+    return res.status(500).json({
+      message: "Đã xảy ra lỗi khi lấy thông tin lịch sử học tập",
+      error: (error as Error).message,
+    });
+  }
+};
+
+// Đã export toàn bộ controller functions trước đó

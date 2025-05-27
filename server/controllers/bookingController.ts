@@ -265,6 +265,38 @@ export const updateBookingStatus = async (req: Request, res: Response) => {
       })
       .where(eq(schema.bookingSessions.request_id, bookingId));
 
+    // Nếu gia sư xác nhận booking (status = confirmed), kiểm tra và tạo cuộc hội thoại
+    if (status === "confirmed" && tutorId === userId) {
+      try {
+        // Kiểm tra xem đã có cuộc hội thoại giữa học viên và gia sư chưa
+        const existingConversation = await db.query.conversations.findFirst({
+          where: and(
+            eq(schema.conversations.student_id, booking.student_id),
+            eq(schema.conversations.tutor_id, tutorId)
+          )
+        });
+
+        if (!existingConversation) {
+          // Nếu chưa có, tạo mới cuộc hội thoại
+          const [newConversation] = await db.insert(schema.conversations)
+            .values({
+              student_id: booking.student_id,
+              tutor_id: tutorId,
+              last_message_at: new Date(),
+              created_at: new Date()
+            })
+            .returning();
+
+          console.log(`Tạo mới cuộc hội thoại thành công: ${JSON.stringify(newConversation)}`);
+        } else {
+          console.log(`Đã tồn tại cuộc hội thoại giữa học viên ${booking.student_id} và gia sư ${tutorId}`);
+        }
+      } catch (error) {
+        // Chỉ ghi log lỗi, không trả về lỗi cho client
+        console.error("Lỗi khi tạo cuộc hội thoại:", error);
+      }
+    }
+
     // Lấy booking đã cập nhật với sessions
     const completeUpdatedBooking = await db.query.bookingRequests.findFirst({
       where: eq(schema.bookingRequests.id, bookingId),
@@ -597,23 +629,22 @@ export const createMultipleBookings = async (req: Request, res: Response) => {
               eq(schema.bookingRequests.tutor_id, range.tutorId),
               sql`${schema.bookingSessions.status} IN ('pending', 'confirmed')`,
               sql`(
-                (${schema.bookingSessions.date} = ${
-                new Date(range.startTime).toISOString().split("T")[0]
-              } AND
+                (${schema.bookingSessions.date} = ${new Date(range.startTime).toISOString().split("T")[0]
+                } AND
                  ${schema.bookingSessions.start_time} < ${new Date(
-                range.endTime
-              ).toLocaleTimeString("en-US", {
-                hour12: false,
-                hour: "2-digit",
-                minute: "2-digit",
-              })} AND
+                  range.endTime
+                ).toLocaleTimeString("en-US", {
+                  hour12: false,
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })} AND
                  ${schema.bookingSessions.end_time} > ${new Date(
-                range.startTime
-              ).toLocaleTimeString("en-US", {
-                hour12: false,
-                hour: "2-digit",
-                minute: "2-digit",
-              })})
+                  range.startTime
+                ).toLocaleTimeString("en-US", {
+                  hour12: false,
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })})
               )`
             )
           );

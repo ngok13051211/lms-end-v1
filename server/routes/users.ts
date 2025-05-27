@@ -1,5 +1,6 @@
 import { Router } from "express";
 import * as userController from "../controllers/authController";
+import * as userSearchController from "../controllers/userController";
 import { authMiddleware } from "../middlewares/authMiddleware";
 import uploadService from "../services/uploadService";
 import { validateBody } from "../middlewares/validationMiddleware";
@@ -22,5 +23,8 @@ router.post(
   uploadService.uploadAvatar,
   userController.updateAvatar
 );
+
+// Tìm kiếm người dùng theo tên hoặc email
+router.get("/search", authMiddleware, userSearchController.searchUsers);
 
 export default router;
